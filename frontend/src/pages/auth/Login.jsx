@@ -15,7 +15,7 @@ const Login = () => {
   const { login, error, clearError } = useAuthStore();
   
   const [formData, setFormData] = useState({
-    username: '',
+    email: '',
     password: ''
   });
   
@@ -41,8 +41,8 @@ const Login = () => {
   const validateForm = () => {
     const errors = {};
     
-    if (!formData.username.trim()) {
-      errors.username = 'El nombre de usuario es requerido';
+    if (!formData.email.trim()) {
+      errors.email = 'El correo electrónico es requerido';
     }
     
     if (!formData.password) {
@@ -83,17 +83,17 @@ const Login = () => {
       
       <LoginForm onSubmit={handleSubmit}>
         <FormGroup>
-          <Label htmlFor="username">Nombre de Usuario</Label>
+          <Label htmlFor="email">Correo Electrónico</Label>
           <Input
-            type="text"
-            id="username"
-            name="username"
-            value={formData.username}
+            type="email"
+            id="email"
+            name="email"
+            value={formData.email}
             onChange={handleChange}
-            placeholder="Ingrese su nombre de usuario"
+            placeholder="Ingrese su correo electrónico"
           />
-          {formErrors.username && (
-            <ErrorMessage>{formErrors.username}</ErrorMessage>
+          {formErrors.email && (
+            <ErrorMessage>{formErrors.email}</ErrorMessage>
           )}
         </FormGroup>
         

@@ -5,6 +5,9 @@ const dotenv = require('dotenv');
 // Load environment variables
 dotenv.config();
 
+// Import database and models
+const { sequelize } = require('./models');
+
 // Import routes (to be created later)
 const authRoutes = require('./routes/auth.routes');
 const productRoutes = require('./routes/product.routes');
@@ -33,7 +36,16 @@ app.get('/', (req, res) => {
   res.json({ message: 'Bienvenido a la API de la Planta de Agua' });
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`Servidor corriendo en el puerto ${PORT}`);
-});
+// Sincronizar modelos con la base de datos y luego iniciar el servidor
+sequelize.sync({ alter: true })
+  .then(() => {
+    console.log('Base de datos sincronizada correctamente');
+    
+    // Start server
+    app.listen(PORT, () => {
+      console.log(`Servidor corriendo en el puerto ${PORT}`);
+    });
+  })
+  .catch(error => {
+    console.error('Error al sincronizar la base de datos:', error);
+  });
