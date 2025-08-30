@@ -48,4 +48,7 @@ const Sale = sequelize.define('Sale', {
 Sale.belongsTo(Client, { foreignKey: 'clientId' });
 Sale.belongsTo(User, { foreignKey: 'userId', as: 'seller' });
 
+// Relación con CashRegister (para saber en qué caja se registró la venta)
+Sale.belongsTo(require('./cashRegister.model'), { foreignKey: 'cashRegisterId', as: 'cashRegister' });
+
 module.exports = Sale;

@@ -10,6 +10,11 @@ const CashRegister = () => {
   // Estados
   const [currentRegister, setCurrentRegister] = useState(null);
   const [registerHistory, setRegisterHistory] = useState([]);
+  const [historyPagination, setHistoryPagination] = useState({
+    total: 0,
+    limit: 10,
+    offset: 0
+  });
   const [showOpenModal, setShowOpenModal] = useState(false);
   const [showCloseModal, setShowCloseModal] = useState(false);
   const [showMovementModal, setShowMovementModal] = useState(false);
@@ -30,10 +35,16 @@ const CashRegister = () => {
     fetchData();
   }, []);
   
-  const fetchData = async () => {
+  /**
+   * Cargar datos iniciales: caja actual e historial
+   * @param {number} [limit=10] - Número de registros por página
+   * @param {number} [offset=0] - Número de registros a omitir (para paginación)
+   */
+  const fetchData = async (limit = 10, offset = 0) => {
     try {
       setLoading(true);
       setError(null);
+      let hasErrors = false;
       
       // Obtener caja actual
       try {
@@ -46,21 +57,60 @@ const CashRegister = () => {
       } catch (err) {
         console.error('Error al obtener caja actual:', err);
         setCurrentRegister(null);
+        hasErrors = true;
+        
+        // No mostrar error si es un problema de conexión (se manejará en el catch general)
+        if (err.response && err.response.status !== 500) {
+          setError('No se pudo cargar la información de la caja actual.');
+        }
       }
       
-      // Obtener historial de cajas
+      // Obtener historial de cajas con paginación
       try {
-        const historyResponse = await axios.get('/api/cash-register/history');
-        setRegisterHistory(historyResponse.data);
+        const historyResponse = await axios.get(`/api/cash-register/history?limit=${limit}&offset=${offset}`);
+        if (historyResponse.data && historyResponse.data.cashRegisters) {
+          setRegisterHistory(historyResponse.data.cashRegisters);
+          setHistoryPagination({
+            total: historyResponse.data.total || 0,
+            limit: historyResponse.data.limit || 10,
+            offset: historyResponse.data.offset || 0
+          });
+        } else {
+          setRegisterHistory([]);
+          setHistoryPagination({ total: 0, limit: 10, offset: 0 });
+        }
       } catch (err) {
         console.error('Error al obtener historial:', err);
         setRegisterHistory([]);
+        setHistoryPagination({ total: 0, limit: 10, offset: 0 });
+        hasErrors = true;
+        
+        // No mostrar error si ya hay uno o si es un problema de conexión
+        if (!hasErrors && err.response && err.response.status !== 500) {
+          setError('No se pudo cargar el historial de cajas.');
+        }
       }
       
       setLoading(false);
     } catch (error) {
       console.error('Error al cargar datos:', error);
-      setError('Error al cargar datos. Por favor, intente nuevamente.');
+      
+      // Manejo de errores específicos
+      if (error.response) {
+        // El servidor respondió con un código de error
+        if (error.response.status === 500) {
+          setError('Error en el servidor. Por favor contacte al administrador.');
+        } else {
+          setError(`Error al cargar datos: ${error.response.data?.message || 'Error desconocido'}`);
+        }
+      } else if (error.request) {
+        // La solicitud fue hecha pero no se recibió respuesta
+        setError('No se pudo conectar con el servidor. Verifique su conexión a internet.');
+      } else {
+        // Error al configurar la solicitud
+        setError(`Error de configuración: ${error.message}`);
+      }
+      
       setLoading(false);
     }
   };
@@ -163,10 +213,21 @@ const CashRegister = () => {
     }
   };
   
-  // Ver detalles de caja
+  /**
+   * Ver detalles de una caja específica
+   * @param {number} registerId - ID de la caja a consultar
+   */
   const handleViewDetails = async (registerId) => {
     try {
       setLoading(true);
+      setError(null); // Limpiar errores previos
+      
+      // Validar que el ID sea válido
+      if (!registerId || isNaN(parseInt(registerId))) {
+        setError('ID de caja inválido');
+        setLoading(false);
+        return;
+      }
       
       const response = await axios.get(`/api/cash-register/${registerId}`);
       setSelectedRegister(response.data);
@@ -175,7 +236,25 @@ const CashRegister = () => {
       setLoading(false);
     } catch (error) {
       console.error('Error al obtener detalles:', error);
-      setError('Error al obtener detalles. Por favor, intente nuevamente.');
+      
+      // Manejo de errores específicos
+      if (error.response) {
+        // El servidor respondió con un código de error
+        if (error.response.status === 404) {
+          setError('La caja solicitada no existe o fue eliminada.');
+        } else if (error.response.status === 500) {
+          setError('Error en el servidor. Por favor contacte al administrador.');
+        } else {
+          setError(`Error al obtener detalles: ${error.response.data?.message || 'Error desconocido'}`);
+        }
+      } else if (error.request) {
+        // La solicitud fue hecha pero no se recibió respuesta
+        setError('No se pudo conectar con el servidor. Verifique su conexión a internet.');
+      } else {
+        // Error al configurar la solicitud
+        setError(`Error de configuración: ${error.message}`);
+      }
+      
       setLoading(false);
     }
   };
@@ -273,6 +352,22 @@ const CashRegister = () => {
     );
   };
   
+  /**
+   * Manejar cambio de página en la paginación
+   * @param {number} newOffset - Nuevo offset para la paginación
+   */
+  const handlePageChange = (newOffset) => {
+    fetchData(historyPagination.limit, newOffset);
+  };
+
+  /**
+   * Manejar cambio en el número de registros por página
+   * @param {number} newLimit - Nuevo límite de registros por página
+   */
+  const handleLimitChange = (newLimit) => {
+    fetchData(newLimit, 0); // Al cambiar el límite, volvemos a la primera página
+  };
+
   // Renderizar historial de cajas
   const renderRegisterHistory = () => {
     if (registerHistory.length === 0) {
@@ -284,6 +379,10 @@ const CashRegister = () => {
         </Card>
       );
     }
+    
+    // Calcular número total de páginas
+    const totalPages = Math.ceil(historyPagination.total / historyPagination.limit);
+    const currentPage = Math.floor(historyPagination.offset / historyPagination.limit) + 1;
     
     return (
       <Card>
@@ -324,6 +423,69 @@ const CashRegister = () => {
                 ))}
               </tbody>
             </Table>
+          </div>
+          
+          {/* Controles de paginación */}
+          <div className="mt-4 flex flex-wrap items-center justify-between">
+            <div className="text-sm text-gray-600 mb-2 md:mb-0">
+              Mostrando {historyPagination.offset + 1} a {Math.min(historyPagination.offset + registerHistory.length, historyPagination.total)} de {historyPagination.total} registros
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <div className="mr-4">
+                <label className="text-sm mr-2">Registros por página:</label>
+                <select 
+                  className="border rounded px-2 py-1 text-sm"
+                  value={historyPagination.limit}
+                  onChange={(e) => handleLimitChange(parseInt(e.target.value))}
+                >
+                  <option value="5">5</option>
+                  <option value="10">10</option>
+                  <option value="25">25</option>
+                  <option value="50">50</option>
+                </select>
+              </div>
+              
+              <Button 
+                variant="secondary" 
+                size="sm"
+                disabled={currentPage === 1}
+                onClick={() => handlePageChange(0)}
+              >
+                &laquo;
+              </Button>
+              
+              <Button 
+                variant="secondary" 
+                size="sm"
+                disabled={currentPage === 1}
+                onClick={() => handlePageChange(Math.max(0, historyPagination.offset - historyPagination.limit))}
+              >
+                &lsaquo;
+              </Button>
+              
+              <span className="px-2">
+                Página {currentPage} de {totalPages}
+              </span>
+              
+              <Button 
+                variant="secondary" 
+                size="sm"
+                disabled={currentPage >= totalPages}
+                onClick={() => handlePageChange(historyPagination.offset + historyPagination.limit)}
+              >
+                &rsaquo;
+              </Button>
+              
+              <Button 
+                variant="secondary" 
+                size="sm"
+                disabled={currentPage >= totalPages}
+                onClick={() => handlePageChange((totalPages - 1) * historyPagination.limit)}
+              >
+                &raquo;
+              </Button>
+            </div>
           </div>
         </div>
       </Card>

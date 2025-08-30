@@ -270,32 +270,37 @@ const POS = () => {
       return;
     }
     
-    setCart(prevCart => {
-      const existingItem = prevCart.find(item => item.id === product.id);
-      
-      if (existingItem) {
-        // Verificar si hay suficiente stock para aumentar la cantidad
-        if (existingItem.quantity >= product.stock) {
-          setError(`No hay suficiente stock para ${product.name}`);
-          return prevCart;
-        }
+    try {
+      setCart(prevCart => {
+        const existingItem = prevCart.find(item => item.id === product.id);
         
-        return prevCart.map(item => 
-          item.id === product.id 
-            ? { ...item, quantity: item.quantity + 1, subtotal: (item.quantity + 1) * item.price } 
-            : item
-        );
-      } else {
-        return [...prevCart, { 
-          id: product.id, 
-          name: product.name, 
-          price: product.price, 
-          quantity: 1, 
-          subtotal: product.price,
-          stock: product.stock
-        }];
-      }
-    });
+        if (existingItem) {
+          // Verificar si hay suficiente stock para aumentar la cantidad
+          if (existingItem.quantity >= product.stock) {
+            setError(`No hay suficiente stock para ${product.name}`);
+            return prevCart;
+          }
+          
+          return prevCart.map(item => 
+            item.id === product.id 
+              ? { ...item, quantity: item.quantity + 1, subtotal: (item.quantity + 1) * item.price } 
+              : item
+          );
+        } else {
+          return [...prevCart, { 
+            id: product.id, 
+            name: product.name, 
+            price: product.price || 0, // Asegurar que price no sea undefined
+            quantity: 1, 
+            subtotal: product.price || 0, // Asegurar que subtotal no sea undefined
+            stock: product.stock
+          }];
+        }
+      });
+    } catch (error) {
+      console.error('Error al agregar producto al carrito:', error);
+      setError('Error al agregar producto al carrito. Por favor, intente nuevamente.');
+    }
   }, []);
   
   // Eliminar producto del carrito
