@@ -193,6 +193,21 @@ const DashboardLayout = () => {
               </NavItem>
             </li>
             <li>
+              <NavItem to="/dashboard/pos">
+                <span>Punto de Venta</span>
+              </NavItem>
+            </li>
+            <li>
+              <NavItem to="/dashboard/cash-register">
+                <span>Caja</span>
+              </NavItem>
+            </li>
+            <li>
+              <NavItem to="/dashboard/credits">
+                <span>Créditos</span>
+              </NavItem>
+            </li>
+            <li>
               <NavItem to="/dashboard/reports">
                 <span>Reportes</span>
               </NavItem>

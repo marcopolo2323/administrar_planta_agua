@@ -14,6 +14,9 @@ import Clients from './pages/clients/Clients';
 import Sales from './pages/sales/Sales';
 import NewSale from './pages/sales/NewSale';
 import Reports from './pages/reports/Reports';
+import POS from './pages/pos/POS';
+import CashRegister from './pages/cashRegister/CashRegister';
+import Credits from './pages/credits/Credits';
 
 const App = () => {
   const { token, checkAuth } = useAuthStore();
@@ -57,6 +60,9 @@ const App = () => {
         <Route path="sales" element={<Sales />} />
         <Route path="sales/new" element={<NewSale />} />
         <Route path="reports" element={<Reports />} />
+        <Route path="pos" element={<POS />} />
+        <Route path="cash-register" element={<CashRegister />} />
+        <Route path="credits" element={<Credits />} />
       </Route>
 
       {/* Ruta para cualquier otra dirección */}

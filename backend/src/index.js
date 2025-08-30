@@ -8,12 +8,17 @@ dotenv.config();
 // Import database and models
 const { sequelize } = require('./models');
 
-// Import routes (to be created later)
+// Import routes
 const authRoutes = require('./routes/auth.routes');
 const productRoutes = require('./routes/product.routes');
 const clientRoutes = require('./routes/client.routes');
 const saleRoutes = require('./routes/sale.routes');
 const reportRoutes = require('./routes/report.routes');
+const inventoryRoutes = require('./routes/inventory.routes');
+const purchaseRoutes = require('./routes/purchase.routes');
+const creditRoutes = require('./routes/credit.routes');
+const cashRegisterRoutes = require('./routes/cashRegister.routes');
+const electronicInvoiceRoutes = require('./routes/electronicInvoice.routes');
 
 // Initialize Express app
 const app = express();
@@ -30,6 +35,11 @@ app.use('/api/products', productRoutes);
 app.use('/api/clients', clientRoutes);
 app.use('/api/sales', saleRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/inventory', inventoryRoutes);
+app.use('/api/purchases', purchaseRoutes);
+app.use('/api/credits', creditRoutes);
+app.use('/api/cash-register', cashRegisterRoutes);
+app.use('/api/electronic-invoices', electronicInvoiceRoutes);
 
 // Root route
 app.get('/', (req, res) => {

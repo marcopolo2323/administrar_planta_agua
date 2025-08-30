@@ -9,6 +9,21 @@ export const useClientStore = create((set, get) => ({
   error: null,
 
   // Acciones
+  getAllClients: async () => {
+    set({ loading: true, error: null });
+    try {
+      const response = await axios.get('/api/clients');
+      set({ clients: response.data, loading: false });
+      return response.data;
+    } catch (error) {
+      set({
+        error: error.response?.data?.message || 'Error al cargar clientes',
+        loading: false
+      });
+      return [];
+    }
+  },
+  
   fetchClients: async () => {
     set({ loading: true, error: null });
     try {

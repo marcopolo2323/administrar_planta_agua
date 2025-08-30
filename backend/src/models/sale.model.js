@@ -34,6 +34,11 @@ const Sale = sequelize.define('Sale', {
   notes: {
     type: DataTypes.TEXT,
     allowNull: true
+  },
+  hasElectronicInvoice: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false
   }
 }, {
   timestamps: true
