@@ -1,3 +1,4 @@
+const { Op } = require('sequelize');
 // Importar modelos
 const models = require('../models');
 const CashRegister = models.CashRegister;
@@ -5,6 +6,7 @@ const CashMovement = models.CashMovement;
 const Sale = models.Sale;
 const User = models.User;
 const sequelize = models.sequelize;
+
 
 // Verificar que los modelos estén correctamente definidos
 if (!CashRegister || !CashMovement || !Sale || !User || !sequelize) {
@@ -232,7 +234,7 @@ exports.getCurrentCashRegister = async (req, res) => {
         sales = await Sale.findAll({
           where: {
             status: 'pagado',
-            createdAt: { [sequelize.Op.gte]: cashRegister.openingDate }
+            createdAt: { [Op.gte]: cashRegister.openingDate }
           },
           include: [{ model: User, as: 'seller', attributes: ['id', 'username'] }],
           order: [['createdAt', 'DESC']]
@@ -392,7 +394,7 @@ exports.getCashRegisterDetails = async (req, res) => {
       where: {
         status: 'pagado',
         createdAt: {
-          [sequelize.Op.between]: [
+          [Op.between]: [
             cashRegister.openingDate,
             cashRegister.closingDate || new Date()
           ]

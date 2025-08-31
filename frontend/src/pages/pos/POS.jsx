@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import axios from '../../utils/axios';
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
@@ -160,6 +160,7 @@ const CartFooter = styled.div`
 
 const POS = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   
   // Usar los stores para gestionar el estado
   const { currentCashRegister, fetchCurrentCashRegister } = useCashRegisterStore();
@@ -225,16 +226,13 @@ const POS = () => {
     const fetchInitialData = async () => {
       try {
         setLoading(true);
-        
         // Verificar estado de caja
         await fetchCurrentCashRegister();
-        
         // Cargar productos y clientes en paralelo
         await Promise.all([
           getAllProducts(),
           getAllClients()
         ]);
-        
         setLoading(false);
       } catch (error) {
         console.error('Error al cargar datos iniciales:', error);
@@ -242,17 +240,19 @@ const POS = () => {
         setLoading(false);
       }
     };
-    
     fetchInitialData();
-  }, []); // ✅ Array vacío para ejecutar solo una vez
+  }, [location.pathname]); // <-- Se ejecuta cada vez que cambia la ruta
   
   // Verificar caja y seleccionar cliente por defecto
   useEffect(() => {
-    if (currentCashRegister && currentCashRegister.status !== 'abierto') {
+    if (!currentCashRegister || currentCashRegister.status !== 'abierto') {
       setError('No hay una caja abierta. Debe abrir caja antes de realizar ventas.');
+      // Opcional: limpiar el carrito si la caja se cierra
+      setCart([]);
       return;
+    } else {
+      setError(null);
     }
-    
     // Cliente por defecto (cliente general)
     if (clients && clients.length > 0 && !selectedClient) {
       const defaultClient = clients.find(c => c.name === 'Cliente General' || c.document === '00000000');

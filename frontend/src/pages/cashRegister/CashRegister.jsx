@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from '../../utils/axios';
+import { useCashRegisterStore } from '../../stores/cashRegisterStore';
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
 import Modal from '../../components/ui/Modal';
@@ -7,6 +8,8 @@ import { Input, Select } from '../../components/ui/FormElements';
 import Table from '../../components/ui/Table';
 
 const CashRegister = () => {
+  // Store global para caja
+  const { fetchCurrentCashRegister } = useCashRegisterStore();
   // Estados
   const [currentRegister, setCurrentRegister] = useState(null);
   const [registerHistory, setRegisterHistory] = useState([]);
@@ -72,20 +75,17 @@ const CashRegister = () => {
         setError('Debe ingresar un monto válido');
         return;
       }
-      
       setLoading(true);
-      
       await axios.post('/api/cash-register/open', {
         openingAmount: parseFloat(openingAmount)
       });
-      
+      // Actualizar el store global para que POS lo detecte
+      await fetchCurrentCashRegister();
       setSuccess('Caja abierta correctamente');
       setShowOpenModal(false);
       setOpeningAmount('');
-      
-      // Recargar datos
+      // Recargar datos locales
       fetchData();
-      
       setLoading(false);
     } catch (error) {
       console.error('Error al abrir caja:', error);
@@ -101,20 +101,17 @@ const CashRegister = () => {
         setError('Debe ingresar un monto válido');
         return;
       }
-      
       setLoading(true);
-      
       await axios.post('/api/cash-register/close', {
         actualAmount: parseFloat(actualAmount)
       });
-      
+      // Actualizar el store global para que POS lo detecte
+      await fetchCurrentCashRegister();
       setSuccess('Caja cerrada correctamente');
       setShowCloseModal(false);
       setActualAmount('');
-      
-      // Recargar datos
+      // Recargar datos locales
       fetchData();
-      
       setLoading(false);
     } catch (error) {
       console.error('Error al cerrar caja:', error);
