@@ -38,18 +38,15 @@ instance.interceptors.response.use(
       console.log('Error de autenticación, redirigiendo al login');
       localStorage.removeItem('token');
       window.location.href = '/';
-    }
-    
-    // Manejar errores de autorización (403)
-    if (error.response && error.response.status === 403) {
+    } else if (error.response && error.response.status === 403) {
+      // Solo mostrar mensaje de autorización, no cerrar sesión
       console.log('Error de autorización:', error.response.data);
-    }
-    
-    // Manejar errores de servidor (500)
-    if (error.response && error.response.status === 500) {
+    } else if (error.response && error.response.status === 404) {
+      // No cerrar sesión en 404, solo mostrar mensaje si es necesario
+      console.log('Recurso no encontrado:', error.response.data);
+    } else if (error.response && error.response.status === 500) {
       console.error('Error del servidor:', error.response.data);
     }
-    
     return Promise.reject(error);
   }
 );

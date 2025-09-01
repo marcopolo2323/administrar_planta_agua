@@ -1,13 +1,6 @@
-/**
- * Controlador para la gestión de cajas registradoras
- * Este módulo maneja todas las operaciones relacionadas con las cajas registradoras:
- * - Apertura y cierre de cajas
- * - Consulta de caja actual y su estado
- * - Registro de movimientos (ingresos/egresos)
- * - Historial de cajas y detalles específicos
- */
+const { Op } = require('sequelize');
+// Importar modelos
 
-// Importar modelos necesarios
 const models = require('../models');
 const CashRegister = models.CashRegister;  // Modelo de Caja Registradora
 const CashMovement = models.CashMovement;  // Modelo de Movimientos de Caja
@@ -15,6 +8,7 @@ const Sale = models.Sale;                  // Modelo de Ventas
 const User = models.User;                  // Modelo de Usuarios
 const Client = models.Client;              // Modelo de Clientes
 const sequelize = models.sequelize;        // Instancia de Sequelize para transacciones
+
 
 // Verificar que los modelos estén correctamente definidos
 if (!CashRegister || !CashMovement || !Sale || !User || !sequelize) {
@@ -265,7 +259,7 @@ exports.getCurrentCashRegister = async (req, res) => {
         sales = await Sale.findAll({
           where: {
             status: 'pagado',
-            createdAt: { [sequelize.Op.gte]: cashRegister.openingDate }
+            createdAt: { [Op.gte]: cashRegister.openingDate }
           },
           include: [{ model: User, as: 'seller', attributes: ['id', 'username'] }],
           order: [['createdAt', 'DESC']]
@@ -482,19 +476,19 @@ exports.getCashRegisterDetails = async (req, res) => {
       movements = [];
     }
 
-    // Obtener ventas durante el período de la caja con manejo de errores
-    let sales = [];
-    try {
-      sales = await Sale.findAll({
-        where: {
-          status: 'pagado',
-          createdAt: {
-            [sequelize.Op.between]: [
-              cashRegister.openingDate,
-              cashRegister.closingDate || new Date()
-            ]
-          }
-        },
+
+    // Obtener ventas durante el período de la caja
+    const sales = await Sale.findAll({
+      where: {
+        status: 'pagado',
+        createdAt: {
+          [Op.between]: [
+            cashRegister.openingDate,
+            cashRegister.closingDate || new Date()
+          ]
+        }
+      },
+
       include: [{ model: User, as: 'seller', attributes: ['id', 'username'] }],
       order: [['createdAt', 'DESC']]
     }) || [];

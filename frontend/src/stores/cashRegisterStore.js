@@ -16,8 +16,8 @@ export const useCashRegisterStore = create((set, get) => ({
       
       // Verificar si la respuesta contiene datos de caja
       if (response.data && response.data.cashRegister) {
-        set({ currentCashRegister: response.data, loading: false });
-        return response.data;
+        set({ currentCashRegister: response.data.cashRegister, loading: false });
+        return response.data.cashRegister;
       } else {
         // No hay caja abierta, pero no es un error
         set({ currentCashRegister: null, loading: false, error: null });

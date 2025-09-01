@@ -24,7 +24,7 @@ const ButtonStyles = css`
     width: 100%;
   `}
   
-  ${props => props.variant === 'primary' && css`
+  ${props => props.$variant === 'primary' && css`
     background-color: var(--primary-color);
     color: white;
     
@@ -37,7 +37,7 @@ const ButtonStyles = css`
     }
   `}
   
-  ${props => props.variant === 'secondary' && css`
+  ${props => props.$variant === 'secondary' && css`
     background-color: var(--secondary-color);
     color: white;
     
@@ -50,7 +50,7 @@ const ButtonStyles = css`
     }
   `}
   
-  ${props => props.variant === 'outline' && css`
+  ${props => props.$variant === 'outline' && css`
     background-color: transparent;
     color: var(--primary-color);
     border: 1px solid var(--primary-color);
@@ -64,7 +64,7 @@ const ButtonStyles = css`
     }
   `}
   
-  ${props => props.variant === 'text' && css`
+  ${props => props.$variant === 'text' && css`
     background-color: transparent;
     color: var(--primary-color);
     padding: ${props.size === 'small' ? '0.25rem 0.5rem' : props.size === 'large' ? '0.5rem 1rem' : '0.375rem 0.75rem'};
@@ -78,7 +78,7 @@ const ButtonStyles = css`
     }
   `}
   
-  ${props => props.variant === 'danger' && css`
+  ${props => props.$variant === 'danger' && css`
     background-color: var(--danger-color);
     color: white;
     
@@ -91,7 +91,7 @@ const ButtonStyles = css`
     }
   `}
   
-  ${props => props.variant === 'success' && css`
+  ${props => props.$variant === 'success' && css`
     background-color: var(--success-color);
     color: white;
     
@@ -117,7 +117,7 @@ const StyledLinkButton = styled.a`
 
 const Button = ({
   children,
-  variant = 'primary',
+  $variant = 'primary',
   size = 'medium',
   fullWidth = false,
   disabled = false,
@@ -133,7 +133,7 @@ const Button = ({
     return (
       <StyledLinkButton
         href={href}
-        variant={variant}
+  $variant={$variant}
         size={size}
         $fullWidth={fullWidth}
         disabled={disabled}
@@ -147,7 +147,7 @@ const Button = ({
   return (
     <StyledButton
       type={type}
-      variant={variant}
+  $variant={$variant}
       size={size}
       $fullWidth={fullWidth}
       disabled={disabled}
