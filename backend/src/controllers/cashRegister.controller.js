@@ -1,11 +1,13 @@
 const { Op } = require('sequelize');
 // Importar modelos
+
 const models = require('../models');
-const CashRegister = models.CashRegister;
-const CashMovement = models.CashMovement;
-const Sale = models.Sale;
-const User = models.User;
-const sequelize = models.sequelize;
+const CashRegister = models.CashRegister;  // Modelo de Caja Registradora
+const CashMovement = models.CashMovement;  // Modelo de Movimientos de Caja
+const Sale = models.Sale;                  // Modelo de Ventas
+const User = models.User;                  // Modelo de Usuarios
+const Client = models.Client;              // Modelo de Clientes
+const sequelize = models.sequelize;        // Instancia de Sequelize para transacciones
 
 
 // Verificar que los modelos estén correctamente definidos
@@ -13,13 +15,22 @@ if (!CashRegister || !CashMovement || !Sale || !User || !sequelize) {
   console.error('Error: Modelos no definidos correctamente');
 }
 
-// Abrir caja
+/**
+ * Abrir una nueva caja registradora
+ * @param {Object} req - Objeto de solicitud Express
+ * @param {Object} req.body - Datos para la apertura de caja
+ * @param {number} req.body.openingAmount - Monto inicial de la caja
+ * @param {string} [req.body.notes] - Notas adicionales para la apertura
+ * @param {Object} res - Objeto de respuesta Express
+ * @returns {Object} Información de la caja creada
+ */
 exports.openCashRegister = async (req, res) => {
+  // Iniciar transacción para garantizar la integridad de los datos
   const transaction = await sequelize.transaction();
 
   try {
     const { openingAmount, notes } = req.body;
-    const userId = req.userId;
+    const userId = req.userId; // ID del usuario autenticado
 
     // Verificar si ya hay una caja abierta
     const openCashRegister = await CashRegister.findOne({
@@ -56,13 +67,22 @@ exports.openCashRegister = async (req, res) => {
   }
 };
 
-// Cerrar caja
+/**
+ * Cerrar una caja registradora abierta
+ * @param {Object} req - Objeto de solicitud Express
+ * @param {Object} req.body - Datos para el cierre de caja
+ * @param {number} req.body.actualAmount - Monto real contado al cierre
+ * @param {string} [req.body.notes] - Notas adicionales para el cierre
+ * @param {Object} res - Objeto de respuesta Express
+ * @returns {Object} Información de la caja cerrada con balance
+ */
 exports.closeCashRegister = async (req, res) => {
+  // Iniciar transacción para garantizar la integridad de los datos
   const transaction = await sequelize.transaction();
 
   try {
     const { actualAmount, notes } = req.body;
-    const userId = req.userId;
+    const userId = req.userId; // ID del usuario que cierra la caja
 
     console.log('Cerrando caja con datos:', { actualAmount, notes, userId });
 
@@ -173,7 +193,18 @@ exports.closeCashRegister = async (req, res) => {
   }
 };
 
-// Obtener caja actual
+/**
+ * Obtener información de la caja actualmente abierta
+ * @param {Object} req - Objeto de solicitud Express
+ * @param {Object} res - Objeto de respuesta Express
+ * @returns {Object} Información de la caja actual, movimientos, ventas y resumen de balance
+ */
+/**
+ * Obtener información de la caja actualmente abierta
+ * @param {Object} req - Objeto de solicitud Express
+ * @param {Object} res - Objeto de respuesta Express
+ * @returns {Object} Información de la caja actual, movimientos, ventas y resumen de balance
+ */
 exports.getCurrentCashRegister = async (req, res) => {
   try {
     console.log('Obteniendo caja actual...');
@@ -184,10 +215,16 @@ exports.getCurrentCashRegister = async (req, res) => {
       return res.status(500).json({ message: 'Error en la configuración del servidor' });
     }
     
+    // Optimización: Buscar caja abierta con sus movimientos y ventas en una sola consulta
     const cashRegister = await CashRegister.findOne({
       where: { status: 'abierto' },
       include: [
-        { model: User, as: 'openedByUser', attributes: ['id', 'username'] }
+        { model: User, as: 'openedByUser', attributes: ['id', 'username'] },
+        { 
+          model: CashMovement,
+          include: [{ model: User, as: 'registeredBy', attributes: ['id', 'username'] }],
+          order: [['createdAt', 'DESC']]
+        }
       ]
     }).catch(err => {
       console.error('Error al buscar caja abierta:', err);
@@ -212,22 +249,10 @@ exports.getCurrentCashRegister = async (req, res) => {
       });
     }
 
-    // Obtener movimientos de la caja actual
-    let movements = [];
-    if (cashRegister && cashRegister.id) {
-      try {
-        movements = await CashMovement.findAll({
-          where: { cashRegisterId: cashRegister.id },
-          include: [{ model: User, as: 'registeredBy', attributes: ['id', 'username'] }],
-          order: [['createdAt', 'DESC']]
-        }) || [];
-      } catch (err) {
-        console.error('Error al obtener movimientos:', err);
-        movements = [];
-      }
-    }
+    // Extraer movimientos de la consulta optimizada
+    const movements = cashRegister.CashMovements || [];
 
-    // Obtener ventas desde la apertura de caja
+    // Obtener ventas desde la apertura de caja en una sola consulta
     let sales = [];
     if (cashRegister && cashRegister.openingDate) {
       try {
@@ -245,11 +270,12 @@ exports.getCurrentCashRegister = async (req, res) => {
       }
     }
 
-    // Calcular totales
+    // Calcular totales de manera optimizada
     const salesTotal = Array.isArray(sales) && sales.length > 0 
       ? sales.reduce((sum, sale) => sum + (sale && sale.total ? parseFloat(sale.total || 0) : 0), 0)
       : 0;
     
+    // Calcular ingresos y egresos en un solo recorrido
     let incomesTotal = 0;
     let expensesTotal = 0;
     if (Array.isArray(movements) && movements.length > 0) {
@@ -285,13 +311,25 @@ exports.getCurrentCashRegister = async (req, res) => {
   }
 };
 
-// Registrar movimiento de caja
+/**
+ * Registrar un nuevo movimiento de caja (ingreso o egreso)
+ * @param {Object} req - Objeto de solicitud Express
+ * @param {Object} req.body - Datos del movimiento
+ * @param {string} req.body.type - Tipo de movimiento ('ingreso' o 'egreso')
+ * @param {number} req.body.amount - Monto del movimiento
+ * @param {string} req.body.concept - Concepto o razón del movimiento
+ * @param {string} [req.body.reference] - Referencia externa (opcional)
+ * @param {string} [req.body.notes] - Notas adicionales (opcional)
+ * @param {Object} res - Objeto de respuesta Express
+ * @returns {Object} Información del movimiento registrado
+ */
 exports.registerCashMovement = async (req, res) => {
+  // Iniciar transacción para garantizar la integridad de los datos
   const transaction = await sequelize.transaction();
 
   try {
     const { type, amount, concept, reference, notes } = req.body;
-    const userId = req.userId;
+    const userId = req.userId; // ID del usuario que registra el movimiento
 
     // Buscar caja abierta
     const cashRegister = await CashRegister.findOne({
@@ -328,10 +366,24 @@ exports.registerCashMovement = async (req, res) => {
   }
 };
 
-// Obtener historial de cajas
+/**
+ * Obtener historial de cajas cerradas con filtros opcionales por fecha
+ * @param {Object} req - Objeto de solicitud Express
+ * @param {Object} req.query - Parámetros de consulta
+ * @param {string} [req.query.startDate] - Fecha de inicio para filtrar (opcional)
+ * @param {string} [req.query.endDate] - Fecha de fin para filtrar (opcional)
+ * @param {number} [req.query.limit=10] - Número máximo de registros a devolver
+ * @param {number} [req.query.offset=0] - Número de registros a omitir (para paginación)
+ * @param {Object} res - Objeto de respuesta Express
+ * @returns {Object} Lista paginada de cajas registradoras cerradas
+ */
 exports.getCashRegisterHistory = async (req, res) => {
   try {
-    const { startDate, endDate } = req.query;
+    const { startDate, endDate } = req.query; // Fechas para filtrar el historial
+    
+    // Parámetros de paginación
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = parseInt(req.query.offset) || 0;
     
     // Construir condiciones de búsqueda
     const whereConditions = { status: 'cerrado' };
@@ -350,44 +402,80 @@ exports.getCashRegisterHistory = async (req, res) => {
       };
     }
 
-    const cashRegisters = await CashRegister.findAll({
+    // Obtener historial de cajas con paginación
+    const { count, rows: cashRegisters } = await CashRegister.findAndCountAll({
       where: whereConditions,
       include: [
         { model: User, as: 'openedByUser', attributes: ['id', 'username'] },
         { model: User, as: 'closedByUser', attributes: ['id', 'username'] }
       ],
-      order: [['closingDate', 'DESC']]
+      order: [['closingDate', 'DESC']],
+      limit,
+      offset,
+      // Seleccionar solo los campos necesarios para mejorar rendimiento
+      attributes: [
+        'id', 'openingDate', 'closingDate', 'openingAmount', 'expectedAmount',
+        'actualAmount', 'difference', 'status', 'openedBy', 'closedBy', 'notes'
+      ]
     });
 
-    return res.status(200).json(cashRegisters);
+    return res.status(200).json({
+      total: count,
+      offset,
+      limit,
+      cashRegisters
+    });
   } catch (error) {
     console.error('Error al obtener historial de cajas:', error);
     return res.status(500).json({ message: 'Error en el servidor' });
   }
 };
 
-// Obtener detalles de una caja específica
+/**
+ * Obtener detalles de una caja específica
+ * @param {Object} req - Objeto de solicitud Express
+ * @param {Object} res - Objeto de respuesta Express
+ * @returns {Object} Detalles de la caja, movimientos y ventas asociadas
+ */
 exports.getCashRegisterDetails = async (req, res) => {
   try {
     const { id } = req.params;
+    
+    // Verificar que el ID sea válido
+    if (!id || isNaN(parseInt(id))) {
+      return res.status(400).json({ message: 'ID de caja inválido' });
+    }
 
+    // Buscar la caja por ID con información de usuarios relacionados
     const cashRegister = await CashRegister.findByPk(id, {
       include: [
         { model: User, as: 'openedByUser', attributes: ['id', 'username'] },
-        { model: User, as: 'closedByUser', attributes: ['id', 'username'] }
+        { model: User, as: 'closedByUser', attributes: ['id', 'username'] },
+        { model: Sale, as: 'sales', include: [{ model: Client }] } // Incluir ventas asociadas a esta caja
       ]
+    }).catch(err => {
+      console.error('Error al buscar caja por ID:', err);
+      return null;
     });
 
+    // Si no se encuentra la caja, devolver error 404
     if (!cashRegister) {
       return res.status(404).json({ message: 'Caja no encontrada' });
     }
 
-    // Obtener movimientos de la caja
-    const movements = await CashMovement.findAll({
-      where: { cashRegisterId: id },
-      include: [{ model: User, as: 'registeredBy', attributes: ['id', 'username'] }],
-      order: [['createdAt', 'DESC']]
-    });
+    // Obtener movimientos de la caja con manejo de errores
+    let movements = [];
+    try {
+      movements = await CashMovement.findAll({
+        where: { cashRegisterId: id },
+        include: [{ model: User, as: 'registeredBy', attributes: ['id', 'username'] }],
+        order: [['createdAt', 'DESC']]
+      }) || [];
+    } catch (err) {
+      console.error('Error al obtener movimientos de caja:', err);
+      movements = [];
+    }
+
 
     // Obtener ventas durante el período de la caja
     const sales = await Sale.findAll({
@@ -400,14 +488,20 @@ exports.getCashRegisterDetails = async (req, res) => {
           ]
         }
       },
+
       include: [{ model: User, as: 'seller', attributes: ['id', 'username'] }],
       order: [['createdAt', 'DESC']]
-    });
+    }) || [];
+    } catch (err) {
+      console.error('Error al obtener ventas de caja:', err);
+      sales = [];
+    }
 
+    // Formatear la respuesta con los datos obtenidos
     return res.status(200).json({
       cashRegister,
-      movements,
-      sales
+      movements: movements || [],
+      sales: sales || []
     });
   } catch (error) {
     console.error('Error al obtener detalles de caja:', error);

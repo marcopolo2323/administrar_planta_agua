@@ -11,15 +11,15 @@ const NewSaleContainer = styled.div`
 
 const NewSale = () => {
   const navigate = useNavigate();
-  const { createSale, currentSale, addItem, removeItem, updateQuantity, clearSale } = useSaleStore();
+  const { createSale, currentSale, addItem, removeItem, updateQuantity, resetCurrentSale } = useSaleStore();
   const { products, fetchProducts } = useProductStore();
   const { clients, fetchClients } = useClientStore();
   
   useEffect(() => {
     fetchProducts();
     fetchClients();
-    clearSale();
-  }, [fetchProducts, fetchClients, clearSale]);
+    resetCurrentSale();
+  }, [fetchProducts, fetchClients, resetCurrentSale]);
 
   return (
     <NewSaleContainer>

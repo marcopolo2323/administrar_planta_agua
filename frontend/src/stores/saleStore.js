@@ -242,5 +242,10 @@ export const useSaleStore = create((set, get) => ({
     });
   },
 
+  // Alias para resetCurrentSale para mantener compatibilidad
+  clearSale: () => {
+    get().resetCurrentSale();
+  },
+
   clearError: () => set({ error: null })
 }));

@@ -1,6 +1,17 @@
 const { Sale, SaleDetail, Product, Client, User, sequelize } = require('../models');
 
-// Crear una nueva venta
+/**
+ * Crear una nueva venta
+ * @param {Object} req - Objeto de solicitud Express
+ * @param {Object} req.body - Datos para la creación de la venta
+ * @param {number} req.body.clientId - ID del cliente
+ * @param {Array} req.body.products - Lista de productos a vender
+ * @param {string} req.body.invoiceType - Tipo de factura (boleta, factura, vale)
+ * @param {string} req.body.invoiceNumber - Número de factura
+ * @param {string} req.body.notes - Notas adicionales
+ * @param {Object} res - Objeto de respuesta Express
+ * @returns {Object} Información de la venta creada
+ */
 exports.createSale = async (req, res) => {
   const transaction = await sequelize.transaction();
 
@@ -12,6 +23,18 @@ exports.createSale = async (req, res) => {
     if (!products || products.length === 0) {
       await transaction.rollback();
       return res.status(400).json({ message: 'Debe incluir al menos un producto' });
+    }
+    
+    // Verificar si hay una caja abierta
+    const CashRegister = require('../models/cashRegister.model');
+    const currentCashRegister = await CashRegister.findOne({
+      where: { status: 'abierto' },
+      transaction
+    });
+    
+    if (!currentCashRegister) {
+      await transaction.rollback();
+      return res.status(400).json({ message: 'No hay una caja abierta. Debe abrir una caja antes de registrar ventas.' });
     }
 
     // Calcular el total de la venta
@@ -51,7 +74,8 @@ exports.createSale = async (req, res) => {
       invoiceType,
       invoiceNumber,
       notes,
-      status: 'pagado' // Por defecto, se considera pagada
+      status: 'pagado', // Por defecto, se considera pagada
+      cashRegisterId: currentCashRegister.id // Asignar la caja actual a la venta
     }, { transaction });
 
     // Crear los detalles de la venta

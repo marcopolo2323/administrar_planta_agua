@@ -32,6 +32,7 @@ Credit.hasMany(CreditPayment, { foreignKey: 'creditId' });
 
 // Relaciones de caja
 CashRegister.hasMany(CashMovement, { foreignKey: 'cashRegisterId' });
+CashRegister.hasMany(Sale, { foreignKey: 'cashRegisterId', as: 'sales' });
 
 // Relaciones de facturación electrónica
 Sale.hasOne(ElectronicInvoice, { foreignKey: 'SaleId' });
