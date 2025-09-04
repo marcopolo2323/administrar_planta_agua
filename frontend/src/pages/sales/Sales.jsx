@@ -9,6 +9,8 @@ import Table from '../../components/ui/Table';
 import Modal from '../../components/ui/Modal';
 import { FormGroup, Label, Input, Select } from '../../components/ui/FormElements';
 import Alert from '../../components/ui/Alert';
+import axios from 'axios';
+import apiClient from '../../utils/axios';
 
 const SalesContainer = styled.div`
   padding: 1.5rem;
@@ -68,6 +70,7 @@ const Sales = () => {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [currentSale, setCurrentSale] = useState(null);
   const [successMessage, setSuccessMessage] = useState('');
+  const [loadingPdf, setLoadingPdf] = useState({});
 
   useEffect(() => {
     fetchSales();
@@ -111,6 +114,43 @@ const Sales = () => {
   const handleCloseModal = () => {
     setShowCancelModal(false);
     setCurrentSale(null);
+  };
+  
+  const handleDownloadPdf = async (saleId) => {
+    try {
+      setLoadingPdf(prev => ({ ...prev, [saleId]: true }));
+      
+      // Usar la instancia de axios configurada con los interceptores
+      const response = await apiClient.get(`/api/sales/${saleId}/pdf`, { 
+        responseType: 'blob',
+        headers: {
+          'Accept': 'application/pdf'
+        }
+      });
+      
+      // Crear un objeto URL para el blob
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+      
+      // Crear un elemento <a> temporal
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `venta_${saleId}.pdf`);
+      
+      // Añadir al DOM, hacer clic y eliminar
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url); // Liberar memoria
+      
+      setSuccessMessage('PDF descargado correctamente');
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (error) {
+      console.error('Error al descargar el PDF:', error);
+      setSuccessMessage('Error al descargar el PDF: ' + (error.response?.data?.message || error.message));
+      setTimeout(() => setSuccessMessage(''), 5000);
+    } finally {
+      setLoadingPdf(prev => ({ ...prev, [saleId]: false }));
+    }
   };
 
   const formatDate = (dateString) => {
@@ -259,9 +299,17 @@ const Sales = () => {
                             variant="secondary" 
                             size="small"
                           >
-                            Ver
+                            Ver Detalles
                           </Button>
                         </Link>
+                        <Button 
+                          variant="primary" 
+                          size="small"
+                          onClick={() => handleDownloadPdf(sale.id)}
+                          disabled={loadingPdf[sale.id]}
+                        >
+                          {loadingPdf[sale.id] ? 'Descargando...' : 'Descargar PDF'}
+                        </Button>
                         {sale.status !== 'anulado' && (
                           <Button 
                             variant="danger" 

@@ -1,5 +1,6 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
+import NotificationCenter from '../components/NotificationCenter';
 import styled from 'styled-components';
 
 const LayoutContainer = styled.div`
@@ -137,6 +138,7 @@ const Header = styled.header`
   
   .actions {
     display: flex;
+    align-items: center;
     gap: 1rem;
   }
 `;
@@ -208,6 +210,16 @@ const DashboardLayout = () => {
               </NavItem>
             </li>
             <li>
+              <NavItem to="/dashboard/guest-orders">
+                <span>Pedidos de Invitados</span>
+              </NavItem>
+            </li>
+            <li>
+              <NavItem to="/dashboard/delivery-fees">
+                <span>Tarifas de Envío</span>
+              </NavItem>
+            </li>
+            <li>
               <NavItem to="/dashboard/reports">
                 <span>Reportes</span>
               </NavItem>
@@ -228,6 +240,12 @@ const DashboardLayout = () => {
       </Sidebar>
       
       <MainContent>
+        <Header>
+          <h2>Panel de Administración</h2>
+          <div className="actions">
+            <NotificationCenter />
+          </div>
+        </Header>
         <Content>
           <Outlet />
         </Content>

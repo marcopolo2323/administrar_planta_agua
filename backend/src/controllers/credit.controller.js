@@ -1,4 +1,4 @@
-const { Credit, CreditPayment, Client, Sale, User, sequelize } = require('../models');
+const { Credit, CreditPayment, Client, Sale, User, Order, sequelize } = require('../models');
 
 // Obtener todos los créditos
 exports.getAllCredits = async (req, res) => {
@@ -61,7 +61,7 @@ exports.createCredit = async (req, res) => {
   const transaction = await sequelize.transaction();
 
   try {
-    const { clientId, saleId, amount, dueDate, notes } = req.body;
+    const { clientId, saleId, orderId, amount, dueDate, notes } = req.body;
     const userId = req.userId;
 
     // Verificar si el cliente existe
@@ -70,8 +70,14 @@ exports.createCredit = async (req, res) => {
       await transaction.rollback();
       return res.status(404).json({ message: 'Cliente no encontrado' });
     }
+    
+    // Verificar si el cliente tiene habilitado el crédito
+    if (!client.hasCredit) {
+      await transaction.rollback();
+      return res.status(403).json({ message: 'Este cliente no tiene habilitado el pago a crédito' });
+    }
 
-    // Verificar si la venta existe
+    // Verificar si la venta o pedido existe
     if (saleId) {
       const sale = await Sale.findByPk(saleId, { transaction });
       if (!sale) {
@@ -92,6 +98,29 @@ exports.createCredit = async (req, res) => {
 
       // Actualizar estado de la venta
       await sale.update({ status: 'pendiente' }, { transaction });
+    } else if (orderId) {
+      const order = await Order.findByPk(orderId, { transaction });
+      if (!order) {
+        await transaction.rollback();
+        return res.status(404).json({ message: 'Pedido no encontrado' });
+      }
+
+      // Verificar si ya existe un crédito para este pedido
+      const existingCredit = await Credit.findOne({
+        where: { orderId },
+        transaction
+      });
+
+      if (existingCredit) {
+        await transaction.rollback();
+        return res.status(400).json({ message: 'Ya existe un crédito para este pedido' });
+      }
+
+      // Actualizar estado del pedido
+      await order.update({ 
+        paymentStatus: 'credito',
+        isCredit: true 
+      }, { transaction });
     }
 
     // Activar crédito para el cliente si no lo tiene
@@ -103,6 +132,7 @@ exports.createCredit = async (req, res) => {
     const credit = await Credit.create({
       clientId,
       saleId,
+      orderId,
       amount,
       balance: amount, // Inicialmente el balance es igual al monto total
       dueDate: dueDate ? new Date(dueDate) : null,
@@ -180,6 +210,14 @@ exports.registerPayment = async (req, res) => {
         { where: { id: credit.saleId }, transaction }
       );
     }
+    
+    // Si el crédito está asociado a un pedido, actualizar su estado
+    if (credit.orderId && newStatus === 'pagado') {
+      await Order.update(
+        { paymentStatus: 'pagado', isCredit: false },
+        { where: { id: credit.orderId }, transaction }
+      );
+    }
 
     await transaction.commit();
 
@@ -213,7 +251,8 @@ exports.getOverdueCredits = async (req, res) => {
       },
       include: [
         { model: Client },
-        { model: Sale }
+        { model: Sale },
+        { model: Order }
       ],
       order: [['dueDate', 'ASC']]
     });

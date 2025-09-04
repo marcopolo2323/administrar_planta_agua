@@ -5,8 +5,9 @@ const { verifyToken, isAdmin } = require('../middlewares/auth.middleware');
 
 // Rutas públicas (requieren autenticación pero no admin)
 router.get('/', verifyToken, clientController.getAllClients);
-router.get('/:id', verifyToken, clientController.getClientById);
+router.get('/document/:documentNumber', clientController.findClientByDocument); // Ruta pública para buscar cliente por documento
 router.get('/search', verifyToken, clientController.searchClients);
+router.get('/:id', verifyToken, clientController.getClientById);
 
 // Rutas protegidas (requieren rol de admin)
 router.post('/', verifyToken, clientController.createClient);

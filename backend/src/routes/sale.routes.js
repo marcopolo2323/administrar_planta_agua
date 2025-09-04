@@ -5,9 +5,10 @@ const { verifyToken, isAdmin } = require('../middlewares/auth.middleware');
 
 // Rutas públicas (requieren autenticación pero no admin)
 router.get('/', verifyToken, saleController.getAllSales);
-router.get('/:id', verifyToken, saleController.getSaleById);
 router.get('/client/:clientId', verifyToken, saleController.getSalesByClient);
 router.get('/date', verifyToken, saleController.getSalesByDate);
+router.get('/:id/pdf', verifyToken, saleController.generateSalePDF);
+router.get('/:id', verifyToken, saleController.getSaleById);
 router.post('/', verifyToken, saleController.createSale);
 
 // Rutas protegidas (requieren rol de admin)

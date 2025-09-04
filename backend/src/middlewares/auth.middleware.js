@@ -22,6 +22,14 @@ exports.verifyToken = async (req, res, next) => {
     if (!user.active) {
       return res.status(403).json({ message: 'Usuario desactivado' });
     }
+    
+    // Agregar información del rol del usuario a la solicitud
+    req.user = {
+      id: user.id,
+      role: user.role,
+      // Agregar el ID como string para facilitar su uso con MongoDB
+      idString: user.id.toString()
+    };
 
     next();
   } catch (error) {
@@ -36,6 +44,26 @@ exports.verifyToken = async (req, res, next) => {
     console.error('Error en verificación de token:', error);
     return res.status(500).json({ message: 'Error en el servidor' });
   }
+};
+
+// Verificar roles específicos
+exports.checkRole = (roles) => {
+  return async (req, res, next) => {
+    try {
+      const user = await User.findByPk(req.userId);
+
+      if (!roles.includes(user.role)) {
+        return res.status(403).json({ 
+          message: `Acceso denegado. Se requiere uno de los siguientes roles: ${roles.join(', ')}` 
+        });
+      }
+
+      next();
+    } catch (error) {
+      console.error('Error en verificación de rol:', error);
+      return res.status(500).json({ message: 'Error en el servidor' });
+    }
+  };
 };
 
 // Verificar rol de administrador
@@ -53,3 +81,52 @@ exports.isAdmin = async (req, res, next) => {
     return res.status(500).json({ message: 'Error en el servidor' });
   }
 };
+
+// Verificar rol de vendedor
+exports.isSeller = async (req, res, next) => {
+  try {
+    const user = await User.findByPk(req.userId);
+
+    if (user.role !== 'vendedor') {
+      return res.status(403).json({ message: 'Requiere rol de vendedor' });
+    }
+
+    next();
+  } catch (error) {
+    console.error('Error en verificación de rol:', error);
+    return res.status(500).json({ message: 'Error en el servidor' });
+  }
+};
+
+// Verificar rol de cliente
+exports.isClient = async (req, res, next) => {
+  try {
+    const user = await User.findByPk(req.userId);
+
+    if (user.role !== 'cliente') {
+      return res.status(403).json({ message: 'Requiere rol de cliente' });
+    }
+
+    next();
+  } catch (error) {
+    console.error('Error en verificación de rol:', error);
+    return res.status(500).json({ message: 'Error en el servidor' });
+  }
+};
+
+// Verificar rol de repartidor
+exports.isDeliveryPerson = async (req, res, next) => {
+  try {
+    const user = await User.findByPk(req.userId);
+
+    if (user.role !== 'repartidor') {
+      return res.status(403).json({ message: 'Requiere rol de repartidor' });
+    }
+
+    next();
+  } catch (error) {
+    console.error('Error en verificación de rol:', error);
+    return res.status(500).json({ message: 'Error en el servidor' });
+  }
+};
+

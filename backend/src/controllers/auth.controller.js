@@ -4,7 +4,7 @@ const { User } = require('../models');
 // Registro de usuario
 exports.register = async (req, res) => {
   try {
-    const { username, email, password, role } = req.body;
+    const { username, email, password, role, isClient } = req.body;
 
     // Verificar si el usuario ya existe
     const existingUser = await User.findOne({ where: { email } });
@@ -12,12 +12,30 @@ exports.register = async (req, res) => {
       return res.status(400).json({ message: 'El correo electrónico ya está registrado' });
     }
 
+    // Determinar el rol del usuario
+    let userRole = role;
+    
+    // Si isClient es true, asignar rol de cliente
+    if (isClient) {
+      userRole = 'cliente';
+    } 
+    // Si no se especifica un rol, usar el valor predeterminado (ahora es 'cliente' según el modelo)
+    else if (!userRole) {
+      userRole = 'cliente';
+    }
+    
+    // Validar que el rol sea válido
+    const validRoles = ['admin', 'vendedor', 'cliente', 'repartidor'];
+    if (!validRoles.includes(userRole)) {
+      return res.status(400).json({ message: 'Rol no válido' });
+    }
+
     // Crear nuevo usuario
     const user = await User.create({
       username,
       email,
       password,
-      role: role || 'vendedor'
+      role: userRole
     });
 
     return res.status(201).json({

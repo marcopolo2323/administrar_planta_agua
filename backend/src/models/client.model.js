@@ -47,9 +47,44 @@ const Client = sequelize.define('Client', {
     type: DataTypes.BOOLEAN,
     defaultValue: false
   },
+  creditLimit: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: true,
+    defaultValue: 0
+  },
+  currentDebt: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: true,
+    defaultValue: 0
+  },
+  paymentDueDay: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    validate: {
+      min: 1,
+      max: 31
+    }
+  },
   active: {
     type: DataTypes.BOOLEAN,
     defaultValue: true
+  },
+  userId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    // unique: true
+  },
+  defaultDeliveryAddress: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  defaultContactPhone: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  notes: {
+    type: DataTypes.TEXT,
+    allowNull: true
   }
 }, {
   timestamps: true

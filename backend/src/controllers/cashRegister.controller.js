@@ -450,8 +450,7 @@ exports.getCashRegisterDetails = async (req, res) => {
     const cashRegister = await CashRegister.findByPk(id, {
       include: [
         { model: User, as: 'openedByUser', attributes: ['id', 'username'] },
-        { model: User, as: 'closedByUser', attributes: ['id', 'username'] },
-        { model: Sale, as: 'sales', include: [{ model: Client }] } // Incluir ventas asociadas a esta caja
+        { model: User, as: 'closedByUser', attributes: ['id', 'username'] }
       ]
     }).catch(err => {
       console.error('Error al buscar caja por ID:', err);
@@ -476,22 +475,22 @@ exports.getCashRegisterDetails = async (req, res) => {
       movements = [];
     }
 
-
     // Obtener ventas durante el período de la caja
-    const sales = await Sale.findAll({
-      where: {
-        status: 'pagado',
-        createdAt: {
-          [Op.between]: [
-            cashRegister.openingDate,
-            cashRegister.closingDate || new Date()
-          ]
-        }
-      },
-
-      include: [{ model: User, as: 'seller', attributes: ['id', 'username'] }],
-      order: [['createdAt', 'DESC']]
-    }) || [];
+    let sales = [];
+    try {
+      sales = await Sale.findAll({
+        where: {
+          status: 'pagado',
+          createdAt: {
+            [Op.between]: [
+              cashRegister.openingDate,
+              cashRegister.closingDate || new Date()
+            ]
+          }
+        },
+        include: [{ model: User, as: 'seller', attributes: ['id', 'username'] }],
+        order: [['createdAt', 'DESC']]
+      }) || [];
     } catch (err) {
       console.error('Error al obtener ventas de caja:', err);
       sales = [];

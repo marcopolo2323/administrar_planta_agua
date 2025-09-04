@@ -1,6 +1,20 @@
 const { sequelize } = require('../models');
 const User = require('../models/user.model');
 const Product = require('../models/product.model');
+const Order = require('../models/order.model');
+const OrderDetail = require('../models/orderDetail.model');
+const DeliveryPerson = require('../models/deliveryPerson.model');
+const mongoose = require('mongoose');
+
+// Conectar a MongoDB para las notificaciones
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/punto_de_venta', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+}).then(() => {
+  console.log('Conexión a MongoDB establecida para notificaciones');
+}).catch(err => {
+  console.error('Error al conectar a MongoDB:', err);
+});
 
 async function initDatabase() {
   try {
@@ -40,6 +54,22 @@ async function initDatabase() {
     ]);
     console.log('Productos creados correctamente');
 
+    console.log('==============================================');
+    console.log('INICIALIZACIÓN DE BASE DE DATOS COMPLETADA');
+    console.log('Se han creado las siguientes tablas:');
+    console.log('- Usuarios (User)');
+    console.log('- Productos (Product)');
+    console.log('- Clientes (Client)');
+    console.log('- Ventas (Sale) y Detalles de Ventas (SaleDetail)');
+    console.log('- Compras (Purchase) y Detalles de Compras (PurchaseDetail)');
+    console.log('- Inventario (Inventory)');
+    console.log('- Caja (CashRegister) y Movimientos de Caja (CashMovement)');
+    console.log('- Créditos (Credit) y Pagos de Créditos (CreditPayment)');
+    console.log('- Facturas Electrónicas (ElectronicInvoice)');
+    console.log('- Pedidos (Order) y Detalles de Pedidos (OrderDetail)');
+    console.log('- Repartidores (DeliveryPerson)');
+    console.log('- Notificaciones (MongoDB)');
+    console.log('==============================================');
     console.log('Inicialización completada con éxito');
   } catch (error) {
     console.error('Error al inicializar la base de datos:', error);

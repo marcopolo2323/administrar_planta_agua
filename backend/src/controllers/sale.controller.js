@@ -1,4 +1,7 @@
-const { Sale, SaleDetail, Product, Client, User, sequelize } = require('../models');
+const { Sale, SaleDetail, Product, Client, User, Payment, sequelize } = require('../models');
+const documentGeneratorService = require('../services/documentGenerator.service');
+const path = require('path');
+const fs = require('fs-extra');
 
 /**
  * Crear una nueva venta
@@ -242,5 +245,99 @@ exports.getSalesByDate = async (req, res) => {
   } catch (error) {
     console.error('Error al obtener ventas por fecha:', error);
     return res.status(500).json({ message: 'Error en el servidor' });
+  }
+};
+
+/**
+ * Generar y descargar el PDF de una venta específica
+ * @param {Object} req - Objeto de solicitud Express
+ * @param {Object} res - Objeto de respuesta Express
+ * @returns {Object} Archivo PDF de la venta
+ */
+exports.generateSalePDF = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Buscar la venta con todos sus detalles
+    const sale = await Sale.findByPk(id, {
+      include: [
+        { model: Client },
+        { model: User, as: 'seller' },
+        { model: SaleDetail, include: [Product] }
+      ]
+    });
+    
+    if (!sale) {
+      return res.status(404).json({ message: 'Venta no encontrada' });
+    }
+    
+    // Buscar si ya existe un pago con documento generado para esta venta
+    const payment = await Payment.findOne({
+      where: { saleId: id },
+      attributes: ['documentPath']
+    });
+    
+    // Si ya existe un documento, devolver ese archivo
+    if (payment && payment.documentPath) {
+      const filePath = path.join(__dirname, '..', '..', payment.documentPath);
+      
+      if (fs.existsSync(filePath)) {
+        return res.download(filePath);
+      }
+    }
+    
+    // Preparar los datos para el documento
+    const orderData = {
+      id: sale.id,
+      date: sale.date,
+      client: sale.Client,
+      items: sale.SaleDetails.map(detail => ({
+        name: detail.Product.name,
+        quantity: detail.quantity,
+        unitPrice: detail.unitPrice,
+        subtotal: detail.subtotal
+      })),
+      subtotal: parseFloat(sale.total) / 1.18, // Asumiendo IGV de 18%
+      igv: parseFloat(sale.total) - (parseFloat(sale.total) / 1.18),
+      total: parseFloat(sale.total),
+      // Incluir información de entrega si existe
+      deliveryAddress: sale.deliveryAddress || '',
+      deliveryDistrict: sale.deliveryDistrict || '',
+      deliveryFee: sale.deliveryFee || 0
+    };
+    
+    // Determinar el tipo de documento
+    const documentType = sale.invoiceType === 'factura' ? 'invoice' : 'receipt';
+    
+    // Generar el PDF
+    const pdfPath = await documentGeneratorService.generateDocumentPDF(
+      orderData,
+      documentType,
+      sale.invoiceType === 'factura' ? { ruc: sale.Client.documentNumber, businessName: sale.Client.businessName } : null
+    );
+    
+    // Si no existe un pago asociado, crear uno
+    if (!payment) {
+      await Payment.create({
+        saleId: sale.id,
+        amount: sale.total,
+        paymentMethod: 'efectivo', // Valor por defecto
+        documentType: sale.invoiceType,
+        paymentStatus: 'completado',
+        documentPath: pdfPath
+      });
+    } else if (!payment.documentPath) {
+      // Actualizar el pago existente con la ruta del documento
+      await payment.update({ documentPath: pdfPath });
+    }
+    
+    // Devolver el archivo PDF
+    const filePath = path.join(__dirname, '..', '..', pdfPath);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="factura-${id}.pdf"`);
+    return res.sendFile(filePath);
+  } catch (error) {
+    console.error('Error al generar el PDF de la venta:', error);
+    return res.status(500).json({ message: 'Error al generar el PDF de la venta' });
   }
 };

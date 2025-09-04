@@ -15,6 +15,30 @@ exports.getAllClients = async (req, res) => {
   }
 };
 
+// Buscar cliente por número de documento (para clientes frecuentes)
+exports.findClientByDocument = async (req, res) => {
+  try {
+    const { documentNumber } = req.params;
+    
+    if (!documentNumber) {
+      return res.status(400).json({ message: 'El número de documento es requerido' });
+    }
+    
+    const client = await Client.findOne({
+      where: { documentNumber, active: true }
+    });
+    
+    if (!client) {
+      return res.status(404).json({ message: 'Cliente no encontrado' });
+    }
+    
+    return res.status(200).json(client);
+  } catch (error) {
+    console.error('Error al buscar cliente:', error);
+    return res.status(500).json({ message: 'Error en el servidor' });
+  }
+};
+
 // Obtener un cliente por ID
 exports.getClientById = async (req, res) => {
   try {

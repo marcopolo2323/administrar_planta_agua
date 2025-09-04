@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import path from 'path';
 
 export default defineConfig({
   plugins: [react()],
@@ -11,6 +12,19 @@ export default defineConfig({
         changeOrigin: true,
         secure: false
       }
+    }
+  },
+  optimizeDeps: {
+    esbuildOptions: {
+      loader: {
+        '.js': 'jsx'
+      }
+    }
+  },
+  resolve: {
+    alias: {
+      // Resuelve el problema de importación de forwardRef en @chakra-ui/icons
+      '@chakra-ui/icons/dist/esm/Spinner.mjs': path.resolve(__dirname, 'src/components/ui/ChakraIconsPatches.jsx')
     }
   }
 });

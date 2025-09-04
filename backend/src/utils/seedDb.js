@@ -13,6 +13,24 @@ const Inventory = require('../models/inventory.model');
 const Credit = require('../models/credit.model');
 const CreditPayment = require('../models/creditPayment.model');
 const ElectronicInvoice = require('../models/electronicInvoice.model');
+const Order = require('../models/order.model');
+const OrderDetail = require('../models/orderDetail.model');
+const DeliveryPerson = require('../models/deliveryPerson.model');
+const GuestOrder = require('../models/guestOrder.model');
+const Payment = require('../models/payment.model');
+const mongoose = require('mongoose');
+const Notification = require('../models/notification.model');
+
+// Conectar a MongoDB para las notificaciones
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/punto_de_venta', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+}).then(() => {
+  console.log('Conexión a MongoDB establecida para notificaciones');
+}).catch(err => {
+  console.error('Error al conectar a MongoDB:', err);
+});
+
 
 async function seedDatabase() {
   try {
@@ -116,6 +134,77 @@ async function seedDatabase() {
       console.log('Usuario vendedor creado correctamente');
     } else {
       console.log('Usuario vendedor ya existe');
+    }
+    
+    // Obtener o crear usuarios repartidores
+    let deliveryUser1 = await User.findOne({ where: { username: 'repartidor1' } });
+    if (!deliveryUser1) {
+      deliveryUser1 = await User.create({
+        username: 'repartidor1',
+        email: 'repartidor1@aguapura.com',
+        password: 'repartidor123',
+        role: 'repartidor'
+      });
+      console.log('Usuario repartidor1 creado correctamente');
+    } else {
+      console.log('Usuario repartidor1 ya existe');
+    }
+    
+    let deliveryUser2 = await User.findOne({ where: { username: 'repartidor2' } });
+    if (!deliveryUser2) {
+      deliveryUser2 = await User.create({
+        username: 'repartidor2',
+        email: 'repartidor2@aguapura.com',
+        password: 'repartidor123',
+        role: 'repartidor'
+      });
+      console.log('Usuario repartidor2 creado correctamente');
+    } else {
+      console.log('Usuario repartidor2 ya existe');
+    }
+    
+    // Verificar si ya existen repartidores
+    const existingDeliveryPersons = await DeliveryPerson.findAll();
+    let deliveryPersons = [];
+    
+    if (existingDeliveryPersons.length === 0) {
+      // Crear repartidores de prueba
+      const deliveryPerson1 = await DeliveryPerson.create({
+        name: 'Carlos Rodríguez',
+        documentType: 'DNI',
+        documentNumber: '45678123',
+        phone: '987123456',
+        email: 'carlos.rodriguez@aguapura.com',
+        address: 'Av. Los Álamos 456, San Borja',
+        vehicleType: 'moto',
+        vehiclePlate: 'ABC-123',
+        status: 'disponible',
+        userId: deliveryUser1.id,
+        active: true
+      });
+      
+      deliveryPersons.push(deliveryPerson1);
+      
+      const deliveryPerson2 = await DeliveryPerson.create({
+        name: 'Ana Martínez',
+        documentType: 'DNI',
+        documentNumber: '78912345',
+        phone: '912345678',
+        email: 'ana.martinez@aguapura.com',
+        address: 'Jr. Las Palmeras 789, Miraflores',
+        vehicleType: 'auto',
+        vehiclePlate: 'XYZ-789',
+        status: 'disponible',
+        userId: deliveryUser2.id,
+        active: true
+      });
+      
+      deliveryPersons.push(deliveryPerson2);
+      
+      console.log(`${deliveryPersons.length} repartidores creados correctamente`);
+    } else {
+      deliveryPersons = existingDeliveryPersons;
+      console.log(`Se encontraron ${deliveryPersons.length} repartidores existentes`);
     }
 
     // Obtener o crear productos
@@ -283,7 +372,7 @@ async function seedDatabase() {
         supplierDocument: '20567891234',
         invoiceNumber: 'F001-5678',
         total: 500.00,
-        status: 'completado',
+        status: 'pagado',
         paymentMethod: 'efectivo',
         notes: 'Compra de envases',
         userId: admin.id
@@ -305,7 +394,7 @@ async function seedDatabase() {
         supplierDocument: '20123456780',
         invoiceNumber: 'F001-1234',
         total: 300.00,
-        status: 'completado',
+        status: 'pagado',
         paymentMethod: 'transferencia',
         notes: 'Compra de insumos',
         userId: admin.id
@@ -546,6 +635,427 @@ async function seedDatabase() {
       console.log(`Se encontraron ${electronicInvoices.length} facturas electrónicas existentes`);
     }
     
+    // Verificar si ya existen pedidos
+    const existingOrders = await Order.findAll();
+    let orders = [];
+    
+    if (existingOrders.length === 0) {
+      // Crear pedidos de prueba en diferentes estados
+      
+      // Pedido 1: Pendiente
+      const order1 = await Order.create({
+        orderDate: new Date(Date.now() - 3600000), // Hace 1 hora
+        total: 27.00,
+        status: 'pendiente',
+        paymentStatus: 'pendiente',
+        paymentMethod: 'efectivo',
+        deliveryAddress: 'Av. Los Pinos 123',
+        deliveryDistrict: 'San Isidro',
+        contactPhone: '987654321',
+        notes: 'Tocar el timbre 2 veces',
+        deliveryFee: 5.00,
+        clientId: clients[0].id,
+        userId: admin.id
+      });
+      
+      await OrderDetail.create({
+        quantity: 2,
+        unitPrice: 10.00,
+        subtotal: 20.00,
+        orderId: order1.id,
+        productId: products[0].id
+      });
+      
+      await OrderDetail.create({
+        quantity: 1,
+        unitPrice: 7.00,
+        subtotal: 7.00,
+        orderId: order1.id,
+        productId: products[1].id
+      });
+      
+      orders.push(order1);
+      
+      // Pedido 2: Confirmado
+      const order2 = await Order.create({
+        orderDate: new Date(Date.now() - 7200000), // Hace 2 horas
+        total: 35.00,
+        status: 'confirmado',
+        paymentStatus: 'pagado',
+        paymentMethod: 'tarjeta',
+        paymentReference: 'REF-123456',
+        deliveryAddress: 'Jr. Las Flores 456',
+        deliveryDistrict: 'Miraflores',
+        contactPhone: '912345678',
+        deliveryFee: 5.00,
+        clientId: clients[1].id,
+        userId: seller.id
+      });
+      
+      await OrderDetail.create({
+        quantity: 5,
+        unitPrice: 7.00,
+        subtotal: 35.00,
+        orderId: order2.id,
+        productId: products[1].id
+      });
+      
+      orders.push(order2);
+      
+      // Pedido 3: En preparación
+      const order3 = await Order.create({
+        orderDate: new Date(Date.now() - 10800000), // Hace 3 horas
+        total: 50.00,
+        status: 'en_preparacion',
+        paymentStatus: 'pagado',
+        paymentMethod: 'transferencia',
+        paymentReference: 'TRF-789012',
+        deliveryAddress: 'Av. Industrial 789',
+        deliveryDistrict: 'Ate',
+        contactPhone: '01234567',
+        notes: 'Empresa, preguntar por recepción',
+        deliveryFee: 0.00, // Sin costo de envío por ser mayorista
+        clientId: clients[2].id,
+        userId: admin.id
+      });
+      
+      await OrderDetail.create({
+        quantity: 5,
+        unitPrice: 10.00,
+        subtotal: 50.00,
+        orderId: order3.id,
+        productId: products[0].id
+      });
+      
+      orders.push(order3);
+      
+      // Pedido 4: En camino
+      const order4 = await Order.create({
+        orderDate: new Date(Date.now() - 14400000), // Hace 4 horas
+        deliveryDate: new Date(Date.now() + 1800000), // Entrega estimada en 30 minutos
+        total: 27.00,
+        status: 'en_camino',
+        paymentStatus: 'pagado',
+        paymentMethod: 'efectivo',
+        deliveryAddress: 'Calle Los Olivos 234',
+        deliveryDistrict: 'San Borja',
+        contactPhone: '945678123',
+        deliveryFee: 5.00,
+        clientId: clients[3].id,
+        userId: seller.id,
+        deliveryPersonId: deliveryPersons[0].userId
+      });
+      
+      await OrderDetail.create({
+        quantity: 2,
+        unitPrice: 10.00,
+        subtotal: 20.00,
+        orderId: order4.id,
+        productId: products[0].id
+      });
+      
+      await OrderDetail.create({
+        quantity: 1,
+        unitPrice: 7.00,
+        subtotal: 7.00,
+        orderId: order4.id,
+        productId: products[1].id
+      });
+      
+      orders.push(order4);
+      
+      // Pedido 5: Entregado
+      const order5 = await Order.create({
+        orderDate: new Date(Date.now() - 86400000), // Hace 24 horas
+        deliveryDate: new Date(Date.now() - 82800000), // Entregado hace 23 horas
+        total: 100.00,
+        status: 'entregado',
+        paymentStatus: 'pagado',
+        paymentMethod: 'tarjeta',
+        paymentReference: 'REF-345678',
+        deliveryAddress: 'Av. La Marina 567',
+        deliveryDistrict: 'San Miguel',
+        contactPhone: '01765432',
+        notes: 'Dejar en recepción',
+        deliveryFee: 0.00, // Sin costo de envío por ser mayorista
+        clientId: clients[4].id,
+        userId: admin.id,
+        deliveryPersonId: deliveryPersons[1].userId
+      });
+      
+      await OrderDetail.create({
+        quantity: 20,
+        unitPrice: 5.00,
+        subtotal: 100.00,
+        orderId: order5.id,
+        productId: products[1].id
+      });
+      
+      orders.push(order5);
+      
+      // Pedido 6: Cancelado
+      const order6 = await Order.create({
+        orderDate: new Date(Date.now() - 172800000), // Hace 48 horas
+        total: 20.00,
+        status: 'cancelado',
+        paymentStatus: 'reembolsado',
+        paymentMethod: 'tarjeta',
+        paymentReference: 'REF-901234',
+        deliveryAddress: 'Jr. Las Palmeras 890',
+        deliveryDistrict: 'Barranco',
+        contactPhone: '923456789',
+        notes: 'Cancelado por el cliente',
+        deliveryFee: 5.00,
+        clientId: clients[0].id,
+        userId: seller.id
+      });
+      
+      await OrderDetail.create({
+        quantity: 2,
+        unitPrice: 10.00,
+        subtotal: 20.00,
+        orderId: order6.id,
+        productId: products[0].id
+      });
+      
+      orders.push(order6);
+      
+      // Pedido 7: Pedido a crédito para cliente regular con hasCredit=true
+      const creditOrder = await Order.create({
+        orderDate: new Date(),
+        total: 120.00,
+        status: 'confirmado',
+        paymentStatus: 'credito',
+        paymentMethod: 'credito',
+        isCredit: true,
+        deliveryAddress: 'Av. Los Restaurantes 456',
+        deliveryDistrict: 'Miraflores',
+        contactPhone: '987123456',
+        notes: 'Pedido a crédito para restaurante',
+        deliveryFee: 0.00,
+        clientId: clients[2].id, // Cliente con hasCredit=true
+        userId: admin.id
+      });
+      
+      await OrderDetail.create({
+        quantity: 10,
+        unitPrice: 12.00,
+        subtotal: 120.00,
+        orderId: creditOrder.id,
+        productId: products[0].id
+      });
+      
+      // Crear un crédito para este pedido
+      const dueDate = new Date();
+      dueDate.setDate(dueDate.getDate() + 30); // Vencimiento a 30 días
+      
+      const orderCredit = await Credit.create({
+        amount: 120.00,
+        balance: 120.00,
+        dueDate: dueDate,
+        status: 'pendiente',
+        notes: `Crédito por pedido ${creditOrder.id}`,
+        clientId: clients[2].id,
+        orderId: creditOrder.id,
+        userId: admin.id
+      });
+      
+      credits.push(orderCredit);
+      orders.push(creditOrder);
+      
+      // Pedido 8: Pedido a crédito con pago parcial
+      const creditOrderPartial = await Order.create({
+        orderDate: new Date(Date.now() - 864000000), // Hace 10 días
+        total: 200.00,
+        status: 'entregado',
+        paymentStatus: 'credito',
+        paymentMethod: 'credito',
+        isCredit: true,
+        deliveryAddress: 'Av. Los Hoteles 789',
+        deliveryDistrict: 'San Isidro',
+        contactPhone: '987654123',
+        notes: 'Pedido a crédito con pago parcial',
+        deliveryFee: 0.00,
+        clientId: clients[4].id, // Otro cliente con hasCredit=true
+        userId: seller.id
+      });
+      
+      await OrderDetail.create({
+        quantity: 20,
+        unitPrice: 10.00,
+        subtotal: 200.00,
+        orderId: creditOrderPartial.id,
+        productId: products[0].id
+      });
+      
+      // Crear un crédito para este pedido
+      const dueDatePartial = new Date(Date.now() - 864000000);
+      dueDatePartial.setDate(dueDatePartial.getDate() + 30); // Vencimiento a 30 días
+      
+      const orderCreditPartial = await Credit.create({
+        amount: 200.00,
+        balance: 100.00, // Ya se pagó la mitad
+        dueDate: dueDatePartial,
+        status: 'pendiente',
+        notes: `Crédito por pedido ${creditOrderPartial.id}`,
+        clientId: clients[4].id,
+        orderId: creditOrderPartial.id,
+        userId: seller.id
+      });
+      
+      // Crear un pago parcial para este crédito
+      await CreditPayment.create({
+        amount: 100.00,
+        paymentMethod: 'efectivo',
+        paymentDate: new Date(Date.now() - 432000000), // Hace 5 días
+        notes: 'Pago parcial del crédito',
+        creditId: orderCreditPartial.id,
+        userId: seller.id
+      });
+      
+      credits.push(orderCreditPartial);
+      orders.push(creditOrderPartial);
+      
+      // Pedido 9: Pedido de invitado pendiente
+      const guestOrder1 = await Order.create({
+        orderDate: new Date(),
+        total: 27.00,
+        status: 'pendiente',
+        paymentStatus: 'pendiente',
+        deliveryAddress: 'Av. Los Girasoles 123',
+        deliveryDistrict: 'La Molina',
+        contactPhone: '987654321',
+        deliveryFee: 5.00,
+        notes: 'Pedido de invitado'
+      });
+      
+      await OrderDetail.create({
+        quantity: 2,
+        unitPrice: 10.00,
+        subtotal: 20.00,
+        orderId: guestOrder1.id,
+        productId: products[0].id
+      });
+      
+      await OrderDetail.create({
+        quantity: 1,
+        unitPrice: 7.00,
+        subtotal: 7.00,
+        orderId: guestOrder1.id,
+        productId: products[1].id
+      });
+      
+      // Crear registro de GuestOrder
+      await GuestOrder.create({
+        guestName: 'Pedro Visitante',
+        guestPhone: '987654321',
+        guestEmail: 'pedro.visitante@example.com',
+        orderId: guestOrder1.id
+      });
+      
+      orders.push(guestOrder1);
+      
+      // Pedido 8: Pedido de invitado pagado
+      const guestOrder2 = await Order.create({
+        orderDate: new Date(Date.now() - 3600000), // Hace 1 hora
+        total: 35.00,
+        status: 'confirmado',
+        paymentStatus: 'pagado',
+        paymentMethod: 'yape',
+        deliveryAddress: 'Jr. Las Magnolias 456',
+        deliveryDistrict: 'San Isidro',
+        contactPhone: '912345678',
+        deliveryFee: 5.00,
+        documentType: 'boleta'
+      });
+      
+      await OrderDetail.create({
+        quantity: 5,
+        unitPrice: 7.00,
+        subtotal: 35.00,
+        orderId: guestOrder2.id,
+        productId: products[1].id
+      });
+      
+      // Crear registro de GuestOrder
+      await GuestOrder.create({
+        guestName: 'María Visitante',
+        guestPhone: '912345678',
+        guestEmail: 'maria.visitante@example.com',
+        orderId: guestOrder2.id
+      });
+      
+      // Crear registro de pago
+      await Payment.create({
+        orderId: guestOrder2.id,
+        amount: 35.00,
+        paymentMethod: 'yape',
+        paymentStatus: 'pagado',
+        paymentDate: new Date(),
+        documentType: 'boleta'
+      });
+      
+      orders.push(guestOrder2);
+      
+      console.log(`${orders.length} pedidos creados correctamente (incluyendo ${2} pedidos de invitados y ${2} pedidos a crédito)`);
+    } else {
+      orders = existingOrders;
+      console.log(`Se encontraron ${orders.length} pedidos existentes`);
+    }
+    
+    // Crear notificaciones para los pedidos
+    try {
+      // Limpiar notificaciones existentes
+      await Notification.deleteMany({});
+      
+      // Crear notificaciones para cada pedido
+      for (const order of orders) {
+        const client = await Client.findByPk(order.clientId);
+        const clientMongoId = new mongoose.Types.ObjectId();
+        
+        // Notificación para el cliente
+        await Notification.create({
+          userId: clientMongoId,
+          userModel: 'Client',
+          title: 'Estado de tu pedido',
+          message: `Tu pedido #${order.id} está ${order.status.replace('_', ' ')}.`,
+          type: 'order_status_update',
+          orderId: new mongoose.Types.ObjectId(),
+          read: false
+        });
+        
+        // Notificación para el administrador
+        if (order.status === 'pendiente') {
+          await Notification.create({
+            userId: new mongoose.Types.ObjectId(),
+            userModel: 'User',
+            title: 'Nuevo pedido recibido',
+            message: `Se ha recibido un nuevo pedido #${order.id} de ${client.name}.`,
+            type: 'new_order',
+            orderId: new mongoose.Types.ObjectId(),
+            read: false
+          });
+        }
+        
+        // Notificación para el repartidor
+        if (order.status === 'en_camino' && order.deliveryPersonId) {
+          await Notification.create({
+            userId: new mongoose.Types.ObjectId(),
+            userModel: 'DeliveryPerson',
+            title: 'Pedido asignado',
+            message: `Se te ha asignado el pedido #${order.id} para entrega en ${order.deliveryDistrict}.`,
+            type: 'delivery_assigned',
+            orderId: new mongoose.Types.ObjectId(),
+            read: false
+          });
+        }
+      }
+      
+      console.log('Notificaciones creadas correctamente');
+    } catch (error) {
+      console.error('Error al crear notificaciones:', error);
+    }
+    
     console.log('==============================================');
     console.log('RESUMEN DE DATOS DE PRUEBA CARGADOS:');
     console.log(`- ${clients.length} clientes`);
@@ -556,7 +1066,10 @@ async function seedDatabase() {
     console.log(`- ${credits.length} créditos`);
     console.log(`- ${electronicInvoices.length} facturas electrónicas`);
     console.log(`- ${cashRegisters.length} registros de caja`);
-    console.log(`- 2 usuarios (admin y vendedor)`);
+    console.log(`- ${deliveryPersons.length} repartidores`);
+    console.log(`- ${orders.length} pedidos con seguimiento en tiempo real`);
+    console.log(`- Notificaciones para clientes, administradores y repartidores`);
+    console.log(`- Usuarios: admin, vendedor y ${deliveryPersons.length} repartidores`);
     console.log('==============================================');
     console.log('Datos de prueba cargados con éxito');
   } catch (error) {

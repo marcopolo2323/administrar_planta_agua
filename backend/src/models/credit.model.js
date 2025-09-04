@@ -2,6 +2,7 @@ const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 const Client = require('./client.model');
 const Sale = require('./sale.model');
+const Order = require('./order.model');
 const User = require('./user.model');
 
 const Credit = sequelize.define('Credit', {
@@ -37,6 +38,7 @@ const Credit = sequelize.define('Credit', {
 // Relaciones
 Credit.belongsTo(Client, { foreignKey: 'clientId' });
 Credit.belongsTo(Sale, { foreignKey: 'saleId' });
+Credit.belongsTo(Order, { foreignKey: 'orderId' });
 Credit.belongsTo(User, { foreignKey: 'userId', as: 'registeredBy' });
 
 module.exports = Credit;

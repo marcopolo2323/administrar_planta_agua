@@ -26,8 +26,8 @@ const User = sequelize.define('User', {
     allowNull: false
   },
   role: {
-    type: DataTypes.ENUM('admin', 'vendedor'),
-    defaultValue: 'vendedor'
+    type: DataTypes.ENUM('admin', 'vendedor', 'cliente', 'repartidor'),
+    defaultValue: 'cliente'
   },
   active: {
     type: DataTypes.BOOLEAN,
@@ -54,6 +54,26 @@ const User = sequelize.define('User', {
 // Instance method to check password
 User.prototype.comparePassword = async function(password) {
   return await bcrypt.compare(password, this.password);
+};
+
+// Método para verificar si el usuario es un cliente
+User.prototype.isClient = function() {
+  return this.role === 'cliente';
+};
+
+// Método para verificar si el usuario es un repartidor
+User.prototype.isDeliveryPerson = function() {
+  return this.role === 'repartidor';
+};
+
+// Método para verificar si el usuario es un administrador
+User.prototype.isAdmin = function() {
+  return this.role === 'admin';
+};
+
+// Método para verificar si el usuario es un vendedor
+User.prototype.isSeller = function() {
+  return this.role === 'vendedor';
 };
 
 module.exports = User;
