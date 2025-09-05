@@ -451,6 +451,18 @@ class DocumentGeneratorService {
             total = 0;
           }
         }
+        
+        // Agregar deliveryFee al total si existe
+        const deliveryFee = typeof orderData.deliveryFee === 'number' ? orderData.deliveryFee : parseFloat(orderData.deliveryFee || 0);
+        if (!isNaN(deliveryFee)) {
+          total += deliveryFee;
+        }
+        
+        console.log('Total calculado en PDF:', { 
+          originalTotal: orderData.total, 
+          deliveryFee, 
+          finalTotal: total 
+        });
       } catch (e) {
         console.error('Error al convertir total a número:', e);
         total = 0;
@@ -458,32 +470,30 @@ class DocumentGeneratorService {
       
       let subtotal = 0;
       try {
-        // Si hay subtotal, usarlo; si no, calcularlo como total/1.18
+        // Si hay subtotal, usarlo; si no, calcularlo como total - deliveryFee
         if (orderData.subtotal !== undefined && orderData.subtotal !== null) {
           subtotal = typeof orderData.subtotal === 'number' ? orderData.subtotal : parseFloat(orderData.subtotal || 0);
-          if (isNaN(subtotal)) subtotal = Math.round((total / 1.18) * 100) / 100;
+          if (isNaN(subtotal)) {
+            // Calcular subtotal como total - deliveryFee
+            const deliveryFee = typeof orderData.deliveryFee === 'number' ? orderData.deliveryFee : parseFloat(orderData.deliveryFee || 0);
+            subtotal = Math.round((total - deliveryFee) * 100) / 100;
+          }
         } else {
-          // Calcular subtotal como total/1.18 (redondeado a 2 decimales)
-          subtotal = Math.round((total / 1.18) * 100) / 100;
+          // Calcular subtotal como total - deliveryFee (sin IGV)
+          const deliveryFee = typeof orderData.deliveryFee === 'number' ? orderData.deliveryFee : parseFloat(orderData.deliveryFee || 0);
+          subtotal = Math.round((total - deliveryFee) * 100) / 100;
         }
+        
+        console.log('Subtotal calculado en PDF:', { 
+          orderDataSubtotal: orderData.subtotal, 
+          calculatedSubtotal: subtotal,
+          total,
+          deliveryFee: orderData.deliveryFee
+        });
       } catch (e) {
         console.error('Error al calcular subtotal:', e);
-        subtotal = Math.round((total / 1.18) * 100) / 100;
-      }
-      
-      let igv = 0;
-      try {
-        // Si hay impuesto, usarlo; si no, calcularlo como total - subtotal
-        if (orderData.tax !== undefined && orderData.tax !== null) {
-          igv = typeof orderData.tax === 'number' ? orderData.tax : parseFloat(orderData.tax || 0);
-          if (isNaN(igv)) igv = Math.round((total - subtotal) * 100) / 100;
-        } else {
-          // Calcular IGV como total - subtotal (redondeado a 2 decimales)
-          igv = Math.round((total - subtotal) * 100) / 100;
-        }
-      } catch (e) {
-        console.error('Error al calcular IGV:', e);
-        igv = Math.round((total * 0.18) * 100) / 100;
+        const deliveryFee = typeof orderData.deliveryFee === 'number' ? orderData.deliveryFee : parseFloat(orderData.deliveryFee || 0);
+        subtotal = Math.round((total - deliveryFee) * 100) / 100;
       }
       
       // Obtener el costo de envío si existe
@@ -506,10 +516,6 @@ class DocumentGeneratorService {
          .font('Helvetica')
          .text('Subtotal:', rightColumnX, doc.y, { width: rightColumnWidth, align: 'left' })
          .text(`S/ ${subtotal.toFixed(2)}`, rightColumnX + rightColumnWidth, doc.y - doc.currentLineHeight(), { width: rightColumnWidth, align: 'right' })
-         .moveDown(0.5);
-      
-      doc.text('IGV (18%):', rightColumnX, doc.y, { width: rightColumnWidth, align: 'left' })
-         .text(`S/ ${igv.toFixed(2)}`, rightColumnX + rightColumnWidth, doc.y - doc.currentLineHeight(), { width: rightColumnWidth, align: 'right' })
          .moveDown(0.5);
       
       // Mostrar costo de envío si existe

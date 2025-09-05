@@ -1,7 +1,5 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
-const CashRegister = require('./cashRegister.model');
-const User = require('./user.model');
 
 const CashMovement = sequelize.define('CashMovement', {
   id: {
@@ -9,38 +7,61 @@ const CashMovement = sequelize.define('CashMovement', {
     primaryKey: true,
     autoIncrement: true
   },
+  cashRegisterId: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: 'CashRegisters',
+      key: 'id'
+    }
+  },
   type: {
-    type: DataTypes.ENUM('ingreso', 'egreso'),
+    type: DataTypes.ENUM('ingreso', 'egreso', 'venta', 'gasto', 'retiro', 'deposito'),
     allowNull: false
   },
   amount: {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: false
   },
-  concept: {
-    type: DataTypes.STRING,
+  description: {
+    type: DataTypes.STRING(255),
     allowNull: false
   },
   reference: {
-    type: DataTypes.STRING,
-    allowNull: true,
-    comment: 'Referencia al documento relacionado (venta, compra, etc.)'
+    type: DataTypes.STRING(100),
+    allowNull: true
   },
-  referenceId: {
+  paymentMethod: {
+    type: DataTypes.ENUM('efectivo', 'tarjeta', 'transferencia', 'yape', 'plin'),
+    allowNull: true
+  },
+  userId: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: 'Users',
+      key: 'id'
+    }
+  },
+  orderId: {
     type: DataTypes.INTEGER,
     allowNull: true,
-    comment: 'ID del documento relacionado'
+    references: {
+      model: 'Orders',
+      key: 'id'
+    }
   },
-  notes: {
-    type: DataTypes.TEXT,
-    allowNull: true
+  saleId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'Sales',
+      key: 'id'
+    }
   }
 }, {
+  tableName: 'CashMovements',
   timestamps: true
 });
-
-// Relaciones
-CashMovement.belongsTo(CashRegister, { foreignKey: 'cashRegisterId' });
-CashMovement.belongsTo(User, { foreignKey: 'userId', as: 'registeredBy' });
 
 module.exports = CashMovement;

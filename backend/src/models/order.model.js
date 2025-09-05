@@ -18,6 +18,11 @@ const Order = sequelize.define('Order', {
     type: DataTypes.DATE,
     allowNull: true
   },
+  subtotal: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: true,
+    defaultValue: 0
+  },
   total: {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: false

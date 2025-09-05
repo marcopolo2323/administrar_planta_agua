@@ -16,6 +16,11 @@ class WebSocketService {
       return false;
     }
 
+    // En modo desarrollo, intentar conectar WebSocket para testing
+    if (import.meta.env.MODE === 'development') {
+      console.log('Conectando WebSocket en modo desarrollo...');
+    }
+
     try {
       // Determinar la URL del WebSocket (ws o wss según el protocolo actual)
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -33,7 +38,7 @@ class WebSocketService {
         host = 'localhost:5000';
       }
       
-      const wsUrl = `${protocol}//${host}/ws?token=${token}`;
+      const wsUrl = `${protocol}//${host}?token=${token}`;
       console.log('Intentando conectar WebSocket a:', wsUrl);
 
       // Cerrar cualquier conexión existente antes de crear una nueva

@@ -1,20 +1,11 @@
 import { create } from 'zustand';
 import axios from '../utils/axios';
 
-export const useSaleStore = create((set, get) => ({
+const useSaleStore = create((set, get) => ({
   // Estado
   sales: [],
-  sale: null,
   loading: false,
   error: null,
-  currentSale: {
-    clientId: null,
-    invoiceType: 'boleta',
-    invoiceNumber: '',
-    items: [],
-    total: 0,
-    notes: ''
-  },
 
   // Acciones
   fetchSales: async () => {
@@ -23,55 +14,8 @@ export const useSaleStore = create((set, get) => ({
       const response = await axios.get('/api/sales');
       set({ sales: response.data, loading: false });
     } catch (error) {
-      set({
-        error: error.response?.data?.message || 'Error al cargar ventas',
-        loading: false
-      });
-    }
-  },
-
-  fetchSaleById: async (id) => {
-    set({ loading: true, error: null });
-    try {
-      const response = await axios.get(`/api/sales/${id}`);
-      set({ sale: response.data, loading: false });
-      return response.data;
-    } catch (error) {
-      set({
-        error: error.response?.data?.message || 'Error al cargar la venta',
-        loading: false
-      });
-      return null;
-    }
-  },
-
-  fetchSalesByClient: async (clientId) => {
-    set({ loading: true, error: null });
-    try {
-      const response = await axios.get(`/api/sales/client/${clientId}`);
-      set({ sales: response.data, loading: false });
-      return response.data;
-    } catch (error) {
-      set({
-        error: error.response?.data?.message || 'Error al cargar ventas del cliente',
-        loading: false
-      });
-      return [];
-    }
-  },
-
-  fetchSalesByDate: async (startDate, endDate) => {
-    set({ loading: true, error: null });
-    try {
-      const response = await axios.get(`/api/sales/date?startDate=${startDate}&endDate=${endDate}`);
-      set({ sales: response.data, loading: false });
-      return response.data;
-    } catch (error) {
-      set({
-        error: error.response?.data?.message || 'Error al cargar ventas por fecha',
-        loading: false
-      });
-      return [];
+      console.error('Error al cargar ventas:', error);
+      set({ error: error.message, loading: false });
     }
   },
 
@@ -79,173 +23,102 @@ export const useSaleStore = create((set, get) => ({
     set({ loading: true, error: null });
     try {
       const response = await axios.post('/api/sales', saleData);
-      set({
-        sales: [response.data, ...get().sales],
-        loading: false,
-        currentSale: {
-          clientId: null,
-          invoiceType: 'boleta',
-          invoiceNumber: '',
-          items: [],
-          total: 0,
-          notes: ''
-        }
-      });
-      return response.data;
-    } catch (error) {
-      set({
-        error: error.response?.data?.message || 'Error al crear la venta',
+      const newSale = response.data;
+      
+      set(state => ({
+        sales: [...state.sales, newSale],
         loading: false
-      });
-      return null;
+      }));
+      
+      return { success: true, data: newSale };
+    } catch (error) {
+      console.error('Error al crear venta:', error);
+      set({ error: error.message, loading: false });
+      return { success: false, error: error.message };
     }
   },
 
-  cancelSale: async (id) => {
+  updateSale: async (saleId, saleData) => {
     set({ loading: true, error: null });
     try {
-      await axios.delete(`/api/sales/${id}`);
-      set({
-        sales: get().sales.map(sale => 
-          sale.id === id ? { ...sale, status: 'cancelada' } : sale
+      const response = await axios.put(`/api/sales/${saleId}`, saleData);
+      const updatedSale = response.data;
+      
+      set(state => ({
+        sales: state.sales.map(sale => 
+          sale.id === saleId ? updatedSale : sale
         ),
         loading: false
-      });
-      return true;
+      }));
+      
+      return { success: true, data: updatedSale };
     } catch (error) {
-      set({
-        error: error.response?.data?.message || 'Error al cancelar la venta',
+      console.error('Error al actualizar venta:', error);
+      set({ error: error.message, loading: false });
+      return { success: false, error: error.message };
+    }
+  },
+
+  deleteSale: async (saleId) => {
+    set({ loading: true, error: null });
+    try {
+      await axios.delete(`/api/sales/${saleId}`);
+      
+      set(state => ({
+        sales: state.sales.filter(sale => sale.id !== saleId),
         loading: false
-      });
-      return false;
+      }));
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Error al eliminar venta:', error);
+      set({ error: error.message, loading: false });
+      return { success: false, error: error.message };
     }
   },
 
-  // Acciones para la venta actual
-  setClient: (clientId) => {
-    set({
-      currentSale: {
-        ...get().currentSale,
-        clientId
-      }
+  // Filtros y búsqueda
+  getFilteredSales: (searchTerm) => {
+    const { sales } = get();
+    
+    return sales.filter(sale => {
+      const invoiceNumber = sale.invoiceNumber ? sale.invoiceNumber.toLowerCase() : '';
+      const notes = sale.notes ? sale.notes.toLowerCase() : '';
+      
+      return invoiceNumber.includes(searchTerm.toLowerCase()) ||
+             notes.includes(searchTerm.toLowerCase());
     });
   },
 
-  setInvoiceType: (invoiceType) => {
-    set({
-      currentSale: {
-        ...get().currentSale,
-        invoiceType
-      }
-    });
+  // Obtener venta por ID
+  getSaleById: (saleId) => {
+    const { sales } = get();
+    return sales.find(sale => sale.id === saleId);
   },
 
-  setInvoiceNumber: (invoiceNumber) => {
-    set({
-      currentSale: {
-        ...get().currentSale,
-        invoiceNumber
-      }
+  // Estadísticas
+  getSalesStats: () => {
+    const { sales } = get();
+    
+    const totalSales = sales.length;
+    const totalAmount = sales.reduce((sum, sale) => sum + parseFloat(sale.total), 0);
+    const todaySales = sales.filter(sale => {
+      const saleDate = new Date(sale.date);
+      const today = new Date();
+      return saleDate.toDateString() === today.toDateString();
     });
+    
+    return {
+      totalSales,
+      totalAmount,
+      todaySales: todaySales.length,
+      todayAmount: todaySales.reduce((sum, sale) => sum + parseFloat(sale.total), 0)
+    };
   },
 
-  setNotes: (notes) => {
-    set({
-      currentSale: {
-        ...get().currentSale,
-        notes
-      }
-    });
-  },
-
-  addItem: (item) => {
-    const { items } = get().currentSale;
-    const existingItemIndex = items.findIndex(i => i.productId === item.productId);
-
-    let newItems;
-    if (existingItemIndex >= 0) {
-      // Si el producto ya está en la lista, actualiza la cantidad y subtotal
-      newItems = [...items];
-      newItems[existingItemIndex] = {
-        ...newItems[existingItemIndex],
-        quantity: newItems[existingItemIndex].quantity + item.quantity,
-        subtotal: (newItems[existingItemIndex].quantity + item.quantity) * newItems[existingItemIndex].unitPrice
-      };
-    } else {
-      // Si es un nuevo producto, agrégalo a la lista
-      newItems = [...items, { ...item, subtotal: item.quantity * item.unitPrice }];
-    }
-
-    // Calcula el nuevo total
-    const total = newItems.reduce((sum, item) => sum + item.subtotal, 0);
-
-    set({
-      currentSale: {
-        ...get().currentSale,
-        items: newItems,
-        total
-      }
-    });
-  },
-
-  updateItemQuantity: (productId, quantity) => {
-    const { items } = get().currentSale;
-    const newItems = items.map(item => {
-      if (item.productId === productId) {
-        return {
-          ...item,
-          quantity,
-          subtotal: quantity * item.unitPrice
-        };
-      }
-      return item;
-    });
-
-    // Calcula el nuevo total
-    const total = newItems.reduce((sum, item) => sum + item.subtotal, 0);
-
-    set({
-      currentSale: {
-        ...get().currentSale,
-        items: newItems,
-        total
-      }
-    });
-  },
-
-  removeItem: (productId) => {
-    const { items } = get().currentSale;
-    const newItems = items.filter(item => item.productId !== productId);
-
-    // Calcula el nuevo total
-    const total = newItems.reduce((sum, item) => sum + item.subtotal, 0);
-
-    set({
-      currentSale: {
-        ...get().currentSale,
-        items: newItems,
-        total
-      }
-    });
-  },
-
-  resetCurrentSale: () => {
-    set({
-      currentSale: {
-        clientId: null,
-        invoiceType: 'boleta',
-        invoiceNumber: '',
-        items: [],
-        total: 0,
-        notes: ''
-      }
-    });
-  },
-
-  // Alias para resetCurrentSale para mantener compatibilidad
-  clearSale: () => {
-    get().resetCurrentSale();
-  },
-
-  clearError: () => set({ error: null })
+  // Limpiar estado
+  clearError: () => set({ error: null }),
+  reset: () => set({ sales: [], loading: false, error: null })
 }));
+
+export default useSaleStore;

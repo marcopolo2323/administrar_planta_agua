@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import axios from '../utils/axios';
 
-export const useAuthStore = create((set, get) => ({
+const useAuthStore = create((set, get) => ({
   // Estado
   token: localStorage.getItem('token') || null,
   user: null,
@@ -9,23 +9,23 @@ export const useAuthStore = create((set, get) => ({
   error: null,
 
   // Acciones
-  login: async (credentials) => {
+  login: async (username, password) => {
     set({ loading: true, error: null });
     try {
-      const response = await axios.post('/api/auth/login', credentials);
+      const response = await axios.post('/api/auth/login', { username, password });
       const { token, user } = response.data;
       
       localStorage.setItem('token', token);
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       
       set({ token, user, loading: false });
-      return true;
+      return { success: true };
     } catch (error) {
       set({
         error: error.response?.data?.message || 'Error al iniciar sesión',
         loading: false
       });
-      return false;
+      return { success: false, error: error.response?.data?.message || 'Error al iniciar sesión' };
     }
   },
 
@@ -34,13 +34,13 @@ export const useAuthStore = create((set, get) => ({
     try {
       const response = await axios.post('/api/auth/register', userData);
       set({ loading: false });
-      return response.data;
+      return { success: true, data: response.data };
     } catch (error) {
       set({
         error: error.response?.data?.message || 'Error al registrar usuario',
         loading: false
       });
-      return false;
+      return { success: false, error: error.response?.data?.message || 'Error al registrar usuario' };
     }
   },
 
@@ -72,3 +72,5 @@ export const useAuthStore = create((set, get) => ({
 
   clearError: () => set({ error: null })
 }));
+
+export default useAuthStore;

@@ -37,23 +37,47 @@ mongoose.connection.on('reconnected', () => {
 // Import database and models
 const { sequelize } = require('./models');
 
-// Import routes
+// Import routes - Organizadas por funcionalidad
+// Autenticación y usuarios
 const authRoutes = require('./routes/auth.routes');
-const productRoutes = require('./routes/product.routes');
-const clientRoutes = require('./routes/client.routes');
-const saleRoutes = require('./routes/sale.routes');
-const reportRoutes = require('./routes/report.routes');
-const inventoryRoutes = require('./routes/inventory.routes');
-const purchaseRoutes = require('./routes/purchase.routes');
-const creditRoutes = require('./routes/credit.routes');
-const cashRegisterRoutes = require('./routes/cashRegister.routes');
-const electronicInvoiceRoutes = require('./routes/electronicInvoice.routes');
-const orderRoutes = require('./routes/order.routes');
-const paymentRoutes = require('./routes/payment.routes');
 const clientAuthRoutes = require('./routes/client.auth.routes');
-const deliveryPersonRoutes = require('./routes/deliveryPerson.routes');
-const notificationRoutes = require('./routes/notification.routes');
+const deliveryAuthRoutes = require('./routes/delivery.auth.routes');
+
+// Gestión de productos e inventario
+const productRoutes = require('./routes/product.routes');
+const inventoryRoutes = require('./routes/inventory.routes');
+
+// Gestión de clientes y créditos
+const clientRoutes = require('./routes/client.routes');
+const creditRoutes = require('./routes/credit.routes');
+
+// Ventas y pedidos
+const saleRoutes = require('./routes/sale.routes');
+const orderRoutes = require('./routes/order.routes');
 const guestOrderRoutes = require('./routes/guestOrder.routes');
+
+// Pagos y facturación
+const paymentRoutes = require('./routes/payment.routes');
+const guestPaymentRoutes = require('./routes/guestPayment.routes');
+const electronicInvoiceRoutes = require('./routes/electronicInvoice.routes');
+
+// Compras y proveedores
+const purchaseRoutes = require('./routes/purchase.routes');
+
+// Caja y finanzas
+const cashRegisterRoutes = require('./routes/cashRegister.routes');
+
+// Entregas y repartidores
+const deliveryPersonRoutes = require('./routes/deliveryPerson.routes');
+const deliveryFeeRoutes = require('./routes/deliveryFee.routes');
+const deliveryOrdersRoutes = require('./routes/delivery.orders.routes');
+
+// Documentos y notificaciones
+const documentRoutes = require('./routes/document.routes');
+const notificationRoutes = require('./routes/notification.routes');
+
+// Reportes y análisis
+const reportRoutes = require('./routes/report.routes');
 
 // Initialize Express app
 const app = express();
@@ -86,35 +110,47 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Routes
+// Routes - Organizadas por funcionalidad
+// Autenticación y usuarios
 app.use('/api/auth', authRoutes);
-app.use('/api/products', productRoutes);
-app.use('/api/clients', clientRoutes);
-app.use('/api/sales', saleRoutes);
-app.use('/api/reports', reportRoutes);
-app.use('/api/inventory', inventoryRoutes);
-app.use('/api/purchases', purchaseRoutes);
-app.use('/api/credits', creditRoutes);
-app.use('/api/cash-register', cashRegisterRoutes);
-app.use('/api/electronic-invoices', electronicInvoiceRoutes);
-app.use('/api/orders', orderRoutes);
-app.use('/api/payments', paymentRoutes);
 app.use('/api/client-auth', clientAuthRoutes);
-app.use('/api/delivery-persons', deliveryPersonRoutes);
-app.use('/api/notifications', notificationRoutes);
+app.use('/api/delivery-auth', deliveryAuthRoutes);
+
+// Gestión de productos e inventario
+app.use('/api/products', productRoutes);
+app.use('/api/inventory', inventoryRoutes);
+
+// Gestión de clientes y créditos
+app.use('/api/clients', clientRoutes);
+app.use('/api/credits', creditRoutes);
+
+// Ventas y pedidos
+app.use('/api/sales', saleRoutes);
+app.use('/api/orders', orderRoutes);
 app.use('/api/guest-orders', guestOrderRoutes);
 
-// Importar rutas de pagos de invitados
-const guestPaymentRoutes = require('./routes/guestPayment.routes');
+// Pagos y facturación
+app.use('/api/payments', paymentRoutes);
 app.use('/api/guest-payments', guestPaymentRoutes);
+app.use('/api/electronic-invoices', electronicInvoiceRoutes);
 
-// Importar rutas de costos de envío
-const deliveryFeeRoutes = require('./routes/deliveryFee.routes');
+// Compras y proveedores
+app.use('/api/purchases', purchaseRoutes);
+
+// Caja y finanzas
+app.use('/api/cash-register', cashRegisterRoutes);
+
+// Entregas y repartidores
+app.use('/api/delivery-persons', deliveryPersonRoutes);
 app.use('/api/delivery-fees', deliveryFeeRoutes);
+app.use('/api/delivery-orders', deliveryOrdersRoutes);
 
-// Importar rutas para servir documentos
-const documentRoutes = require('./routes/document.routes');
+// Documentos y notificaciones
 app.use('/api/documents', documentRoutes);
+app.use('/api/notifications', notificationRoutes);
+
+// Reportes y análisis
+app.use('/api/reports', reportRoutes);
 
 // Root route
 app.get('/', (req, res) => {

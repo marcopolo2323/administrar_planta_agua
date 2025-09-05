@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from '../utils/axios';
 import { useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../stores/authStore';
+import useAuthStore from '../stores/authStore';
 import { FaBell, FaCheck, FaCheckDouble, FaTimes } from 'react-icons/fa';
 import webSocketService from '../services/WebSocketService';
 import '../styles/NotificationCenter.css';
@@ -69,7 +69,7 @@ const NotificationCenter = () => {
 
   const markAllAsRead = async () => {
     try {
-      await axios.put('/api/notifications/read-all', {});
+      await axios.put('/api/notifications/mark-all-read', {});
       
       // Actualizar estado local
       setNotifications(notifications.map(notif => ({ ...notif, read: true })));

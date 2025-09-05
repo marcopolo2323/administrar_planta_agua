@@ -135,6 +135,98 @@ async function seedDatabase() {
     } else {
       console.log('Usuario vendedor ya existe');
     }
+
+    // Crear clientes frecuentes con login
+    const frequentClients = [
+      {
+        user: {
+          username: 'carmen.rodriguez',
+          email: 'carmen.rodriguez@example.com',
+          password: 'cliente123',
+          role: 'cliente'
+        },
+        client: {
+          name: 'Carmen Rodríguez',
+          documentType: 'DNI',
+          documentNumber: '45678901',
+          address: 'Av. Los Pinos 456',
+          district: 'San Isidro',
+          phone: '987654322',
+          email: 'carmen.rodriguez@example.com',
+          isCompany: false,
+          hasCredit: true,
+          creditLimit: 500.00,
+          currentDebt: 0.00,
+          paymentDueDay: 15,
+          active: true,
+          defaultDeliveryAddress: 'Av. Los Pinos 456, San Isidro',
+          defaultContactPhone: '987654322',
+          notes: 'Cliente frecuente que compra bidones semanalmente'
+        }
+      },
+      {
+        user: {
+          username: 'roberto.gomez',
+          email: 'roberto.gomez@example.com',
+          password: 'cliente123',
+          role: 'cliente'
+        },
+        client: {
+          name: 'Roberto Gómez',
+          documentType: 'DNI',
+          documentNumber: '56789012',
+          address: 'Jr. Las Flores 789',
+          district: 'Miraflores',
+          phone: '912345679',
+          email: 'roberto.gomez@example.com',
+          isCompany: false,
+          hasCredit: false,
+          active: true,
+          defaultDeliveryAddress: 'Jr. Las Flores 789, Miraflores',
+          defaultContactPhone: '912345679',
+          notes: 'Prefiere entrega los fines de semana'
+        }
+      },
+      {
+        user: {
+          username: 'restaurante.manantial',
+          email: 'compras@elmanantial.com',
+          password: 'cliente123',
+          role: 'cliente'
+        },
+        client: {
+          name: 'Restaurante El Manantial',
+          documentType: 'RUC',
+          documentNumber: '20987654322',
+          address: 'Av. La Marina 567',
+          district: 'San Miguel',
+          phone: '01765433',
+          email: 'compras@elmanantial.com',
+          isCompany: true,
+          hasCredit: true,
+          creditLimit: 2000.00,
+          currentDebt: 0.00,
+          paymentDueDay: 30,
+          active: true,
+          defaultDeliveryAddress: 'Av. La Marina 567, San Miguel',
+          defaultContactPhone: '01765433',
+          notes: 'Restaurante que compra agua embotellada en grandes cantidades'
+        }
+      }
+    ];
+
+    // Crear clientes frecuentes con login
+    for (const frequentClient of frequentClients) {
+      const existingUser = await User.findOne({ where: { email: frequentClient.user.email } });
+      if (!existingUser) {
+        const user = await User.create(frequentClient.user);
+        const client = await Client.create({
+          ...frequentClient.client,
+          userId: user.id
+        });
+        console.log(`Cliente frecuente creado: ${client.name} (${user.username})`);
+      }
+    }
     
     // Obtener o crear usuarios repartidores
     let deliveryUser1 = await User.findOne({ where: { username: 'repartidor1' } });
@@ -207,10 +299,19 @@ async function seedDatabase() {
       console.log(`Se encontraron ${deliveryPersons.length} repartidores existentes`);
     }
 
-    // Obtener o crear productos
+    // Obtener o crear productos específicos del negocio de agua
     let products = await Product.findAll();
     if (products.length === 0) {
       products = await Product.bulkCreate([
+        {
+          name: 'Bidón de Agua 20L',
+          description: 'Bidón de agua purificada de 20 litros',
+          type: 'bidon',
+          unitPrice: 7.00,
+          wholesalePrice: 5.00,
+          wholesaleMinQuantity: 2,
+          stock: 100
+        },
         {
           name: 'Paquete de Botellas 650ml',
           description: 'Paquete de 20 unidades de botellas de agua de 650ml',
@@ -218,19 +319,12 @@ async function seedDatabase() {
           unitPrice: 10.00,
           wholesalePrice: 9.00,
           wholesaleMinQuantity: 50,
-          stock: 100
-        },
-        {
-          name: 'Bidón 20L',
-          description: 'Bidón de agua de 20 litros',
-          type: 'bidon',
-          unitPrice: 7.00,
-          wholesalePrice: 5.00,
-          wholesaleMinQuantity: 2,
-          stock: 50
+          wholesalePrice2: 8.00,
+          wholesaleMinQuantity2: 1000,
+          stock: 200
         }
       ]);
-      console.log('Productos creados correctamente');
+      console.log('Productos de agua creados correctamente');
     }
 
     // Verificar si ya existen ventas
@@ -245,7 +339,7 @@ async function seedDatabase() {
         total: 50.00,
         invoiceType: 'boleta',
         invoiceNumber: 'B001-00001',
-        status: 'pagado',
+        status: 'completado',
         notes: 'Entrega a domicilio',
         clientId: clients[0].id,
         userId: admin.id
@@ -267,7 +361,7 @@ async function seedDatabase() {
         total: 35.00,
         invoiceType: 'boleta',
         invoiceNumber: 'B001-00002',
-        status: 'pagado',
+        status: 'completado',
         clientId: clients[1].id,
         userId: seller.id
       });
@@ -288,7 +382,7 @@ async function seedDatabase() {
         total: 450.00,
         invoiceType: 'factura',
         invoiceNumber: 'F001-00001',
-        status: 'pagado',
+        status: 'completado',
         notes: 'Pedido mensual',
         clientId: clients[2].id,
         userId: admin.id
@@ -310,7 +404,7 @@ async function seedDatabase() {
         total: 27.00,
         invoiceType: 'boleta',
         invoiceNumber: 'B001-00003',
-        status: 'pagado',
+        status: 'completado',
         clientId: clients[3].id,
         userId: seller.id
       });
@@ -360,6 +454,162 @@ async function seedDatabase() {
       console.log(`Se encontraron ${sales.length} ventas existentes`);
     }
 
+    // Verificar si ya existen cajas
+    const existingCashRegisters = await CashRegister.findAll();
+    let cashRegisters = [];
+    
+    if (existingCashRegisters.length === 0) {
+      // Crear cajas de prueba solo si no existen
+      
+      // Caja 1: Caja cerrada del día anterior
+      const cashRegister1 = await CashRegister.create({
+        userId: admin.id,
+        openingDate: new Date(2023, 5, 14, 8, 0), // 14 de junio 8:00 AM
+        closingDate: new Date(2023, 5, 14, 18, 0), // 14 de junio 6:00 PM
+        openingAmount: 100.00,
+        closingAmount: 850.00,
+        expectedAmount: 850.00,
+        difference: 0.00,
+        status: 'cerrada',
+        notes: 'Caja del día anterior - todo correcto'
+      });
+      
+      // Movimientos de la caja cerrada
+      await CashMovement.create({
+        cashRegisterId: cashRegister1.id,
+        type: 'ingreso',
+        amount: 100.00,
+        description: 'Apertura de caja',
+        userId: admin.id
+      });
+      
+      await CashMovement.create({
+        cashRegisterId: cashRegister1.id,
+        type: 'venta',
+        amount: 50.00,
+        description: 'Venta - Juan Pérez',
+        paymentMethod: 'efectivo',
+        reference: 'B001-00001',
+        userId: admin.id,
+        saleId: sales[0].id
+      });
+      
+      await CashMovement.create({
+        cashRegisterId: cashRegister1.id,
+        type: 'venta',
+        amount: 35.00,
+        description: 'Venta - María López',
+        paymentMethod: 'efectivo',
+        reference: 'B001-00002',
+        userId: admin.id,
+        saleId: sales[1].id
+      });
+      
+      await CashMovement.create({
+        cashRegisterId: cashRegister1.id,
+        type: 'egreso',
+        amount: 25.00,
+        description: 'Gasto - Almuerzo personal',
+        paymentMethod: 'efectivo',
+        userId: admin.id
+      });
+      
+      await CashMovement.create({
+        cashRegisterId: cashRegister1.id,
+        type: 'egreso',
+        amount: 10.00,
+        description: 'Gasto - Transporte',
+        paymentMethod: 'efectivo',
+        userId: admin.id
+      });
+      
+      await CashMovement.create({
+        cashRegisterId: cashRegister1.id,
+        type: 'egreso',
+        amount: 850.00,
+        description: 'Cierre de caja',
+        userId: admin.id
+      });
+      
+      cashRegisters.push(cashRegister1);
+      
+      // Caja 2: Caja abierta actual (para pruebas)
+      const cashRegister2 = await CashRegister.create({
+        userId: admin.id,
+        openingDate: new Date(), // Hoy
+        openingAmount: 200.00,
+        status: 'abierta',
+        notes: 'Caja de prueba - abierta'
+      });
+      
+      // Movimientos de la caja abierta
+      await CashMovement.create({
+        cashRegisterId: cashRegister2.id,
+        type: 'ingreso',
+        amount: 200.00,
+        description: 'Apertura de caja',
+        userId: admin.id
+      });
+      
+      await CashMovement.create({
+        cashRegisterId: cashRegister2.id,
+        type: 'venta',
+        amount: 450.00,
+        description: 'Venta - Empresa Distribuidora',
+        paymentMethod: 'transferencia',
+        reference: 'F001-00001',
+        userId: admin.id,
+        saleId: sales[2].id
+      });
+      
+      await CashMovement.create({
+        cashRegisterId: cashRegister2.id,
+        type: 'venta',
+        amount: 27.00,
+        description: 'Venta - Pedro Ramírez',
+        paymentMethod: 'efectivo',
+        reference: 'B001-00003',
+        userId: admin.id,
+        saleId: sales[3].id
+      });
+      
+      await CashMovement.create({
+        cashRegisterId: cashRegister2.id,
+        type: 'venta',
+        amount: 100.00,
+        description: 'Venta - Ana García',
+        paymentMethod: 'yape',
+        reference: 'B001-00004',
+        userId: admin.id,
+        saleId: sales[4].id
+      });
+      
+      await CashMovement.create({
+        cashRegisterId: cashRegister2.id,
+        type: 'egreso',
+        amount: 15.00,
+        description: 'Gasto - Refrigerio',
+        paymentMethod: 'efectivo',
+        userId: admin.id
+      });
+      
+      await CashMovement.create({
+        cashRegisterId: cashRegister2.id,
+        type: 'ingreso',
+        amount: 50.00,
+        description: 'Depósito - Venta adicional',
+        paymentMethod: 'efectivo',
+        userId: admin.id
+      });
+      
+      cashRegisters.push(cashRegister2);
+      
+      console.log(`${cashRegisters.length} cajas creadas correctamente`);
+    } else {
+      cashRegisters = existingCashRegisters;
+      console.log(`Se encontraron ${cashRegisters.length} cajas existentes`);
+    }
+
     // Verificar si ya existen compras
     const existingPurchases = await Purchase.findAll();
     let purchases = [];
@@ -372,7 +622,7 @@ async function seedDatabase() {
         supplierDocument: '20567891234',
         invoiceNumber: 'F001-5678',
         total: 500.00,
-        status: 'pagado',
+        status: 'completado',
         paymentMethod: 'efectivo',
         notes: 'Compra de envases',
         userId: admin.id
@@ -394,7 +644,7 @@ async function seedDatabase() {
         supplierDocument: '20123456780',
         invoiceNumber: 'F001-1234',
         total: 300.00,
-        status: 'pagado',
+        status: 'completado',
         paymentMethod: 'transferencia',
         notes: 'Compra de insumos',
         userId: admin.id
@@ -476,71 +726,6 @@ async function seedDatabase() {
       console.log(`Se encontraron ${inventoryRecords.length} registros de inventario existentes`);
     }
     
-    // Verificar si ya existen registros de caja
-    const existingCashRegisters = await CashRegister.findAll();
-    let cashRegisters = [];
-    
-    if (existingCashRegisters.length === 0) {
-      // Crear registros de caja de prueba
-      const cashRegister1 = await CashRegister.create({
-        openingDate: new Date(2023, 6, 1, 8, 0), // 1 de julio 2023, 8:00 AM
-        closingDate: new Date(2023, 6, 1, 18, 0), // 1 de julio 2023, 6:00 PM
-        openingAmount: 200.00,
-        expectedAmount: 650.00,
-        actualAmount: 650.00,
-        difference: 0.00,
-        status: 'cerrado',
-        openedBy: admin.id,
-        closedBy: admin.id
-      });
-      
-      cashRegisters.push(cashRegister1);
-      
-      // Crear movimientos para este registro de caja
-      await CashMovement.create({
-        type: 'ingreso',
-        amount: 100.00,
-        concept: 'Venta en efectivo',
-        reference: 'Venta',
-        referenceId: sales[0].id,
-        cashRegisterId: cashRegister1.id,
-        userId: admin.id
-      });
-      
-      await CashMovement.create({
-        type: 'egreso',
-        amount: 50.00,
-        concept: 'Compra de útiles',
-        notes: 'Compra de útiles de oficina',
-        cashRegisterId: cashRegister1.id,
-        userId: admin.id
-      });
-      
-      // Crear un registro de caja abierto
-      const cashRegister2 = await CashRegister.create({
-        openingDate: new Date(), // Fecha actual
-        openingAmount: 300.00,
-        status: 'abierto',
-        openedBy: admin.id
-      });
-      
-      cashRegisters.push(cashRegister2);
-      
-      await CashMovement.create({
-        type: 'ingreso',
-        amount: 150.00,
-        concept: 'Venta en efectivo',
-        reference: 'Venta',
-        referenceId: sales[1].id,
-        cashRegisterId: cashRegister2.id,
-        userId: seller.id
-      });
-      
-      console.log(`${cashRegisters.length} registros de caja creados correctamente`);
-    } else {
-      cashRegisters = existingCashRegisters;
-      console.log(`Se encontraron ${cashRegisters.length} registros de caja existentes`);
-    }
 
     // Verificar si ya existen créditos
     const existingCredits = await Credit.findAll();
@@ -681,7 +866,7 @@ async function seedDatabase() {
         orderDate: new Date(Date.now() - 7200000), // Hace 2 horas
         total: 35.00,
         status: 'confirmado',
-        paymentStatus: 'pagado',
+        paymentStatus: 'completado',
         paymentMethod: 'tarjeta',
         paymentReference: 'REF-123456',
         deliveryAddress: 'Jr. Las Flores 456',
@@ -707,7 +892,7 @@ async function seedDatabase() {
         orderDate: new Date(Date.now() - 10800000), // Hace 3 horas
         total: 50.00,
         status: 'en_preparacion',
-        paymentStatus: 'pagado',
+        paymentStatus: 'completado',
         paymentMethod: 'transferencia',
         paymentReference: 'TRF-789012',
         deliveryAddress: 'Av. Industrial 789',
@@ -735,7 +920,7 @@ async function seedDatabase() {
         deliveryDate: new Date(Date.now() + 1800000), // Entrega estimada en 30 minutos
         total: 27.00,
         status: 'en_camino',
-        paymentStatus: 'pagado',
+        paymentStatus: 'completado',
         paymentMethod: 'efectivo',
         deliveryAddress: 'Calle Los Olivos 234',
         deliveryDistrict: 'San Borja',
@@ -770,7 +955,7 @@ async function seedDatabase() {
         deliveryDate: new Date(Date.now() - 82800000), // Entregado hace 23 horas
         total: 100.00,
         status: 'entregado',
-        paymentStatus: 'pagado',
+        paymentStatus: 'completado',
         paymentMethod: 'tarjeta',
         paymentReference: 'REF-345678',
         deliveryAddress: 'Av. La Marina 567',
@@ -960,7 +1145,7 @@ async function seedDatabase() {
         orderDate: new Date(Date.now() - 3600000), // Hace 1 hora
         total: 35.00,
         status: 'confirmado',
-        paymentStatus: 'pagado',
+        paymentStatus: 'completado',
         paymentMethod: 'yape',
         deliveryAddress: 'Jr. Las Magnolias 456',
         deliveryDistrict: 'San Isidro',
@@ -990,7 +1175,7 @@ async function seedDatabase() {
         orderId: guestOrder2.id,
         amount: 35.00,
         paymentMethod: 'yape',
-        paymentStatus: 'pagado',
+        paymentStatus: 'completado',
         paymentDate: new Date(),
         documentType: 'boleta'
       });
@@ -1011,11 +1196,10 @@ async function seedDatabase() {
       // Crear notificaciones para cada pedido
       for (const order of orders) {
         const client = await Client.findByPk(order.clientId);
-        const clientMongoId = new mongoose.Types.ObjectId();
         
-        // Notificación para el cliente
+        // Notificación para el cliente (usar ID real del cliente)
         await Notification.create({
-          userId: clientMongoId,
+          userId: client.id.toString(),
           userModel: 'Client',
           title: 'Estado de tu pedido',
           message: `Tu pedido #${order.id} está ${order.status.replace('_', ' ')}.`,
@@ -1024,10 +1208,10 @@ async function seedDatabase() {
           read: false
         });
         
-        // Notificación para el administrador
+        // Notificación para el administrador (usar ID real del admin)
         if (order.status === 'pendiente') {
           await Notification.create({
-            userId: new mongoose.Types.ObjectId(),
+            userId: admin.id.toString(),
             userModel: 'User',
             title: 'Nuevo pedido recibido',
             message: `Se ha recibido un nuevo pedido #${order.id} de ${client.name}.`,
@@ -1037,10 +1221,10 @@ async function seedDatabase() {
           });
         }
         
-        // Notificación para el repartidor
+        // Notificación para el repartidor (usar ID real del repartidor)
         if (order.status === 'en_camino' && order.deliveryPersonId) {
           await Notification.create({
-            userId: new mongoose.Types.ObjectId(),
+            userId: order.deliveryPersonId.toString(),
             userModel: 'DeliveryPerson',
             title: 'Pedido asignado',
             message: `Se te ha asignado el pedido #${order.id} para entrega en ${order.deliveryDistrict}.`,

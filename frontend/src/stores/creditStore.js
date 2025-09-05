@@ -1,135 +1,108 @@
 import { create } from 'zustand';
 import axios from '../utils/axios';
 
-export const useCreditStore = create((set, get) => ({
+const useCreditStore = create((set, get) => ({
+  // Estado
   credits: [],
+  clients: [],
   loading: false,
   error: null,
-  selectedCredit: null,
-  payments: [],
-  
-  // Obtener todos los créditos
-  fetchCredits: async (filters = {}) => {
+
+  // Acciones
+  fetchCredits: async () => {
+    set({ loading: true, error: null });
     try {
-      set({ loading: true, error: null });
-      
-      let url = '/api/credits';
-      const params = {};
-      
-      if (filters.status) {
-        params.status = filters.status;
-      }
-      
-      if (filters.clientId) {
-        params.clientId = filters.clientId;
-      }
-      
-      const response = await axios.get(url, { params });
+      const response = await axios.get('/api/credits');
       set({ credits: response.data, loading: false });
-      return response.data;
     } catch (error) {
-      set({ 
-        error: error.response?.data?.message || 'Error al cargar los créditos', 
-        loading: false 
-      });
-      return [];
+      console.error('Error al cargar créditos:', error);
+      set({ error: error.message, loading: false });
     }
   },
-  
-  // Obtener créditos vencidos
-  fetchOverdueCredits: async () => {
+
+  fetchClients: async () => {
     try {
-      set({ loading: true, error: null });
-      const response = await axios.get('/api/credits/overdue');
-      set({ credits: response.data, loading: false });
-      return response.data;
+      const response = await axios.get('/api/clients');
+      set({ clients: response.data });
     } catch (error) {
-      set({ 
-        error: error.response?.data?.message || 'Error al cargar los créditos vencidos', 
-        loading: false 
-      });
-      return [];
+      console.error('Error al cargar clientes:', error);
+      set({ error: error.message });
     }
   },
-  
-  // Obtener un crédito por ID
-  fetchCreditById: async (creditId) => {
-    try {
-      set({ loading: true, error: null });
-      const response = await axios.get(`/api/credits/${creditId}`);
-      set({ selectedCredit: response.data, loading: false });
-      return response.data;
-    } catch (error) {
-      set({ 
-        error: error.response?.data?.message || 'Error al cargar el crédito', 
-        loading: false 
-      });
-      return null;
-    }
-  },
-  
-  // Obtener pagos de un crédito
-  fetchCreditPayments: async (creditId) => {
-    try {
-      set({ loading: true, error: null });
-      const response = await axios.get(`/api/credits/${creditId}/payments`);
-      set({ payments: response.data, loading: false });
-      return response.data;
-    } catch (error) {
-      set({ 
-        error: error.response?.data?.message || 'Error al cargar los pagos del crédito', 
-        loading: false 
-      });
-      return [];
-    }
-  },
-  
-  // Registrar un pago
-  registerPayment: async (creditId, paymentData) => {
-    try {
-      set({ loading: true, error: null });
-      const response = await axios.post(`/api/credits/${creditId}/payments`, paymentData);
-      
-      // Actualizar la lista de créditos después de registrar el pago
-      await get().fetchCredits();
-      
-      set({ loading: false });
-      return response.data;
-    } catch (error) {
-      set({ 
-        error: error.response?.data?.message || 'Error al registrar el pago', 
-        loading: false 
-      });
-      return null;
-    }
-  },
-  
-  // Crear un nuevo crédito
+
   createCredit: async (creditData) => {
+    set({ loading: true, error: null });
     try {
-      set({ loading: true, error: null });
       const response = await axios.post('/api/credits', creditData);
+      const newCredit = response.data;
       
-      // Actualizar la lista de créditos después de crear uno nuevo
-      await get().fetchCredits();
+      set(state => ({
+        credits: [...state.credits, newCredit],
+        loading: false
+      }));
       
-      set({ loading: false });
-      return response.data;
+      return { success: true, data: newCredit };
     } catch (error) {
-      set({ 
-        error: error.response?.data?.message || 'Error al crear el crédito', 
-        loading: false 
-      });
-      return null;
+      console.error('Error al crear crédito:', error);
+      set({ error: error.message, loading: false });
+      return { success: false, error: error.message };
     }
   },
-  
-  // Limpiar errores
+
+  updateCredit: async (creditId, creditData) => {
+    set({ loading: true, error: null });
+    try {
+      const response = await axios.put(`/api/credits/${creditId}`, creditData);
+      const updatedCredit = response.data;
+      
+      set(state => ({
+        credits: state.credits.map(credit => 
+          credit.id === creditId ? updatedCredit : credit
+        ),
+        loading: false
+      }));
+      
+      return { success: true, data: updatedCredit };
+    } catch (error) {
+      console.error('Error al actualizar crédito:', error);
+      set({ error: error.message, loading: false });
+      return { success: false, error: error.message };
+    }
+  },
+
+  deleteCredit: async (creditId) => {
+    set({ loading: true, error: null });
+    try {
+      await axios.delete(`/api/credits/${creditId}`);
+      
+      set(state => ({
+        credits: state.credits.filter(credit => credit.id !== creditId),
+        loading: false
+      }));
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Error al eliminar crédito:', error);
+      set({ error: error.message, loading: false });
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Filtros y búsqueda
+  getFilteredCredits: (searchTerm) => {
+    const { credits, clients } = get();
+    
+    return credits.filter(credit => {
+      const client = clients.find(c => c.id === credit.clientId);
+      const clientName = client ? client.name.toLowerCase() : '';
+      return clientName.includes(searchTerm.toLowerCase()) ||
+             credit.description.toLowerCase().includes(searchTerm.toLowerCase());
+    });
+  },
+
+  // Limpiar estado
   clearError: () => set({ error: null }),
-  
-  // Limpiar el crédito seleccionado
-  clearSelectedCredit: () => set({ selectedCredit: null }),
-  
-  // Limpiar los pagos
-  clearPayments: () => set({ payments: [] }),
+  reset: () => set({ credits: [], clients: [], loading: false, error: null })
 }));
+
+export default useCreditStore;

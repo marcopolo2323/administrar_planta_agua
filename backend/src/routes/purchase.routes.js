@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const purchaseController = require('../controllers/purchase.controller');
-const { verifyToken } = require('../middlewares/auth.middleware');
+const { authMiddleware } = require('../middlewares/auth.middleware');
 
 // Aplicar middleware de autenticación a todas las rutas
-router.use('/', verifyToken);
+router.use('/', authMiddleware);
 
 // Rutas para compras
 router.get('/', purchaseController.getAllPurchases);

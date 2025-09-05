@@ -1,680 +1,380 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import axios from 'axios';
 import {
-  Box, 
-  Container, 
-  Heading, 
-  Text, 
-  Button, 
-  Flex, 
-  VStack, 
+  Box,
+  Button,
+  Card,
+  CardBody,
+  CardHeader,
+  Flex,
+  Heading,
+  Text,
+  VStack,
+  HStack,
   Image,
-  Alert, 
-  AlertIcon, 
-  AlertTitle, 
-  AlertDescription, 
+  Alert,
+  AlertIcon,
   Spinner,
-  useColorModeValue, 
-  Divider, 
-  Badge, 
-  useToast, 
-  HStack
+  Center,
+  useBreakpointValue,
+  Divider,
+  useToast,
+  Code,
+  Badge
 } from '@chakra-ui/react';
-import { CheckIcon, ArrowBackIcon, ArrowForwardIcon } from '@chakra-ui/icons';
-import { FaMoneyBillWave, FaCreditCard, FaQrcode, FaIdCard, FaReceipt } from 'react-icons/fa';
-import qrYapeImage from '../assets/images/qr-yape.svg';
+import { useNavigate, useParams } from 'react-router-dom';
+import { FaArrowLeft, FaCheck, FaQrcode, FaCopy, FaMoneyBillWave } from 'react-icons/fa';
+import useOrderStore from '../stores/orderStore';
 
 const PaymentProcess = () => {
-  const { id } = useParams();
   const navigate = useNavigate();
-  const location = useLocation();
+  const { id } = useParams();
   const toast = useToast();
-  
-  // Get URL parameters
-  const queryParams = new URLSearchParams(location.search);
-  const method = queryParams.get('method') || 'yape';
-  const docType = queryParams.get('docType') || 'boleta';
-  const ruc = queryParams.get('ruc') || '';
-  const businessName = decodeURIComponent(queryParams.get('businessName') || '');
-  const address = decodeURIComponent(queryParams.get('address') || '');
-  
-  // State management
-  const [order, setOrder] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [paymentStatus, setPaymentStatus] = useState('pending');
-  const [error, setError] = useState(null);
-  
-  const bgColor = useColorModeValue('white', 'gray.700');
-  
-  // Fetch order details
-  useEffect(() => {
-    const fetchOrderDetails = async () => {
-      if (!id) {
-        setError('ID de pedido no válido');
-        setLoading(false);
-        return;
-      }
+  const isMobile = useBreakpointValue({ base: true, md: false });
 
-      try {
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-        const response = await axios.get(`${apiUrl}/api/guest-orders/track/${id}`);
-        
-        if (response.data) {
-          setOrder(response.data);
-        } else {
-          throw new Error('No se encontraron datos del pedido');
-        }
-      } catch (err) {
-        console.error('Error fetching order:', err);
-        setError(err.response?.data?.message || 'No se pudo cargar la información del pedido.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchOrderDetails();
-  }, [id]);
-  
-  // Process payment
-  const processPayment = async () => {
-    if (!order) {
+  // Store
+  const { createOrder } = useOrderStore();
+
+  // Estados locales
+  const [orderData, setOrderData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [orderCreated, setOrderCreated] = useState(false);
+  const [orderId, setOrderId] = useState(null);
+
+  useEffect(() => {
+    // Cargar datos del pedido desde localStorage
+    const savedOrderData = localStorage.getItem('guestOrderData');
+    if (savedOrderData) {
+      setOrderData(JSON.parse(savedOrderData));
+    } else {
       toast({
         title: 'Error',
-        description: 'No se encontró información del pedido',
+        description: 'No se encontraron datos del pedido',
         status: 'error',
         duration: 3000,
         isClosable: true,
       });
-      return;
+      navigate('/guest-order');
     }
+  }, [navigate, toast]);
 
-    setPaymentStatus('processing');
-    setError(null);
-    
+  const handleCreateOrder = async () => {
+    if (!orderData) return;
+
+    setLoading(true);
     try {
-      const orderTotal = typeof order.total === 'number' 
-        ? order.total 
-        : parseFloat(order.total || 0);
-
-      const paymentData = {
-        orderId: id,
-        amount: orderTotal,
-        paymentMethod: method,
-        documentType: docType,
-        invoiceData: docType === 'factura' ? {
-          ruc,
-          businessName,
-          address
-        } : null,
-        isCredit: false // Siempre false para clientes visitantes
+      // Preparar datos para el backend
+      const orderPayload = {
+        clientName: orderData.client.name,
+        clientPhone: orderData.client.phone,
+        clientEmail: orderData.client.email || null,
+        deliveryAddress: orderData.client.address,
+        district: orderData.client.district,
+        reference: orderData.client.reference || null,
+        notes: orderData.client.notes || null,
+        paymentMethod: orderData.paymentMethod,
+        items: orderData.items.map(item => ({
+          productId: item.id,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          subtotal: item.subtotal
+        })),
+        subtotal: orderData.subtotal,
+        deliveryFee: orderData.deliveryFee,
+        total: orderData.total,
+        status: 'pendiente'
       };
+
+      const result = await createOrder(orderPayload);
       
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      const response = await axios.post(`${apiUrl}/api/guest-payments`, paymentData);
-      
-      // Check if response indicates success
-      if (response.status === 200 || response.status === 201) {
-        setPaymentStatus('success');
+      if (result.success) {
+        setOrderCreated(true);
+        setOrderId(result.data.id);
+        
+        // Limpiar datos del localStorage
+        localStorage.removeItem('guestOrderData');
+        
         toast({
-          title: 'Pago procesado exitosamente',
-          description: 'El pago se ha procesado correctamente.',
+          title: 'Pedido Creado',
+          description: 'Tu pedido ha sido creado exitosamente',
           status: 'success',
-          duration: 5000,
+          duration: 3000,
           isClosable: true,
         });
-        
-        // Guardar el ID del pedido en localStorage para asegurar que esté disponible en la página de recibo
-        localStorage.setItem('lastOrderId', id);
-        
-        setTimeout(() => {
-          navigate(`/receipt/${id}`);
-        }, 2000);
       } else {
-        throw new Error('Respuesta inesperada del servidor');
+        throw new Error(result.error || 'Error al crear el pedido');
       }
-    } catch (err) {
-      console.error('Payment processing error:', err);
-      setPaymentStatus('error');
-      const errorMessage = err.response?.data?.message 
-        || err.message 
-        || 'Error al procesar el pago. Por favor, intenta nuevamente.';
-      setError(errorMessage);
-      
+    } catch (error) {
+      console.error('Error al crear pedido:', error);
       toast({
-        title: 'Error en el pago',
-        description: errorMessage,
+        title: 'Error',
+        description: error.message || 'Error al crear el pedido',
         status: 'error',
         duration: 5000,
         isClosable: true,
       });
+    } finally {
+      setLoading(false);
     }
   };
-  
-  const handleGoBack = () => {
-    navigate(`/payment-method/${id}`);
-  };
-  
-  const retryPayment = () => {
-    setPaymentStatus('pending');
-    setError(null);
+
+  const handleBack = () => {
+    navigate('/payment-method');
   };
 
-  // Helper functions
-  const getPaymentMethodInfo = () => {
-    switch (method) {
+  const handleContinue = () => {
+    navigate(`/receipt/${orderId}`);
+  };
+
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text);
+    toast({
+      title: 'Copiado',
+      description: 'Número copiado al portapapeles',
+      status: 'success',
+      duration: 2000,
+      isClosable: true,
+    });
+  };
+
+  if (!orderData) {
+    return (
+      <Center h="400px">
+        <Spinner size="xl" />
+      </Center>
+    );
+  }
+
+  const getPaymentInfo = () => {
+    switch (orderData.paymentMethod) {
       case 'yape':
-        return { name: 'Yape', icon: FaQrcode, color: 'purple' };
-      case 'tarjeta':
-        return { name: 'Tarjeta', icon: FaCreditCard, color: 'blue' };
-      case 'efectivo':
-        return { name: 'Efectivo', icon: FaMoneyBillWave, color: 'green' };
+        return {
+          title: 'Pago con Yape',
+          icon: FaQrcode,
+          color: 'purple',
+          number: '999 888 777',
+          instructions: [
+            '1. Abre tu app de Yape',
+            '2. Escanea el código QR o ingresa el número',
+            '3. Ingresa el monto exacto',
+            '4. Envía el comprobante por WhatsApp'
+          ]
+        };
+      case 'plin':
+        return {
+          title: 'Pago con Plin',
+          icon: FaQrcode,
+          color: 'blue',
+          number: '999 888 777',
+          instructions: [
+            '1. Abre tu app de Plin',
+            '2. Escanea el código QR o ingresa el número',
+            '3. Ingresa el monto exacto',
+            '4. Envía el comprobante por WhatsApp'
+          ]
+        };
+      case 'cash':
       default:
-        return { name: 'Yape', icon: FaQrcode, color: 'purple' };
+        return {
+          title: 'Pago en Efectivo',
+          icon: FaMoneyBillWave,
+          color: 'green',
+          instructions: [
+            '1. Paga en efectivo cuando recibas tu pedido',
+            '2. El repartidor te entregará el recibo',
+            '3. No hay comisiones adicionales'
+          ]
+        };
     }
   };
 
-  const paymentMethodInfo = getPaymentMethodInfo();
-  const PaymentMethodIcon = paymentMethodInfo.icon;
-  
-  // Loading state
-  if (loading) {
-    return (
-      <Container maxW="container.md" py={8}>
-        <Box 
-          bg={bgColor} 
-          borderWidth="1px" 
-          borderRadius="lg" 
-          p={6} 
-          shadow="md"
-          textAlign="center"
-        >
-          <Flex direction="column" align="center" justify="center" py={10}>
-            <Spinner 
-              size="xl" 
-              mb={4} 
-              thickness="4px"
-              speed="0.65s"
-              emptyColor="gray.200"
-              color="purple.500"
-            />
-            <Text fontSize="lg" fontWeight="medium" color="purple.700">
-              Cargando información del pedido...
-            </Text>
-          </Flex>
-        </Box>
-      </Container>
-    );
-  }
-  
-  // Error state - no order found
-  if (error && !order) {
-    return (
-      <Container maxW="container.md" py={8}>
-        <Box 
-          bg={bgColor} 
-          borderWidth="1px" 
-          borderRadius="lg" 
-          p={6} 
-          shadow="md"
-        >
-          <Alert 
-            status="error" 
-            variant="left-accent" 
-            borderRadius="md" 
-            mb={4}
-          >
-            <AlertIcon />
-            <Box>
-              <AlertTitle fontWeight="bold">Error</AlertTitle>
-              <AlertDescription>{error}</AlertDescription>
-            </Box>
-          </Alert>
-          <Button 
-            leftIcon={<ArrowBackIcon />} 
-            colorScheme="purple" 
-            variant="outline" 
-            onClick={() => navigate('/')}
-          >
-            Volver al inicio
-          </Button>
-        </Box>
-      </Container>
-    );
-  }
+  const paymentInfo = getPaymentInfo();
 
-  // Safe total calculation
-  const orderTotal = order ? (typeof order.total === 'number' ? order.total.toFixed(2) : parseFloat(order.total || 0).toFixed(2)) : '0.00';
-  
   return (
-    <Container maxW="container.md" py={8}>
-      <Box 
-        bg={bgColor} 
-        borderWidth="1px" 
-        borderRadius="lg" 
-        p={0} 
-        shadow="lg"
-        overflow="hidden"
-      >
-        {/* Header */}
-        <Box 
-          bg="purple.600" 
-          p={4} 
-          color="white"
-          bgGradient="linear(to-r, purple.600, purple.400)"
-        >
-          <Flex align="center">
-            <Box mr={3}>
-              <FaCreditCard size="24px" />
-            </Box>
-            <Heading size="lg">Procesando Pago</Heading>
-          </Flex>
-        </Box>
-        
-        <Box p={6}>
-          {/* Order Summary */}
-          <Box 
-            mb={6} 
-            bg="purple.50" 
-            p={4} 
-            borderRadius="md" 
-            borderWidth="1px" 
-            borderColor="purple.100"
-          >
-            <Heading size="md" mb={4} color="purple.700">
-              <Flex align="center">
-                <Box mr={2}>
-                  <FaReceipt />
-                </Box>
-                Resumen del Pedido
-              </Flex>
+    <Box minH="100vh" bg="gray.50" py={8}>
+      <Box maxW="800px" mx="auto" px={4}>
+        <VStack spacing={8}>
+          {/* Header */}
+          <Box textAlign="center">
+            <Heading size="xl" color="blue.600" mb={2}>
+              {orderCreated ? 'Pedido Confirmado' : 'Procesar Pago'}
             </Heading>
-            
-            <VStack spacing={3} align="stretch">
-              <Flex justify="space-between" p={2} bg="white" borderRadius="md" boxShadow="sm">
-                <HStack>
-                  <FaIdCard color="#805AD5" />
-                  <Text fontWeight="medium">Número de Pedido:</Text>
-                </HStack>
-                <Text fontWeight="bold">{order?.id || 'N/A'}</Text>
-              </Flex>
-              
-              <Flex justify="space-between" p={2} bg="white" borderRadius="md" boxShadow="sm">
-                <HStack>
-                  <FaMoneyBillWave color="#805AD5" />
-                  <Text fontWeight="medium">Total a Pagar:</Text>
-                </HStack>
-                <Text fontWeight="bold" fontSize="lg" color="purple.700">
-                  S/ {orderTotal}
-                </Text>
-              </Flex>
-              
-              <Flex justify="space-between" p={2} bg="white" borderRadius="md" boxShadow="sm">
-                <HStack>
-                  <Box color="#805AD5">
-                    <PaymentMethodIcon />
-                  </Box>
-                  <Text fontWeight="medium">Método de Pago:</Text>
-                </HStack>
-                <Badge 
-                  colorScheme={paymentMethodInfo.color}
-                  borderRadius="full"
-                  px={3}
-                  py={1}
-                >
-                  {paymentMethodInfo.name}
-                </Badge>
-              </Flex>
-              
-              <Flex justify="space-between" p={2} bg="white" borderRadius="md" boxShadow="sm">
-                <HStack>
-                  <FaReceipt color="#805AD5" />
-                  <Text fontWeight="medium">Tipo de Documento:</Text>
-                </HStack>
-                <Badge 
-                  colorScheme={docType === 'boleta' ? 'teal' : 'orange'}
-                  borderRadius="full"
-                  px={3}
-                  py={1}
-                >
-                  {docType === 'boleta' ? 'Boleta Electrónica' : 'Factura Electrónica'}
-                </Badge>
-              </Flex>
-            </VStack>
-            
-            {/* Invoice data display */}
-            {docType === 'factura' && (ruc || businessName || address) && (
-              <Box 
-                mt={4} 
-                p={4} 
-                borderWidth="1px" 
-                borderRadius="md" 
-                borderColor="orange.200"
-                bg="orange.50"
-              >
-                <Text fontWeight="bold" mb={2} color="orange.700">Datos de Facturación:</Text>
-                <VStack align="stretch" spacing={1}>
-                  {ruc && <Text><strong>RUC:</strong> {ruc}</Text>}
-                  {businessName && <Text><strong>Razón Social:</strong> {businessName}</Text>}
-                  {address && <Text><strong>Dirección:</strong> {address}</Text>}
-                </VStack>
-              </Box>
-            )}
+            <Text color="gray.600" fontSize="lg">
+              {orderCreated 
+                ? 'Tu pedido ha sido creado exitosamente' 
+                : 'Sigue las instrucciones para completar tu pago'
+              }
+            </Text>
           </Box>
-        
-          <Divider my={4} />
-        
-          {/* Payment Method Specific Content */}
-          {method === 'yape' && (
-            <Box mb={6}>
-              <Heading size="md" mb={4} color="purple.700">
-                <Flex align="center">
-                  <Box mr={2}>
-                    <FaQrcode />
+
+          {!orderCreated ? (
+            <Card w="full">
+              <CardHeader>
+                <Heading size="md" color="gray.700">
+                  <paymentInfo.icon style={{ display: 'inline', marginRight: '8px' }} />
+                  {paymentInfo.title}
+                </Heading>
+              </CardHeader>
+              <CardBody>
+                <VStack spacing={6}>
+                  {/* Información de pago */}
+                  <Box w="full" p={4} bg={`${paymentInfo.color}.50`} borderRadius="md">
+                    <VStack spacing={4}>
+                      <Text fontWeight="bold" fontSize="lg">
+                        Monto a Pagar: S/ {parseFloat(orderData.total).toFixed(2)}
+                      </Text>
+                      
+                      {paymentInfo.number && (
+                        <Box textAlign="center">
+                          <Text fontWeight="bold" mb={2}>Número de Cuenta:</Text>
+                          <HStack justify="center" spacing={2}>
+                            <Code fontSize="lg" p={2}>
+                              {paymentInfo.number}
+                            </Code>
+                            <Button
+                              size="sm"
+                              leftIcon={<FaCopy />}
+                              onClick={() => copyToClipboard(paymentInfo.number)}
+                            >
+                              Copiar
+                            </Button>
+                          </HStack>
+                        </Box>
+                      )}
+
+                      {/* QR Code placeholder */}
+                      {paymentInfo.number && (
+                        <Box textAlign="center" p={4} bg="white" borderRadius="md">
+                          <Text fontWeight="bold" mb={2}>Código QR:</Text>
+                          <Box
+                            w="200px"
+                            h="200px"
+                            bg="gray.100"
+                            borderRadius="md"
+                            display="flex"
+                            alignItems="center"
+                            justifyContent="center"
+                            mx="auto"
+                          >
+                            <VStack>
+                              <FaQrcode size="48px" color="gray" />
+                              <Text fontSize="sm" color="gray.500">
+                                QR Code
+                              </Text>
+                            </VStack>
+                          </Box>
+                        </Box>
+                      )}
+                    </VStack>
                   </Box>
-                  Pago con Yape
-                </Flex>
-              </Heading>
-              
-              <VStack spacing={4} align="stretch">
-                <Alert 
-                  status="info" 
-                  borderRadius="md" 
-                  variant="left-accent" 
-                  borderLeftColor="purple.400"
-                  bg="purple.50"
-                >
-                  <AlertIcon color="purple.400" />
-                  <Box>
-                    <AlertTitle fontWeight="bold">Instrucciones</AlertTitle>
-                    <AlertDescription>
-                      Escanea el código QR para realizar el pago y envía el comprobante al WhatsApp indicado.
-                    </AlertDescription>
+
+                  {/* Instrucciones */}
+                  <Box w="full">
+                    <Text fontWeight="bold" mb={3}>Instrucciones:</Text>
+                    <VStack spacing={2} align="start">
+                      {paymentInfo.instructions.map((instruction, index) => (
+                        <Text key={index} fontSize="sm">
+                          {instruction}
+                        </Text>
+                      ))}
+                    </VStack>
                   </Box>
-                </Alert>
-                
-                <Box 
-                  textAlign="center" 
-                  py={6} 
-                  px={4} 
-                  bg="white" 
-                  borderRadius="lg" 
-                  borderWidth="1px" 
-                  borderColor="purple.100"
-                  boxShadow="sm"
-                >
-                  <Image 
-                    src={qrYapeImage} 
-                    alt="QR Yape" 
-                    maxH="220px" 
-                    mx="auto"
-                    borderRadius="md"
-                    p={2}
-                    bg="white"
-                    boxShadow="sm"
-                    fallback={
-                      <Flex 
-                        align="center" 
-                        justify="center" 
-                        h="220px" 
-                        bg="purple.100" 
-                        borderRadius="md"
-                      >
-                        <FaQrcode size="60px" color="purple" />
-                      </Flex>
-                    }
-                  />
-                  <Text mt={4} fontWeight="medium" color="purple.700">
-                    <Flex align="center" justify="center">
-                      <FaQrcode style={{ marginRight: '8px' }} />
-                      Escanea este código con tu app de Yape
-                    </Flex>
-                  </Text>
-                </Box>
-              </VStack>
-            </Box>
-          )}
-        
-          {method === 'tarjeta' && (
-            <Box mb={6}>
-              <Heading size="md" mb={4} color="blue.700">
-                <Flex align="center">
-                  <Box mr={2}>
-                    <FaCreditCard />
+
+                  {/* Resumen del pedido */}
+                  <Box w="full" p={4} border="1px" borderColor="gray.200" borderRadius="md">
+                    <Text fontWeight="bold" mb={3}>Resumen del Pedido:</Text>
+                    <VStack spacing={2} align="start">
+                      <HStack justify="space-between" w="full">
+                        <Text fontSize="sm">Cliente:</Text>
+                        <Text fontSize="sm" fontWeight="bold">{orderData.client.name}</Text>
+                      </HStack>
+                      <HStack justify="space-between" w="full">
+                        <Text fontSize="sm">Teléfono:</Text>
+                        <Text fontSize="sm" fontWeight="bold">{orderData.client.phone}</Text>
+                      </HStack>
+                      <HStack justify="space-between" w="full">
+                        <Text fontSize="sm">Dirección:</Text>
+                        <Text fontSize="sm" fontWeight="bold">{orderData.client.address}</Text>
+                      </HStack>
+                      <HStack justify="space-between" w="full">
+                        <Text fontSize="sm">Distrito:</Text>
+                        <Text fontSize="sm" fontWeight="bold">{orderData.client.district}</Text>
+                      </HStack>
+                      <Divider />
+                      <HStack justify="space-between" w="full">
+                        <Text fontSize="sm">Total:</Text>
+                        <Text fontSize="sm" fontWeight="bold" color="blue.600">
+                          S/ {parseFloat(orderData.total).toFixed(2)}
+                        </Text>
+                      </HStack>
+                    </VStack>
                   </Box>
-                  Pago con Tarjeta
-                </Flex>
-              </Heading>
-              
-              <VStack spacing={4} align="stretch">
-                <Alert 
-                  status="info" 
-                  borderRadius="md" 
-                  variant="left-accent" 
-                  borderLeftColor="blue.400"
-                  bg="blue.50"
-                >
-                  <AlertIcon color="blue.400" />
-                  <Box>
-                    <AlertTitle fontWeight="bold">Instrucciones</AlertTitle>
-                    <AlertDescription>
-                      Completa los datos de tu tarjeta para procesar el pago. Procesamos pagos a través de una pasarela segura.
-                    </AlertDescription>
-                  </Box>
-                </Alert>
-                
-                <Box 
-                  textAlign="center" 
-                  py={6} 
-                  px={4} 
-                  bg="white" 
-                  borderRadius="lg" 
-                  borderWidth="1px" 
-                  borderColor="blue.100"
-                  boxShadow="sm"
-                >
-                  <Flex align="center" justify="center" fontSize="5xl" color="blue.500" mb={4}>
-                    <FaCreditCard />
-                  </Flex>
-                  <Text fontWeight="medium" color="blue.700">
-                    Al confirmar, serás redirigido a nuestra pasarela de pago segura
-                  </Text>
-                </Box>
-              </VStack>
-            </Box>
-          )}
-        
-          {method === 'efectivo' && (
-            <Box mb={6}>
-              <Heading size="md" mb={4} color="green.700">
-                <Flex align="center">
-                  <Box mr={2}>
-                    <FaMoneyBillWave />
-                  </Box>
-                  Pago en Efectivo
-                </Flex>
-              </Heading>
-              
-              <VStack spacing={4} align="stretch">
-                <Alert 
-                  status="info" 
-                  borderRadius="md" 
-                  variant="left-accent" 
-                  borderLeftColor="green.400"
-                  bg="green.50"
-                >
-                  <AlertIcon color="green.400" />
-                  <Box>
-                    <AlertTitle fontWeight="bold">Instrucciones</AlertTitle>
-                    <AlertDescription>
-                      Pagarás en efectivo al momento de la entrega. Nuestro repartidor llevará cambio.
-                    </AlertDescription>
-                  </Box>
-                </Alert>
-                
-                <Box 
-                  textAlign="center" 
-                  py={6} 
-                  px={4} 
-                  bg="white" 
-                  borderRadius="lg" 
-                  borderWidth="1px" 
-                  borderColor="green.100"
-                  boxShadow="sm"
-                >
-                  <Flex align="center" justify="center" fontSize="5xl" color="green.500" mb={4}>
-                    <FaMoneyBillWave />
-                  </Flex>
-                  <Text fontWeight="medium" color="green.700">
-                    Ten el monto exacto para facilitar el cambio
-                  </Text>
-                </Box>
-              </VStack>
-            </Box>
-          )}
-        
-          <Divider my={6} borderColor="purple.100" />
-        
-          {/* Payment Status and Actions */}
-          <Box textAlign="center" py={6}>
-            {paymentStatus === 'pending' && (
-              <VStack spacing={4}>
-                <Button 
-                  colorScheme="purple"
-                  size="lg" 
-                  rightIcon={<ArrowForwardIcon />} 
-                  onClick={processPayment}
-                  width="100%"
-                  maxW="400px"
-                  py={6}
-                  borderRadius="lg"
-                  fontWeight="bold"
-                  letterSpacing="wide"
-                  boxShadow="md"
-                  _hover={{ transform: 'translateY(-2px)', boxShadow: 'lg' }}
-                  transition="all 0.2s"
-                >
-                  Confirmar Pago
-                </Button>
-                
-                <Button 
-                  leftIcon={<ArrowBackIcon />} 
-                  variant="outline" 
-                  colorScheme="purple"
-                  onClick={handleGoBack}
-                  size="md"
-                  width="100%"
-                  maxW="400px"
-                >
-                  Volver a métodos de pago
-                </Button>
-              </VStack>
-            )}
-          
-            {paymentStatus === 'processing' && (
-              <Box 
-                p={8} 
-                borderRadius="lg" 
-                borderWidth="1px" 
-                borderColor="purple.100"
-                bg="white"
-                boxShadow="md"
-                maxW="400px"
-                mx="auto"
-              >
-                <VStack>
-                  <Spinner 
-                    size="xl" 
-                    mb={4} 
-                    thickness="4px"
-                    speed="0.65s"
-                    emptyColor="gray.200"
-                    color="purple.500"
-                  />
-                  <Text fontSize="lg" fontWeight="medium" color="purple.700">Procesando tu pago...</Text>
-                  <Text fontSize="sm" color="gray.500" mt={2}>Esto puede tomar unos segundos</Text>
-                </VStack>
-              </Box>
-            )}
-          
-            {paymentStatus === 'success' && (
-              <Box 
-                p={8} 
-                borderRadius="lg" 
-                borderWidth="1px" 
-                borderColor="green.100"
-                bg="green.50"
-                boxShadow="md"
-                maxW="400px"
-                mx="auto"
-              >
-                <VStack>
-                  <Flex 
-                    align="center" 
-                    justify="center" 
-                    bg="green.500" 
-                    color="white" 
-                    borderRadius="full" 
-                    w={16} 
-                    h={16} 
-                    mb={4}
-                  >
-                    <CheckIcon w={8} h={8} />
-                  </Flex>
-                  <Text fontSize="2xl" fontWeight="bold" color="green.700">¡Pago Exitoso!</Text>
-                  <Text color="green.600">Redirigiendo a tu recibo...</Text>
-                </VStack>
-              </Box>
-            )}
-          
-            {paymentStatus === 'error' && (
-              <Box 
-                p={6} 
-                borderRadius="lg" 
-                borderWidth="1px" 
-                borderColor="red.100"
-                bg="red.50"
-                boxShadow="md"
-                maxW="400px"
-                mx="auto"
-              >
-                <VStack spacing={4}>
-                  <Alert 
-                    status="error" 
-                    borderRadius="md"
-                    variant="left-accent"
-                    borderLeftColor="red.500"
-                  >
-                    <AlertIcon />
-                    <Box>
-                      <AlertTitle fontWeight="bold">Error en el pago</AlertTitle>
-                      <AlertDescription>{error}</AlertDescription>
-                    </Box>
-                  </Alert>
-                  <HStack spacing={2} width="100%">
-                    <Button 
-                      colorScheme="red" 
-                      onClick={retryPayment}
-                      flex="1"
-                    >
-                      Intentar nuevamente
-                    </Button>
-                    <Button 
+
+                  {/* Botones */}
+                  <HStack spacing={4} w="full">
+                    <Button
+                      leftIcon={<FaArrowLeft />}
                       variant="outline"
-                      colorScheme="red" 
-                      onClick={handleGoBack}
-                      flex="1"
+                      onClick={handleBack}
+                      flex={1}
                     >
-                      Volver atrás
+                      Volver
+                    </Button>
+                    <Button
+                      colorScheme="blue"
+                      onClick={handleCreateOrder}
+                      flex={1}
+                      isLoading={loading}
+                      loadingText="Creando Pedido..."
+                    >
+                      Confirmar Pedido
                     </Button>
                   </HStack>
                 </VStack>
-              </Box>
-            )}
-          </Box>
-        </Box>
+              </CardBody>
+            </Card>
+          ) : (
+            <Card w="full">
+              <CardBody>
+                <VStack spacing={6}>
+                  <Alert status="success" borderRadius="md">
+                    <AlertIcon />
+                    <Box>
+                      <Text fontWeight="bold">¡Pedido Creado Exitosamente!</Text>
+                      <Text fontSize="sm">
+                        Tu pedido #{orderId} ha sido registrado y será procesado pronto.
+                      </Text>
+                    </Box>
+                  </Alert>
+
+                  <Box textAlign="center">
+                    <Text fontWeight="bold" mb={2}>Número de Pedido:</Text>
+                    <Badge colorScheme="blue" fontSize="lg" p={2}>
+                      #{orderId}
+                    </Badge>
+                  </Box>
+
+                  <Box textAlign="center">
+                    <Text fontSize="sm" color="gray.600">
+                      Te enviaremos una confirmación por WhatsApp y podrás hacer seguimiento de tu pedido.
+                    </Text>
+                  </Box>
+
+                  <Button
+                    colorScheme="blue"
+                    size="lg"
+                    leftIcon={<FaCheck />}
+                    onClick={handleContinue}
+                    w="full"
+                  >
+                    Ver Recibo
+                  </Button>
+                </VStack>
+              </CardBody>
+            </Card>
+          )}
+        </VStack>
       </Box>
-    </Container>
+    </Box>
   );
 };
 

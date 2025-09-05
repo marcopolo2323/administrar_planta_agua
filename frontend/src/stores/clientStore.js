@@ -1,69 +1,21 @@
 import { create } from 'zustand';
 import axios from '../utils/axios';
 
-export const useClientStore = create((set, get) => ({
+const useClientStore = create((set, get) => ({
   // Estado
   clients: [],
-  client: null,
   loading: false,
   error: null,
 
   // Acciones
-  getAllClients: async () => {
-    set({ loading: true, error: null });
-    try {
-      const response = await axios.get('/api/clients');
-      set({ clients: response.data, loading: false });
-      return response.data;
-    } catch (error) {
-      set({
-        error: error.response?.data?.message || 'Error al cargar clientes',
-        loading: false
-      });
-      return [];
-    }
-  },
-  
   fetchClients: async () => {
     set({ loading: true, error: null });
     try {
       const response = await axios.get('/api/clients');
       set({ clients: response.data, loading: false });
     } catch (error) {
-      set({
-        error: error.response?.data?.message || 'Error al cargar clientes',
-        loading: false
-      });
-    }
-  },
-
-  fetchClientById: async (id) => {
-    set({ loading: true, error: null });
-    try {
-      const response = await axios.get(`/api/clients/${id}`);
-      set({ client: response.data, loading: false });
-      return response.data;
-    } catch (error) {
-      set({
-        error: error.response?.data?.message || 'Error al cargar el cliente',
-        loading: false
-      });
-      return null;
-    }
-  },
-
-  searchClients: async (query) => {
-    set({ loading: true, error: null });
-    try {
-      const response = await axios.get(`/api/clients/search?q=${query}`);
-      set({ clients: response.data, loading: false });
-      return response.data;
-    } catch (error) {
-      set({
-        error: error.response?.data?.message || 'Error al buscar clientes',
-        loading: false
-      });
-      return [];
+      console.error('Error al cargar clientes:', error);
+      set({ error: error.message, loading: false });
     }
   },
 
@@ -71,58 +23,84 @@ export const useClientStore = create((set, get) => ({
     set({ loading: true, error: null });
     try {
       const response = await axios.post('/api/clients', clientData);
-      set({
-        clients: [...get().clients, response.data],
+      const newClient = response.data;
+      
+      set(state => ({
+        clients: [...state.clients, newClient],
         loading: false
-      });
-      return response.data;
+      }));
+      
+      return { success: true, data: newClient };
     } catch (error) {
-      set({
-        error: error.response?.data?.message || 'Error al crear el cliente',
-        loading: false
-      });
-      return null;
+      console.error('Error al crear cliente:', error);
+      set({ error: error.message, loading: false });
+      return { success: false, error: error.message };
     }
   },
 
-  updateClient: async (id, clientData) => {
+  updateClient: async (clientId, clientData) => {
     set({ loading: true, error: null });
     try {
-      const response = await axios.put(`/api/clients/${id}`, clientData);
-      set({
-        clients: get().clients.map(client => 
-          client.id === id ? response.data : client
+      const response = await axios.put(`/api/clients/${clientId}`, clientData);
+      const updatedClient = response.data;
+      
+      set(state => ({
+        clients: state.clients.map(client => 
+          client.id === clientId ? updatedClient : client
         ),
-        client: response.data,
         loading: false
-      });
-      return response.data;
+      }));
+      
+      return { success: true, data: updatedClient };
     } catch (error) {
-      set({
-        error: error.response?.data?.message || 'Error al actualizar el cliente',
-        loading: false
-      });
-      return null;
+      console.error('Error al actualizar cliente:', error);
+      set({ error: error.message, loading: false });
+      return { success: false, error: error.message };
     }
   },
 
-  deleteClient: async (id) => {
+  deleteClient: async (clientId) => {
     set({ loading: true, error: null });
     try {
-      await axios.delete(`/api/clients/${id}`);
-      set({
-        clients: get().clients.filter(client => client.id !== id),
+      await axios.delete(`/api/clients/${clientId}`);
+      
+      set(state => ({
+        clients: state.clients.filter(client => client.id !== clientId),
         loading: false
-      });
-      return true;
+      }));
+      
+      return { success: true };
     } catch (error) {
-      set({
-        error: error.response?.data?.message || 'Error al eliminar el cliente',
-        loading: false
-      });
-      return false;
+      console.error('Error al eliminar cliente:', error);
+      set({ error: error.message, loading: false });
+      return { success: false, error: error.message };
     }
   },
 
-  clearError: () => set({ error: null })
+  // Filtros y búsqueda
+  getFilteredClients: (searchTerm) => {
+    const { clients } = get();
+    
+    return clients.filter(client => {
+      const name = client.name.toLowerCase();
+      const document = client.documentNumber.toLowerCase();
+      const email = client.email ? client.email.toLowerCase() : '';
+      
+      return name.includes(searchTerm.toLowerCase()) ||
+             document.includes(searchTerm.toLowerCase()) ||
+             email.includes(searchTerm.toLowerCase());
+    });
+  },
+
+  // Obtener cliente por ID
+  getClientById: (clientId) => {
+    const { clients } = get();
+    return clients.find(client => client.id === clientId);
+  },
+
+  // Limpiar estado
+  clearError: () => set({ error: null }),
+  reset: () => set({ clients: [], loading: false, error: null })
 }));
+
+export default useClientStore;

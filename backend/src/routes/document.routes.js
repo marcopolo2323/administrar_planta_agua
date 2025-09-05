@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const path = require('path');
 const fs = require('fs-extra');
-const { verifyToken } = require('../middlewares/auth.middleware');
+const { authMiddleware } = require('../middlewares/auth.middleware');
 
 // Ruta pública para servir documentos PDF generados (sin autenticación)
 router.get('/:filename', async (req, res) => {
@@ -34,7 +34,7 @@ router.get('/:filename', async (req, res) => {
 });
 
 // Ruta protegida para listar documentos disponibles (solo para usuarios autenticados)
-router.get('/', verifyToken, async (req, res) => {
+router.get('/', authMiddleware, async (req, res) => {
   try {
     const documentsDir = path.join(__dirname, '..', '..', 'documents');
     const files = await fs.readdir(documentsDir);

@@ -1,17 +1,17 @@
 const express = require('express');
 const router = express.Router();
 const cashRegisterController = require('../controllers/cashRegister.controller');
-const { verifyToken } = require('../middlewares/auth.middleware');
+const { authMiddleware } = require('../middlewares/auth.middleware');
 
 // Aplicar middleware de autenticación a todas las rutas
-router.use('/', verifyToken);
+router.use(authMiddleware);
 
-// Rutas para caja
-router.get('/current', cashRegisterController.getCurrentCashRegister);
-router.get('/history', cashRegisterController.getCashRegisterHistory);
-router.get('/:id', cashRegisterController.getCashRegisterDetails);
+// Rutas de caja
 router.post('/open', cashRegisterController.openCashRegister);
 router.post('/close', cashRegisterController.closeCashRegister);
-router.post('/movement', cashRegisterController.registerCashMovement);
+router.get('/current', cashRegisterController.getCurrentCashRegister);
+router.get('/history', cashRegisterController.getCashRegisterHistory);
+router.post('/movement', cashRegisterController.addCashMovement);
+router.get('/stats', cashRegisterController.getCashRegisterStats);
 
 module.exports = router;

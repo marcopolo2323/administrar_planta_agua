@@ -1,345 +1,264 @@
-const { Op } = require('sequelize');
-// Importar modelos
+const CashRegister = require('../models/cashRegister.model');
+const CashMovement = require('../models/cashMovement.model');
+const User = require('../models/user.model');
+const Sale = require('../models/sale.model');
+const Order = require('../models/order.model');
 
-const models = require('../models');
-const CashRegister = models.CashRegister;  // Modelo de Caja Registradora
-const CashMovement = models.CashMovement;  // Modelo de Movimientos de Caja
-const Sale = models.Sale;                  // Modelo de Ventas
-const User = models.User;                  // Modelo de Usuarios
-const Client = models.Client;              // Modelo de Clientes
-const sequelize = models.sequelize;        // Instancia de Sequelize para transacciones
-
-
-// Verificar que los modelos estén correctamente definidos
-if (!CashRegister || !CashMovement || !Sale || !User || !sequelize) {
-  console.error('Error: Modelos no definidos correctamente');
-}
-
-/**
- * Abrir una nueva caja registradora
- * @param {Object} req - Objeto de solicitud Express
- * @param {Object} req.body - Datos para la apertura de caja
- * @param {number} req.body.openingAmount - Monto inicial de la caja
- * @param {string} [req.body.notes] - Notas adicionales para la apertura
- * @param {Object} res - Objeto de respuesta Express
- * @returns {Object} Información de la caja creada
- */
+// Abrir caja
 exports.openCashRegister = async (req, res) => {
-  // Iniciar transacción para garantizar la integridad de los datos
-  const transaction = await sequelize.transaction();
-
   try {
     const { openingAmount, notes } = req.body;
-    const userId = req.userId; // ID del usuario autenticado
+    const userId = req.user.id;
 
     // Verificar si ya hay una caja abierta
     const openCashRegister = await CashRegister.findOne({
-      where: { status: 'abierto' },
-      transaction
+      where: { 
+        userId: userId,
+        status: 'abierta'
+      }
     });
 
     if (openCashRegister) {
-      await transaction.rollback();
-      return res.status(400).json({ 
-        message: 'Ya hay una caja abierta',
-        cashRegister: openCashRegister
+      return res.status(400).json({
+        success: false,
+        message: 'Ya tienes una caja abierta'
       });
     }
 
     // Crear nueva caja
     const cashRegister = await CashRegister.create({
-      openingAmount,
-      notes,
-      openedBy: userId,
-      status: 'abierto'
-    }, { transaction });
+      userId: userId,
+      openingAmount: openingAmount || 0,
+      notes: notes || ''
+    });
 
-    await transaction.commit();
+    // Crear movimiento de apertura
+    await CashMovement.create({
+      cashRegisterId: cashRegister.id,
+      type: 'ingreso',
+      amount: openingAmount || 0,
+      description: 'Apertura de caja',
+      userId: userId
+    });
 
-    return res.status(201).json({
+    res.status(201).json({
+      success: true,
       message: 'Caja abierta correctamente',
-      cashRegister
+      data: cashRegister
     });
   } catch (error) {
-    await transaction.rollback();
     console.error('Error al abrir caja:', error);
-    return res.status(500).json({ message: 'Error en el servidor' });
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
   }
 };
 
-/**
- * Cerrar una caja registradora abierta
- * @param {Object} req - Objeto de solicitud Express
- * @param {Object} req.body - Datos para el cierre de caja
- * @param {number} req.body.actualAmount - Monto real contado al cierre
- * @param {string} [req.body.notes] - Notas adicionales para el cierre
- * @param {Object} res - Objeto de respuesta Express
- * @returns {Object} Información de la caja cerrada con balance
- */
+// Cerrar caja
 exports.closeCashRegister = async (req, res) => {
-  // Iniciar transacción para garantizar la integridad de los datos
-  const transaction = await sequelize.transaction();
-
   try {
-    const { actualAmount, notes } = req.body;
-    const userId = req.userId; // ID del usuario que cierra la caja
-
-    console.log('Cerrando caja con datos:', { actualAmount, notes, userId });
+    const { closingAmount, notes } = req.body;
+    const userId = req.user.id;
 
     // Buscar caja abierta
     const cashRegister = await CashRegister.findOne({
-      where: { status: 'abierto' },
-      transaction
+      where: { 
+        userId: userId,
+        status: 'abierta'
+      }
     });
 
     if (!cashRegister) {
-      await transaction.rollback();
-      console.log('No se encontró caja abierta');
-      return res.status(404).json({ message: 'No hay una caja abierta' });
+      return res.status(404).json({
+        success: false,
+        message: 'No hay caja abierta'
+      });
     }
 
-    console.log('Caja encontrada:', cashRegister.id);
-
-    // Calcular el monto esperado
-    const openingAmount = parseFloat(cashRegister.openingAmount || 0);
-    console.log('Monto de apertura:', openingAmount);
-    
-    // Obtener ventas en efectivo desde la apertura de caja
-    let salesTotal = 0;
-    try {
-      salesTotal = await Sale.sum('total', {
-        where: {
-          status: 'pagado',
-          createdAt: { [sequelize.Op.gte]: cashRegister.openingDate }
-        },
-        transaction
-      }) || 0;
-      
-      // Asegurarse de que salesTotal sea un número válido
-      salesTotal = parseFloat(salesTotal || 0);
-      console.log('Total de ventas calculado:', salesTotal);
-    } catch (err) {
-      console.error('Error al calcular ventas:', err);
-      salesTotal = 0;
-    }
-
-    // Obtener otros movimientos de caja
-    const cashMovements = await CashMovement.findAll({
-      where: { cashRegisterId: cashRegister.id },
-      transaction
-    }) || [];
-
-    console.log('Movimientos de caja encontrados:', cashMovements.length);
-
-    let movementsBalance = 0;
-    for (const movement of cashMovements) {
-      if (!movement || !movement.amount) continue;
-      
-      if (movement.type === 'ingreso') {
-        movementsBalance += parseFloat(movement.amount || 0);
-      } else {
-        movementsBalance -= parseFloat(movement.amount || 0);
-      }
-    }
-
-    console.log('Balance de movimientos calculado:', movementsBalance);
-
-    // Calcular monto esperado y diferencia
-    const expectedAmount = parseFloat(openingAmount || 0) + parseFloat(salesTotal || 0) + parseFloat(movementsBalance || 0);
-    const difference = parseFloat(actualAmount || 0) - parseFloat(expectedAmount || 0);
-    
-    console.log('Montos calculados:', { 
-      expectedAmount, 
-      actualAmount: parseFloat(actualAmount || 0), 
-      difference 
+    // Calcular monto esperado
+    const movements = await CashMovement.findAll({
+      where: { cashRegisterId: cashRegister.id }
     });
 
+    const totalIngresos = movements
+      .filter(m => m.type === 'ingreso' || m.type === 'venta')
+      .reduce((sum, m) => sum + parseFloat(m.amount), 0);
+
+    const totalEgresos = movements
+      .filter(m => m.type === 'egreso' || m.type === 'gasto' || m.type === 'retiro')
+      .reduce((sum, m) => sum + parseFloat(m.amount), 0);
+
+    const expectedAmount = parseFloat(cashRegister.openingAmount) + totalIngresos - totalEgresos;
+    const difference = parseFloat(closingAmount) - expectedAmount;
+
     // Actualizar caja
-    try {
-      await cashRegister.update({
-        closingDate: new Date(),
-        expectedAmount: expectedAmount || 0,
-        actualAmount: parseFloat(actualAmount || 0),
-        difference: difference || 0,
-        status: 'cerrado',
-        notes: notes ? (cashRegister.notes ? `${cashRegister.notes}\n${notes}` : notes) : cashRegister.notes,
-        closedBy: userId
-      }, { transaction });
-      
-      console.log('Caja actualizada correctamente');
-      
-      await transaction.commit();
-      console.log('Transacción confirmada');
-      
-      return res.status(200).json({
-        message: 'Caja cerrada correctamente',
-        cashRegister: {
-          ...cashRegister.toJSON(),
-          expectedAmount: expectedAmount || 0,
-          actualAmount: parseFloat(actualAmount || 0),
-          difference: difference || 0,
-          status: 'cerrado'
-        }
-      });
-    } catch (updateError) {
-      await transaction.rollback();
-      console.error('Error al actualizar la caja:', updateError);
-      return res.status(500).json({ message: 'Error al actualizar la caja' });
-    }
+    await cashRegister.update({
+      closingDate: new Date(),
+      closingAmount: closingAmount,
+      expectedAmount: expectedAmount,
+      difference: difference,
+      status: 'cerrada',
+      notes: notes || cashRegister.notes
+    });
+
+    // Crear movimiento de cierre
+    await CashMovement.create({
+      cashRegisterId: cashRegister.id,
+      type: 'egreso',
+      amount: closingAmount,
+      description: 'Cierre de caja',
+      userId: userId
+    });
+
+    res.json({
+      success: true,
+      message: 'Caja cerrada correctamente',
+      data: {
+        ...cashRegister.toJSON(),
+        expectedAmount,
+        difference,
+        totalIngresos,
+        totalEgresos
+      }
+    });
   } catch (error) {
-    await transaction.rollback();
     console.error('Error al cerrar caja:', error);
-    return res.status(500).json({ message: 'Error en el servidor' });
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
   }
 };
 
-/**
- * Obtener información de la caja actualmente abierta
- * @param {Object} req - Objeto de solicitud Express
- * @param {Object} res - Objeto de respuesta Express
- * @returns {Object} Información de la caja actual, movimientos, ventas y resumen de balance
- */
-/**
- * Obtener información de la caja actualmente abierta
- * @param {Object} req - Objeto de solicitud Express
- * @param {Object} res - Objeto de respuesta Express
- * @returns {Object} Información de la caja actual, movimientos, ventas y resumen de balance
- */
+// Obtener caja actual
 exports.getCurrentCashRegister = async (req, res) => {
   try {
-    console.log('Obteniendo caja actual...');
-    
-    // Verificar que los modelos estén correctamente definidos
-    if (!CashRegister || !User) {
-      console.error('Error: Modelos no definidos correctamente');
-      return res.status(500).json({ message: 'Error en la configuración del servidor' });
-    }
-    
-    // Optimización: Buscar caja abierta con sus movimientos y ventas en una sola consulta
+    const userId = req.user.id;
+
     const cashRegister = await CashRegister.findOne({
-      where: { status: 'abierto' },
+      where: { 
+        userId: userId,
+        status: 'abierta'
+      },
       include: [
-        { model: User, as: 'openedByUser', attributes: ['id', 'username'] },
-        { 
-          model: CashMovement,
-          include: [{ model: User, as: 'registeredBy', attributes: ['id', 'username'] }],
-          order: [['createdAt', 'DESC']]
+        {
+          model: User,
+          attributes: ['id', 'username', 'name']
         }
       ]
-    }).catch(err => {
-      console.error('Error al buscar caja abierta:', err);
-      return null;
     });
 
-    console.log('Resultado de búsqueda de caja:', cashRegister ? 'Encontrada' : 'No encontrada');
-
     if (!cashRegister) {
-      // Devolver un objeto vacío en lugar de un error 404
-      return res.status(200).json({
-        cashRegister: null,
-        movements: [],
-        sales: [],
-        summary: {
-          openingAmount: 0,
-          salesTotal: 0,
-          incomesTotal: 0,
-          expensesTotal: 0,
-          currentBalance: 0
-        }
+      return res.json({
+        success: true,
+        data: null,
+        message: 'No hay caja abierta'
       });
     }
 
-    // Extraer movimientos de la consulta optimizada
-    const movements = cashRegister.CashMovements || [];
+    // Obtener movimientos
+    const movements = await CashMovement.findAll({
+      where: { cashRegisterId: cashRegister.id },
+      order: [['createdAt', 'DESC']]
+    });
 
-    // Obtener ventas desde la apertura de caja en una sola consulta
-    let sales = [];
-    if (cashRegister && cashRegister.openingDate) {
-      try {
-        sales = await Sale.findAll({
-          where: {
-            status: 'pagado',
-            createdAt: { [Op.gte]: cashRegister.openingDate }
-          },
-          include: [{ model: User, as: 'seller', attributes: ['id', 'username'] }],
-          order: [['createdAt', 'DESC']]
-        }) || [];
-      } catch (err) {
-        console.error('Error al obtener ventas:', err);
-        sales = [];
-      }
-    }
+    // Calcular totales
+    const totalIngresos = movements
+      .filter(m => m.type === 'ingreso' || m.type === 'venta')
+      .reduce((sum, m) => sum + parseFloat(m.amount), 0);
 
-    // Calcular totales de manera optimizada
-    const salesTotal = Array.isArray(sales) && sales.length > 0 
-      ? sales.reduce((sum, sale) => sum + (sale && sale.total ? parseFloat(sale.total || 0) : 0), 0)
-      : 0;
-    
-    // Calcular ingresos y egresos en un solo recorrido
-    let incomesTotal = 0;
-    let expensesTotal = 0;
-    if (Array.isArray(movements) && movements.length > 0) {
-      for (const movement of movements) {
-        if (movement && movement.amount) {
-          if (movement.type === 'ingreso') {
-            incomesTotal += parseFloat(movement.amount);
-          } else {
-            expensesTotal += parseFloat(movement.amount);
-          }
-        }
-      }
-    }
+    const totalEgresos = movements
+      .filter(m => m.type === 'egreso' || m.type === 'gasto' || m.type === 'retiro')
+      .reduce((sum, m) => sum + parseFloat(m.amount), 0);
 
-    const openingAmount = cashRegister && cashRegister.openingAmount ? parseFloat(cashRegister.openingAmount) : 0;
-    const currentBalance = openingAmount + salesTotal + incomesTotal - expensesTotal;
+    const currentAmount = parseFloat(cashRegister.openingAmount) + totalIngresos - totalEgresos;
 
-    return res.status(200).json({
-      cashRegister,
-      movements: movements || [],
-      sales: sales || [],
-      summary: {
-        openingAmount,
-        salesTotal,
-        incomesTotal,
-        expensesTotal,
-        currentBalance
+    res.json({
+      success: true,
+      data: {
+        ...cashRegister.toJSON(),
+        movements,
+        totalIngresos,
+        totalEgresos,
+        currentAmount
       }
     });
   } catch (error) {
     console.error('Error al obtener caja actual:', error);
-    return res.status(500).json({ message: 'Error en el servidor' });
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
   }
 };
 
-/**
- * Registrar un nuevo movimiento de caja (ingreso o egreso)
- * @param {Object} req - Objeto de solicitud Express
- * @param {Object} req.body - Datos del movimiento
- * @param {string} req.body.type - Tipo de movimiento ('ingreso' o 'egreso')
- * @param {number} req.body.amount - Monto del movimiento
- * @param {string} req.body.concept - Concepto o razón del movimiento
- * @param {string} [req.body.reference] - Referencia externa (opcional)
- * @param {string} [req.body.notes] - Notas adicionales (opcional)
- * @param {Object} res - Objeto de respuesta Express
- * @returns {Object} Información del movimiento registrado
- */
-exports.registerCashMovement = async (req, res) => {
-  // Iniciar transacción para garantizar la integridad de los datos
-  const transaction = await sequelize.transaction();
-
+// Obtener historial de cajas
+exports.getCashRegisterHistory = async (req, res) => {
   try {
-    const { type, amount, concept, reference, notes } = req.body;
-    const userId = req.userId; // ID del usuario que registra el movimiento
+    const userId = req.user.id;
+    const { page = 1, limit = 10, status } = req.query;
 
-    // Buscar caja abierta
+    const whereClause = { userId };
+    if (status) {
+      whereClause.status = status;
+    }
+
+    const cashRegisters = await CashRegister.findAndCountAll({
+      where: whereClause,
+      include: [
+        {
+          model: User,
+          attributes: ['id', 'username', 'name']
+        }
+      ],
+      order: [['createdAt', 'DESC']],
+      limit: parseInt(limit),
+      offset: (parseInt(page) - 1) * parseInt(limit)
+    });
+
+    res.json({
+      success: true,
+      data: cashRegisters.rows,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: cashRegisters.count,
+        pages: Math.ceil(cashRegisters.count / parseInt(limit))
+      }
+    });
+  } catch (error) {
+    console.error('Error al obtener historial de cajas:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+};
+
+// Agregar movimiento de caja
+exports.addCashMovement = async (req, res) => {
+  try {
+    const { type, amount, description, reference, paymentMethod } = req.body;
+    const userId = req.user.id;
+
+    // Verificar que hay caja abierta
     const cashRegister = await CashRegister.findOne({
-      where: { status: 'abierto' },
-      transaction
+      where: { 
+        userId: userId,
+        status: 'abierta'
+      }
     });
 
     if (!cashRegister) {
-      await transaction.rollback();
-      return res.status(404).json({ message: 'No hay una caja abierta' });
+      return res.status(400).json({
+        success: false,
+        message: 'No hay caja abierta'
+      });
     }
 
     // Crear movimiento
@@ -347,163 +266,86 @@ exports.registerCashMovement = async (req, res) => {
       cashRegisterId: cashRegister.id,
       type,
       amount,
-      concept,
+      description,
       reference,
-      notes,
+      paymentMethod,
       userId
-    }, { transaction });
+    });
 
-    await transaction.commit();
-
-    return res.status(201).json({
+    res.status(201).json({
+      success: true,
       message: 'Movimiento registrado correctamente',
-      movement
+      data: movement
     });
   } catch (error) {
-    await transaction.rollback();
-    console.error('Error al registrar movimiento:', error);
-    return res.status(500).json({ message: 'Error en el servidor' });
+    console.error('Error al agregar movimiento:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
   }
 };
 
-/**
- * Obtener historial de cajas cerradas con filtros opcionales por fecha
- * @param {Object} req - Objeto de solicitud Express
- * @param {Object} req.query - Parámetros de consulta
- * @param {string} [req.query.startDate] - Fecha de inicio para filtrar (opcional)
- * @param {string} [req.query.endDate] - Fecha de fin para filtrar (opcional)
- * @param {number} [req.query.limit=10] - Número máximo de registros a devolver
- * @param {number} [req.query.offset=0] - Número de registros a omitir (para paginación)
- * @param {Object} res - Objeto de respuesta Express
- * @returns {Object} Lista paginada de cajas registradoras cerradas
- */
-exports.getCashRegisterHistory = async (req, res) => {
+// Obtener estadísticas de caja
+exports.getCashRegisterStats = async (req, res) => {
   try {
-    const { startDate, endDate } = req.query; // Fechas para filtrar el historial
-    
-    // Parámetros de paginación
-    const limit = parseInt(req.query.limit) || 10;
-    const offset = parseInt(req.query.offset) || 0;
-    
-    // Construir condiciones de búsqueda
-    const whereConditions = { status: 'cerrado' };
-    
+    const userId = req.user.id;
+    const { startDate, endDate } = req.query;
+
+    const whereClause = { userId };
     if (startDate && endDate) {
-      whereConditions.closingDate = {
-        [sequelize.Op.between]: [new Date(startDate), new Date(endDate)]
-      };
-    } else if (startDate) {
-      whereConditions.closingDate = {
-        [sequelize.Op.gte]: new Date(startDate)
-      };
-    } else if (endDate) {
-      whereConditions.closingDate = {
-        [sequelize.Op.lte]: new Date(endDate)
+      whereClause.createdAt = {
+        [Op.between]: [new Date(startDate), new Date(endDate)]
       };
     }
 
-    // Obtener historial de cajas con paginación
-    const { count, rows: cashRegisters } = await CashRegister.findAndCountAll({
-      where: whereConditions,
+    const cashRegisters = await CashRegister.findAll({
+      where: whereClause,
       include: [
-        { model: User, as: 'openedByUser', attributes: ['id', 'username'] },
-        { model: User, as: 'closedByUser', attributes: ['id', 'username'] }
-      ],
-      order: [['closingDate', 'DESC']],
-      limit,
-      offset,
-      // Seleccionar solo los campos necesarios para mejorar rendimiento
-      attributes: [
-        'id', 'openingDate', 'closingDate', 'openingAmount', 'expectedAmount',
-        'actualAmount', 'difference', 'status', 'openedBy', 'closedBy', 'notes'
+        {
+          model: CashMovement,
+          as: 'movements'
+        }
       ]
     });
 
-    return res.status(200).json({
-      total: count,
-      offset,
-      limit,
-      cashRegisters
+    // Calcular estadísticas
+    const totalCajas = cashRegisters.length;
+    const cajasAbiertas = cashRegisters.filter(cr => cr.status === 'abierta').length;
+    const cajasCerradas = cashRegisters.filter(cr => cr.status === 'cerrada').length;
+
+    const totalIngresos = cashRegisters.reduce((sum, cr) => {
+      const ingresos = cr.movements
+        .filter(m => m.type === 'ingreso' || m.type === 'venta')
+        .reduce((s, m) => s + parseFloat(m.amount), 0);
+      return sum + ingresos;
+    }, 0);
+
+    const totalEgresos = cashRegisters.reduce((sum, cr) => {
+      const egresos = cr.movements
+        .filter(m => m.type === 'egreso' || m.type === 'gasto' || m.type === 'retiro')
+        .reduce((s, m) => s + parseFloat(m.amount), 0);
+      return sum + egresos;
+    }, 0);
+
+    res.json({
+      success: true,
+      data: {
+        totalCajas,
+        cajasAbiertas,
+        cajasCerradas,
+        totalIngresos,
+        totalEgresos,
+        balance: totalIngresos - totalEgresos
+      }
     });
   } catch (error) {
-    console.error('Error al obtener historial de cajas:', error);
-    return res.status(500).json({ message: 'Error en el servidor' });
-  }
-};
-
-/**
- * Obtener detalles de una caja específica
- * @param {Object} req - Objeto de solicitud Express
- * @param {Object} res - Objeto de respuesta Express
- * @returns {Object} Detalles de la caja, movimientos y ventas asociadas
- */
-exports.getCashRegisterDetails = async (req, res) => {
-  try {
-    const { id } = req.params;
-    
-    // Verificar que el ID sea válido
-    if (!id || isNaN(parseInt(id))) {
-      return res.status(400).json({ message: 'ID de caja inválido' });
-    }
-
-    // Buscar la caja por ID con información de usuarios relacionados
-    const cashRegister = await CashRegister.findByPk(id, {
-      include: [
-        { model: User, as: 'openedByUser', attributes: ['id', 'username'] },
-        { model: User, as: 'closedByUser', attributes: ['id', 'username'] }
-      ]
-    }).catch(err => {
-      console.error('Error al buscar caja por ID:', err);
-      return null;
+    console.error('Error al obtener estadísticas:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
     });
-
-    // Si no se encuentra la caja, devolver error 404
-    if (!cashRegister) {
-      return res.status(404).json({ message: 'Caja no encontrada' });
-    }
-
-    // Obtener movimientos de la caja con manejo de errores
-    let movements = [];
-    try {
-      movements = await CashMovement.findAll({
-        where: { cashRegisterId: id },
-        include: [{ model: User, as: 'registeredBy', attributes: ['id', 'username'] }],
-        order: [['createdAt', 'DESC']]
-      }) || [];
-    } catch (err) {
-      console.error('Error al obtener movimientos de caja:', err);
-      movements = [];
-    }
-
-    // Obtener ventas durante el período de la caja
-    let sales = [];
-    try {
-      sales = await Sale.findAll({
-        where: {
-          status: 'pagado',
-          createdAt: {
-            [Op.between]: [
-              cashRegister.openingDate,
-              cashRegister.closingDate || new Date()
-            ]
-          }
-        },
-        include: [{ model: User, as: 'seller', attributes: ['id', 'username'] }],
-        order: [['createdAt', 'DESC']]
-      }) || [];
-    } catch (err) {
-      console.error('Error al obtener ventas de caja:', err);
-      sales = [];
-    }
-
-    // Formatear la respuesta con los datos obtenidos
-    return res.status(200).json({
-      cashRegister,
-      movements: movements || [],
-      sales: sales || []
-    });
-  } catch (error) {
-    console.error('Error al obtener detalles de caja:', error);
-    return res.status(500).json({ message: 'Error en el servidor' });
   }
 };

@@ -63,9 +63,9 @@ exports.getUserNotifications = async (req, res) => {
     let userModel;
 
     // Determinar el modelo de usuario según el rol
-    if (req.user.role === 'admin') {
+    if (req.user.role === 'admin' || req.user.role === 'vendedor') {
       userModel = 'User';
-    } else if (req.user.role === 'client') {
+    } else if (req.user.role === 'cliente') {
       userModel = 'Client';
     } else if (req.user.role === 'repartidor') {
       userModel = 'DeliveryPerson';
@@ -74,8 +74,7 @@ exports.getUserNotifications = async (req, res) => {
     }
 
     // Buscar notificaciones por userId como string para evitar problemas de conversión
-    // Usar idString si está disponible, de lo contrario convertir userId a string
-    const userIdString = req.user.idString || userId.toString();
+    const userIdString = userId.toString();
     
     const notifications = await Notification.find({ 
       userId: userIdString,
@@ -96,7 +95,7 @@ exports.markAsRead = async (req, res) => {
   try {
     const notificationId = req.params.id;
     const userId = req.user.id;
-    const userIdString = req.user.idString || userId.toString();
+    const userIdString = userId.toString();
 
     const notification = await Notification.findById(notificationId);
 
@@ -105,7 +104,6 @@ exports.markAsRead = async (req, res) => {
     }
 
     // Verificar que la notificación pertenece al usuario
-    // Convertir ambos a string para comparación segura
     const notificationUserId = notification.userId.toString ? notification.userId.toString() : notification.userId;
     if (notificationUserId !== userIdString && req.user.role !== 'admin') {
       return res.status(403).json({ message: 'No autorizado para marcar esta notificación como leída' });
@@ -125,13 +123,13 @@ exports.markAsRead = async (req, res) => {
 exports.markAllAsRead = async (req, res) => {
   try {
     const userId = req.user.id;
-    const userIdString = req.user.idString || userId.toString();
+    const userIdString = userId.toString();
     let userModel;
 
     // Determinar el modelo de usuario según el rol
-    if (req.user.role === 'admin') {
+    if (req.user.role === 'admin' || req.user.role === 'vendedor') {
       userModel = 'User';
-    } else if (req.user.role === 'client') {
+    } else if (req.user.role === 'cliente') {
       userModel = 'Client';
     } else if (req.user.role === 'repartidor') {
       userModel = 'DeliveryPerson';
@@ -162,7 +160,7 @@ exports.deleteNotification = async (req, res) => {
   try {
     const notificationId = req.params.id;
     const userId = req.user.id;
-    const userIdString = req.user.idString || userId.toString();
+    const userIdString = userId.toString();
 
     const notification = await Notification.findById(notificationId);
 
@@ -171,7 +169,6 @@ exports.deleteNotification = async (req, res) => {
     }
 
     // Verificar que la notificación pertenece al usuario o es administrador
-    // Convertir userId a string para comparación segura
     const notificationUserId = notification.userId.toString ? notification.userId.toString() : notification.userId;
     if (notificationUserId !== userIdString && req.user.role !== 'admin') {
       return res.status(403).json({ message: 'No autorizado para eliminar esta notificación' });

@@ -31,6 +31,27 @@ const Product = sequelize.define('Product', {
     type: DataTypes.INTEGER,
     allowNull: true
   },
+  // Precios de mayoreo adicionales
+  wholesalePrice2: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: true,
+    comment: 'Segundo nivel de precio de mayoreo'
+  },
+  wholesaleMinQuantity2: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Cantidad mínima para segundo nivel de mayoreo'
+  },
+  wholesalePrice3: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: true,
+    comment: 'Tercer nivel de precio de mayoreo'
+  },
+  wholesaleMinQuantity3: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: 'Cantidad mínima para tercer nivel de mayoreo'
+  },
   stock: {
     type: DataTypes.INTEGER,
     allowNull: false,

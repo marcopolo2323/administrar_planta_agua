@@ -1,34 +1,33 @@
 const express = require('express');
 const router = express.Router();
 const deliveryPersonController = require('../controllers/deliveryPerson.controller');
-const { verifyToken } = require('../middlewares/auth.middleware');
-const roleMiddleware = require('../middlewares/role.middleware');
+const { authMiddleware, requireAdmin, requireDelivery } = require('../middlewares/auth.middleware');
 
 // Rutas para administradores
 // Crear un nuevo repartidor
-router.post('/', verifyToken, roleMiddleware.isAdmin, deliveryPersonController.createDeliveryPerson);
+router.post('/', authMiddleware, requireAdmin, deliveryPersonController.createDeliveryPerson);
 
 // Obtener todos los repartidores
-router.get('/', verifyToken, roleMiddleware.isAdmin, deliveryPersonController.getAllDeliveryPersons);
+router.get('/', authMiddleware, requireAdmin, deliveryPersonController.getAllDeliveryPersons);
 
 // Obtener un repartidor por ID
-router.get('/:id', verifyToken, roleMiddleware.isAdmin, deliveryPersonController.getDeliveryPersonById);
+router.get('/:id', authMiddleware, requireAdmin, deliveryPersonController.getDeliveryPersonById);
 
 // Actualizar un repartidor
-router.put('/:id', verifyToken, roleMiddleware.isAdmin, deliveryPersonController.updateDeliveryPerson);
+router.put('/:id', authMiddleware, requireAdmin, deliveryPersonController.updateDeliveryPerson);
 
 // Desactivar un repartidor
-router.delete('/:id', verifyToken, roleMiddleware.isAdmin, deliveryPersonController.deactivateDeliveryPerson);
+router.delete('/:id', authMiddleware, requireAdmin, deliveryPersonController.deactivateDeliveryPerson);
 
 // Actualizar estado de disponibilidad (admin puede cambiar el estado de cualquier repartidor)
-router.put('/:id/status', verifyToken, roleMiddleware.isAdmin, deliveryPersonController.updateDeliveryPersonStatus);
+router.put('/:id/status', authMiddleware, requireAdmin, deliveryPersonController.updateDeliveryPersonStatus);
 
 // Obtener pedidos asignados a un repartidor específico (para administradores)
-router.get('/:id/orders', verifyToken, roleMiddleware.isAdmin, deliveryPersonController.getDeliveryPersonOrders);
+router.get('/:id/orders', authMiddleware, requireAdmin, deliveryPersonController.getDeliveryPersonOrders);
 
 // Rutas para repartidores
 // Obtener perfil propio del repartidor
-router.get('/profile/me', verifyToken, roleMiddleware.isDeliveryPerson, async (req, res) => {
+router.get('/profile/me', authMiddleware, requireDelivery, async (req, res) => {
   try {
     // Buscar el repartidor asociado al usuario autenticado
     const deliveryPerson = await require('../models').DeliveryPerson.findOne({
@@ -51,7 +50,7 @@ router.get('/profile/me', verifyToken, roleMiddleware.isDeliveryPerson, async (r
 });
 
 // Actualizar estado de disponibilidad propio (solo su propio estado)
-router.put('/profile/status', verifyToken, roleMiddleware.isDeliveryPerson, async (req, res) => {
+router.put('/profile/status', authMiddleware, requireDelivery, async (req, res) => {
   try {
     const { status } = req.body;
 
@@ -87,7 +86,7 @@ router.put('/profile/status', verifyToken, roleMiddleware.isDeliveryPerson, asyn
 });
 
 // Obtener pedidos asignados al repartidor autenticado
-router.get('/profile/orders', verifyToken, roleMiddleware.isDeliveryPerson, async (req, res) => {
+router.get('/profile/orders', authMiddleware, requireDelivery, async (req, res) => {
   try {
     // Buscar el repartidor asociado al usuario autenticado
     const deliveryPerson = await require('../models').DeliveryPerson.findOne({

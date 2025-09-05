@@ -1,4 +1,5 @@
 const { Product } = require('../models');
+const { calculateProductPrice, getWholesalePricingInfo } = require('../utils/pricing.utils');
 
 // Obtener todos los productos
 exports.getAllProducts = async (req, res) => {
@@ -141,6 +142,65 @@ exports.updateStock = async (req, res) => {
     });
   } catch (error) {
     console.error('Error al actualizar stock:', error);
+    return res.status(500).json({ message: 'Error en el servidor' });
+  }
+};
+
+// Calcular precio de un producto según la cantidad
+exports.calculatePrice = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { quantity } = req.body;
+
+    if (!quantity || quantity < 1) {
+      return res.status(400).json({ message: 'La cantidad debe ser mayor a 0' });
+    }
+
+    const product = await Product.findByPk(id);
+    if (!product) {
+      return res.status(404).json({ message: 'Producto no encontrado' });
+    }
+
+    const pricing = calculateProductPrice(product, quantity);
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        productId: product.id,
+        productName: product.name,
+        quantity: quantity,
+        pricing: pricing,
+        pricingInfo: getWholesalePricingInfo(product)
+      }
+    });
+  } catch (error) {
+    console.error('Error al calcular precio:', error);
+    return res.status(500).json({ message: 'Error en el servidor' });
+  }
+};
+
+// Obtener información de precios de mayoreo de un producto
+exports.getPricingInfo = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const product = await Product.findByPk(id);
+    if (!product) {
+      return res.status(404).json({ message: 'Producto no encontrado' });
+    }
+
+    const pricingInfo = getWholesalePricingInfo(product);
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        productId: product.id,
+        productName: product.name,
+        pricingInfo: pricingInfo
+      }
+    });
+  } catch (error) {
+    console.error('Error al obtener información de precios:', error);
     return res.status(500).json({ message: 'Error en el servidor' });
   }
 };

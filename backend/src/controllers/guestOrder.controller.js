@@ -8,6 +8,16 @@ exports.createGuestOrder = async (req, res) => {
   try {
     const { guestName, guestPhone, guestEmail, products, shippingAddress, paymentMethod, deliveryDistrict, deliveryFee } = req.body;
     
+    console.log('Datos recibidos:', {
+      guestName,
+      guestPhone,
+      guestEmail,
+      products: products?.length,
+      shippingAddress,
+      deliveryDistrict,
+      deliveryFee
+    });
+    
     // Validar datos del cliente invitado
     if (!guestName || !guestPhone || !guestEmail) {
       return res.status(400).json({ message: 'Nombre, teléfono y correo son obligatorios' });
@@ -102,8 +112,27 @@ exports.createGuestOrder = async (req, res) => {
       orderTotal += unitPrice * item.quantity;
     }
     
-    // Actualizar el total del pedido
-    await order.update({ total: orderTotal }, { transaction: t });
+    // Calcular el deliveryFee si no se proporciona
+    const finalDeliveryFee = deliveryFee || 0;
+    const finalTotal = orderTotal + finalDeliveryFee;
+    
+    console.log('Cálculos:', {
+      orderTotal,
+      deliveryFee: finalDeliveryFee,
+      finalTotal
+    });
+    
+    // Actualizar el total del pedido (incluyendo costo de envío)
+    await order.update({ 
+      total: finalTotal,
+      subtotal: orderTotal,
+      deliveryFee: finalDeliveryFee
+    }, { transaction: t });
+    
+    // Actualizar el objeto order para la respuesta
+    order.subtotal = orderTotal;
+    order.total = finalTotal;
+    order.deliveryFee = finalDeliveryFee;
     
     await t.commit();
     

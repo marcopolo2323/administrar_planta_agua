@@ -1,12 +1,19 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
-const User = require('./user.model');
 
 const CashRegister = sequelize.define('CashRegister', {
   id: {
     type: DataTypes.INTEGER,
     primaryKey: true,
     autoIncrement: true
+  },
+  userId: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: 'Users',
+      key: 'id'
+    }
   },
   openingDate: {
     type: DataTypes.DATE,
@@ -20,13 +27,13 @@ const CashRegister = sequelize.define('CashRegister', {
   openingAmount: {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: false,
-    defaultValue: 0
+    defaultValue: 0.00
   },
-  expectedAmount: {
+  closingAmount: {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: true
   },
-  actualAmount: {
+  expectedAmount: {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: true
   },
@@ -35,19 +42,17 @@ const CashRegister = sequelize.define('CashRegister', {
     allowNull: true
   },
   status: {
-    type: DataTypes.ENUM('abierto', 'cerrado'),
-    defaultValue: 'abierto'
+    type: DataTypes.ENUM('abierta', 'cerrada'),
+    allowNull: false,
+    defaultValue: 'abierta'
   },
   notes: {
     type: DataTypes.TEXT,
     allowNull: true
   }
 }, {
+  tableName: 'CashRegisters',
   timestamps: true
 });
-
-// Relaciones
-CashRegister.belongsTo(User, { foreignKey: 'openedBy', as: 'openedByUser' });
-CashRegister.belongsTo(User, { foreignKey: 'closedBy', as: 'closedByUser' });
 
 module.exports = CashRegister;

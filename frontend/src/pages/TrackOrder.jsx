@@ -1,420 +1,404 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link as RouterLink } from 'react-router-dom';
 import {
   Box,
   Button,
-  Container,
-  Heading,
-  Text,
-  Stack,
-  Alert,
-  AlertIcon,
-  AlertTitle,
-  AlertDescription,
-  Spinner,
   Card,
   CardBody,
-  Divider,
-  Badge,
-  Grid,
+  CardHeader,
   Flex,
-  Link,
-  Table,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td,
-  Tabs,
-  TabList,
-  TabPanels,
-  Tab,
-  TabPanel,
+  Heading,
+  Text,
   VStack,
   HStack,
-  Image,
-  FormControl,
-  FormLabel,
-  Input
+  Input,
+  InputGroup,
+  InputLeftElement,
+  Alert,
+  AlertIcon,
+  Spinner,
+  Center,
+  useBreakpointValue,
+  Divider,
+  useToast,
+  Badge,
+  Progress,
+  SimpleGrid
 } from '@chakra-ui/react';
-import { CheckIcon } from '@chakra-ui/icons';
-import axios from 'axios';
+import { useNavigate, useParams } from 'react-router-dom';
+import { FaSearch, FaTruck, FaCheck, FaClock, FaTimes, FaHome } from 'react-icons/fa';
+import useOrderStore from '../stores/orderStore';
 
 const TrackOrder = () => {
+  const navigate = useNavigate();
   const { id } = useParams();
-  const [order, setOrder] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
-  const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const toast = useToast();
+  const isMobile = useBreakpointValue({ base: true, md: false });
 
-  // Función para redirigir a la página de selección de método de pago
-  const handlePayment = () => {
-    // Redirigir a la página de selección de método de pago
-    window.location.href = `/payment-method/${id}`;
-  };
+  // Store
+  const { getOrderById, fetchOrders } = useOrderStore();
+
+  // Estados locales
+  const [order, setOrder] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [searchId, setSearchId] = useState(id || '');
+  const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
-    const fetchOrder = async () => {
-      try {
-        const response = await axios.get(`/api/guest-orders/track/${id}`);
-        setOrder(response.data);
-        setLoading(false);
-      } catch (err) {
-        setError('No se pudo encontrar el pedido. Verifique el número de pedido e intente nuevamente.');
-        setLoading(false);
-      }
-    };
-
     if (id) {
-      fetchOrder();
+      loadOrder(id);
     }
   }, [id]);
 
-  // Función para mostrar el estado del pedido con color
-  const getStatusBadge = (status) => {
-    let colorScheme = 'gray';
+  const loadOrder = async (orderId) => {
+    setLoading(true);
+    setNotFound(false);
     
-    switch (status.toLowerCase()) {
+    try {
+      // Primero intentar buscar en el store
+      let orderData = getOrderById(parseInt(orderId));
+      
+      if (!orderData) {
+        // Si no está en el store, cargar todos los pedidos
+        await fetchOrders();
+        orderData = getOrderById(parseInt(orderId));
+      }
+      
+      if (orderData) {
+        setOrder(orderData);
+      } else {
+        setNotFound(true);
+      }
+    } catch (error) {
+      console.error('Error al cargar pedido:', error);
+      setNotFound(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSearch = () => {
+    if (!searchId.trim()) {
+      toast({
+        title: 'ID requerido',
+        description: 'Ingresa un número de pedido',
+        status: 'warning',
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+    loadOrder(searchId.trim());
+  };
+
+  const getStatusInfo = (status) => {
+    switch (status) {
       case 'pendiente':
-        colorScheme = 'yellow';
-        break;
-      case 'en proceso':
-      case 'procesando':
-        colorScheme = 'blue';
-        break;
-      case 'en camino':
-      case 'enviado':
-        colorScheme = 'purple';
-        break;
+        return {
+          color: 'yellow',
+          text: 'Pendiente',
+          icon: FaClock,
+          description: 'Tu pedido está siendo procesado'
+        };
+      case 'confirmado':
+        return {
+          color: 'blue',
+          text: 'Confirmado',
+          icon: FaCheck,
+          description: 'Tu pedido ha sido confirmado'
+        };
+      case 'en_preparacion':
+        return {
+          color: 'orange',
+          text: 'En Preparación',
+          icon: FaTruck,
+          description: 'Tu pedido está siendo preparado'
+        };
+      case 'en_camino':
+        return {
+          color: 'purple',
+          text: 'En Camino',
+          icon: FaTruck,
+          description: 'Tu pedido está en camino'
+        };
       case 'entregado':
-      case 'completado':
-        colorScheme = 'green';
-        break;
+        return {
+          color: 'green',
+          text: 'Entregado',
+          icon: FaCheck,
+          description: 'Tu pedido ha sido entregado'
+        };
       case 'cancelado':
-        colorScheme = 'red';
-        break;
+        return {
+          color: 'red',
+          text: 'Cancelado',
+          icon: FaTimes,
+          description: 'Tu pedido ha sido cancelado'
+        };
       default:
-        colorScheme = 'gray';
+        return {
+          color: 'gray',
+          text: status,
+          icon: FaClock,
+          description: 'Estado desconocido'
+        };
     }
-    
-    return <Badge colorScheme={colorScheme} fontSize="0.9em" p={1}>{status}</Badge>;
   };
 
-  // Función para mostrar el estado del pago con color
-  const getPaymentStatusBadge = (status) => {
-    let colorScheme = 'gray';
-    
-    switch (status.toLowerCase()) {
+  const getProgressValue = (status) => {
+    switch (status) {
       case 'pendiente':
-        colorScheme = 'yellow';
-        break;
-      case 'pagado':
-      case 'completado':
-        colorScheme = 'green';
-        break;
-      case 'rechazado':
-      case 'fallido':
-        colorScheme = 'red';
-        break;
+        return 20;
+      case 'confirmado':
+        return 40;
+      case 'en_preparacion':
+        return 60;
+      case 'en_camino':
+        return 80;
+      case 'entregado':
+        return 100;
+      case 'cancelado':
+        return 0;
       default:
-        colorScheme = 'gray';
+        return 0;
     }
-    
-    return <Badge colorScheme={colorScheme} fontSize="0.9em" p={1}>{status}</Badge>;
   };
 
-  // Si está cargando
+  const getStatusSteps = () => {
+    return [
+      { key: 'pendiente', label: 'Pendiente', description: 'Pedido recibido' },
+      { key: 'confirmado', label: 'Confirmado', description: 'Pedido confirmado' },
+      { key: 'en_preparacion', label: 'En Preparación', description: 'Preparando pedido' },
+      { key: 'en_camino', label: 'En Camino', description: 'Enviando pedido' },
+      { key: 'entregado', label: 'Entregado', description: 'Pedido entregado' }
+    ];
+  };
+
   if (loading) {
     return (
-      <Container maxW="container.md" py={8} centerContent>
+      <Center h="400px">
         <Spinner size="xl" />
-        <Text mt={4}>Cargando información del pedido...</Text>
-      </Container>
-    );
-  }
-
-  // Si hay un error
-  if (error) {
-    return (
-      <Container maxW="container.md" py={8}>
-        <Alert status="error">
-          <AlertIcon />
-          <Box>
-            <AlertTitle>Error al buscar el pedido</AlertTitle>
-            <AlertDescription>{error}</AlertDescription>
-          </Box>
-        </Alert>
-        <Button as={RouterLink} to="/" mt={4} colorScheme="blue">
-          Volver al inicio
-        </Button>
-      </Container>
-    );
-  }
-
-  // Si no se encontró el pedido
-  if (!order) {
-    return (
-      <Container maxW="container.md" py={8}>
-        <Alert status="warning">
-          <AlertIcon />
-          <Box>
-            <AlertTitle>Pedido no encontrado</AlertTitle>
-            <AlertDescription>
-              No pudimos encontrar un pedido con el número {id}. Por favor, verifique el número e intente nuevamente.
-            </AlertDescription>
-          </Box>
-        </Alert>
-        <Button as={RouterLink} to="/" mt={4} colorScheme="blue">
-          Volver al inicio
-        </Button>
-      </Container>
+      </Center>
     );
   }
 
   return (
-    <Container maxW="container.lg" py={8}>
-      <Card mb={6}>
-        <CardBody>
-          <Flex justify="space-between" align="center" mb={4}>
-            <Heading size="lg">Pedido #{order.id}</Heading>
-            <Box>
-              <Text fontWeight="bold" mb={2}>Estado del pedido:</Text>
-              {getStatusBadge(order.status)}
-            </Box>
-          </Flex>
-          
-          <Divider mb={4} />
-          
-          <Grid templateColumns={{ base: "1fr", md: "1fr 1fr" }} gap={6}>
-            {/* Información del cliente */}
-            <Box>
-              <Heading size="md" mb={3}>Información de contacto</Heading>
-              <Stack spacing={2}>
-                <Text><strong>Nombre:</strong> {order.guestOrder?.guestName}</Text>
-                <Text><strong>Teléfono:</strong> {order.guestOrder?.guestPhone}</Text>
-                <Text><strong>Email:</strong> {order.guestOrder?.guestEmail}</Text>
-              </Stack>
-            </Box>
-            
-            {/* Información del pedido */}
-            <Box>
-              <Heading size="md" mb={3}>Detalles del pedido</Heading>
-              <Stack spacing={2}>
-                <Text><strong>Fecha:</strong> {new Date(order.orderDate).toLocaleDateString()}</Text>
-                <Text><strong>Método de pago:</strong> {order.paymentMethod}</Text>
-                <Text>
-                  <strong>Estado de pago:</strong> {getPaymentStatusBadge(order.paymentStatus)}
+    <Box minH="100vh" bg="gray.50" py={8}>
+      <Box maxW="800px" mx="auto" px={4}>
+        <VStack spacing={8}>
+          {/* Header */}
+          <Box textAlign="center">
+            <Heading size="xl" color="blue.600" mb={2}>
+              Seguimiento de Pedido
+            </Heading>
+            <Text color="gray.600" fontSize="lg">
+              Consulta el estado de tu pedido
+            </Text>
+          </Box>
+
+          {/* Búsqueda */}
+          <Card w="full">
+            <CardHeader>
+              <Heading size="md" color="gray.700">
+                Buscar Pedido
+              </Heading>
+            </CardHeader>
+            <CardBody>
+              <HStack spacing={4}>
+                <InputGroup flex={1}>
+                  <InputLeftElement pointerEvents="none">
+                    <FaSearch color="gray.300" />
+                  </InputLeftElement>
+                  <Input
+                    placeholder="Ingresa el número de pedido"
+                    value={searchId}
+                    onChange={(e) => setSearchId(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                  />
+                </InputGroup>
+                <Button
+                  colorScheme="blue"
+                  onClick={handleSearch}
+                  isLoading={loading}
+                  loadingText="Buscando..."
+                >
+                  Buscar
+                </Button>
+              </HStack>
+            </CardBody>
+          </Card>
+
+          {/* Resultado de búsqueda */}
+          {notFound && (
+            <Alert status="error" borderRadius="md">
+              <AlertIcon />
+              <Box>
+                <Text fontWeight="bold">Pedido no encontrado</Text>
+                <Text fontSize="sm">
+                  Verifica que el número de pedido sea correcto
                 </Text>
-              </Stack>
-            </Box>
-          </Grid>
-          
-          <Box mt={6}>
-            <Heading size="md" mb={3}>Dirección de entrega</Heading>
-            <Text><strong>Dirección:</strong> {order.deliveryAddress}</Text>
-            <Text><strong>Distrito:</strong> {order.deliveryDistrict}</Text>
-            <Text><strong>Teléfono de contacto:</strong> {order.contactPhone}</Text>
-          </Box>
-        </CardBody>
-      </Card>
-      
-      {/* Productos del pedido */}
-      <Card>
-        <CardBody>
-          <Heading size="md" mb={4}>Productos</Heading>
-          
-          <Table variant="simple">
-            <Thead>
-              <Tr>
-                <Th>Producto</Th>
-                <Th isNumeric>Precio</Th>
-                <Th isNumeric>Cantidad</Th>
-                <Th isNumeric>Subtotal</Th>
-              </Tr>
-            </Thead>
-            <Tbody>
-              {order.orderDetails?.map((detail) => (
-                <Tr key={detail.id}>
-                  <Td>{detail.product?.name}</Td>
-                  <Td isNumeric>S/ {parseFloat(detail.unitPrice || 0).toFixed(2)}</Td>
-                  <Td isNumeric>{detail.quantity}</Td>
-                  <Td isNumeric>S/ {parseFloat(detail.subtotal || 0).toFixed(2)}</Td>
-                </Tr>
-              ))}
-              {/* Fila de flete/costo de envío */}
-              {order.deliveryFee > 0 && (
-                <Tr>
-                  <Td colSpan={3} fontWeight="bold">Flete / Costo de envío</Td>
-                  <Td isNumeric fontWeight="bold">S/ {parseFloat(order.deliveryFee || 0).toFixed(2)}</Td>
-                </Tr>
-              )}
-              <Tr>
-                <Td colSpan={3} fontWeight="bold">Total</Td>
-                <Td isNumeric fontWeight="bold">S/ {parseFloat(order.total || 0).toFixed(2)}</Td>
-              </Tr>
-            </Tbody>
-          </Table>
-          
-          <Box mt={6}>
-            {order.paymentStatus === 'pendiente' ? (
-              <>
-                <Heading size="md" mb={4}>Opciones de Pago</Heading>
-                {paymentSuccess ? (
-                  <Alert status="success" mb={4}>
-                    <AlertIcon />
-                    <Box>
-                      <AlertTitle>¡Pago procesado exitosamente!</AlertTitle>
-                      <AlertDescription>
-                        Gracias por su compra. Su pedido será procesado a la brevedad.
-                      </AlertDescription>
-                    </Box>
-                  </Alert>
-                ) : (
-                  <Tabs variant="enclosed" colorScheme="blue" mb={4}>
-                  <TabList>
-                    <Tab>Yape</Tab>
-                    <Tab>Tarjeta</Tab>
-                    <Tab>Efectivo</Tab>
-                  </TabList>
-                  
-                  <TabPanels>
-                    {/* Panel de Yape */}
-                    <TabPanel>
-                      <VStack spacing={4} align="stretch">
-                        <Alert status="info" borderRadius="md">
-                          <AlertIcon />
-                          <Box>
-                            <AlertTitle>Pago con Yape</AlertTitle>
-                            <AlertDescription>
-                              Escanea el código QR o envía el pago al número indicado.
-                            </AlertDescription>
-                          </Box>
-                        </Alert>
+              </Box>
+            </Alert>
+          )}
+
+          {/* Información del pedido */}
+          {order && (
+            <Card w="full">
+              <CardHeader>
+                <Flex justify="space-between" align="center" wrap="wrap" gap={4}>
+                  <VStack align="start" spacing={1}>
+                    <Heading size="md" color="gray.700">
+                      Pedido #{order.id}
+                    </Heading>
+                    <Text fontSize="sm" color="gray.500">
+                      {new Date(order.createdAt).toLocaleString()}
+                    </Text>
+                  </VStack>
+                  <Badge colorScheme={getStatusInfo(order.status).color} size="lg">
+                    {getStatusInfo(order.status).text}
+                  </Badge>
+                </Flex>
+              </CardHeader>
+              <CardBody>
+                <VStack spacing={6}>
+                  {/* Estado actual */}
+                  <Box w="full" p={4} bg={`${getStatusInfo(order.status).color}.50`} borderRadius="md">
+                    <HStack spacing={3} mb={3}>
+                      {React.createElement(getStatusInfo(order.status).icon, {
+                        color: `${getStatusInfo(order.status).color}.500`,
+                        size: "24px"
+                      })}
+                      <Text fontWeight="bold" fontSize="lg">
+                        {getStatusInfo(order.status).text}
+                      </Text>
+                    </HStack>
+                    <Text fontSize="sm" color="gray.600">
+                      {getStatusInfo(order.status).description}
+                    </Text>
+                    <Progress
+                      value={getProgressValue(order.status)}
+                      colorScheme={getStatusInfo(order.status).color}
+                      size="sm"
+                      mt={3}
+                    />
+                  </Box>
+
+                  {/* Progreso del pedido */}
+                  <Box w="full">
+                    <Text fontWeight="bold" mb={4} color="gray.700">
+                      Progreso del Pedido
+                    </Text>
+                    <VStack spacing={3}>
+                      {getStatusSteps().map((step, index) => {
+                        const isCompleted = getProgressValue(order.status) > getProgressValue(step.key);
+                        const isCurrent = order.status === step.key;
                         
-                        <Box textAlign="center">
-                          <Image 
-                            src="https://via.placeholder.com/200x200?text=QR+YAPE" 
-                            alt="Código QR Yape" 
-                            maxH="200px" 
-                            mx="auto"
-                            mb={2}
-                          />
-                          <Text fontWeight="bold">Número: 999-999-999</Text>
-                          <Text>A nombre de: Punto de Venta SAC</Text>
-                        </Box>
-                        
-                        <Button 
-                          colorScheme="green" 
-                          leftIcon={<CheckIcon />} 
-                          mt={2} 
-                          onClick={handlePayment}
-                          isLoading={isProcessingPayment}
-                        >
-                          Continuar con Pago Yape
-                        </Button>
-                      </VStack>
-                    </TabPanel>
-                    
-                    {/* Panel de Tarjeta */}
-                    <TabPanel>
-                      <VStack spacing={4} align="stretch">
-                        <Alert status="info" borderRadius="md">
-                          <AlertIcon />
-                          <Box>
-                            <AlertTitle>Pago con Tarjeta</AlertTitle>
-                            <AlertDescription>
-                              Ingresa los datos de tu tarjeta para procesar el pago de forma segura.
-                            </AlertDescription>
-                          </Box>
-                        </Alert>
-                        
-                        <FormControl isRequired>
-                          <FormLabel>Número de Tarjeta</FormLabel>
-                          <Input placeholder="1234 5678 9012 3456" maxLength={16} />
-                        </FormControl>
-                        
-                        <FormControl isRequired>
-                          <FormLabel>Nombre del Titular</FormLabel>
-                          <Input placeholder="Como aparece en la tarjeta" />
-                        </FormControl>
-                        
-                        <HStack spacing={4}>
-                          <FormControl isRequired>
-                            <FormLabel>Fecha de Expiración</FormLabel>
-                            <Input placeholder="MM/YY" maxLength={5} />
-                          </FormControl>
-                          
-                          <FormControl isRequired>
-                            <FormLabel>CVV</FormLabel>
-                            <Input placeholder="123" maxLength={4} type="password" />
-                          </FormControl>
+                        return (
+                          <HStack key={step.key} w="full" spacing={4}>
+                            <Box
+                              w="8"
+                              h="8"
+                              borderRadius="full"
+                              bg={isCompleted ? 'green.500' : isCurrent ? `${getStatusInfo(order.status).color}.500` : 'gray.300'}
+                              display="flex"
+                              alignItems="center"
+                              justifyContent="center"
+                              color="white"
+                              fontWeight="bold"
+                              fontSize="sm"
+                            >
+                              {isCompleted ? <FaCheck /> : index + 1}
+                            </Box>
+                            <VStack align="start" spacing={1} flex={1}>
+                              <Text fontWeight={isCurrent ? 'bold' : 'normal'}>
+                                {step.label}
+                              </Text>
+                              <Text fontSize="sm" color="gray.600">
+                                {step.description}
+                              </Text>
+                            </VStack>
+                          </HStack>
+                        );
+                      })}
+                    </VStack>
+                  </Box>
+
+                  {/* Información del cliente */}
+                  <Box w="full" p={4} bg="gray.50" borderRadius="md">
+                    <Text fontWeight="bold" mb={3} color="gray.700">
+                      Información de Entrega
+                    </Text>
+                    <SimpleGrid columns={{ base: 1, md: 2 }} spacing={3}>
+                      <Box>
+                        <Text fontSize="sm" color="gray.600">Cliente:</Text>
+                        <Text fontWeight="bold">{order.clientName || 'N/A'}</Text>
+                      </Box>
+                      <Box>
+                        <Text fontSize="sm" color="gray.600">Teléfono:</Text>
+                        <Text fontWeight="bold">{order.clientPhone || 'N/A'}</Text>
+                      </Box>
+                      <Box colSpan={{ base: 1, md: 2 }}>
+                        <Text fontSize="sm" color="gray.600">Dirección:</Text>
+                        <Text fontWeight="bold">{order.deliveryAddress || 'N/A'}</Text>
+                      </Box>
+                    </SimpleGrid>
+                  </Box>
+
+                  {/* Productos */}
+                  <Box w="full">
+                    <Text fontWeight="bold" mb={3} color="gray.700">
+                      Productos Solicitados
+                    </Text>
+                    <VStack spacing={2}>
+                      {order.items?.map((item, index) => (
+                        <HStack key={index} justify="space-between" w="full" p={2} bg="gray.50" borderRadius="md">
+                          <Text fontSize="sm">{item.name} x {item.quantity}</Text>
+                          <Text fontSize="sm" fontWeight="bold">
+                            S/ {parseFloat(item.subtotal).toFixed(2)}
+                          </Text>
                         </HStack>
-                        
-                        <Button 
-                          colorScheme="blue" 
-                          leftIcon={<CheckIcon />} 
-                          mt={2} 
-                          onClick={handlePayment}
-                          isLoading={isProcessingPayment}
-                        >
-                          Continuar con Pago con Tarjeta
-                        </Button>
-                      </VStack>
-                    </TabPanel>
-                    
-                    {/* Panel de Efectivo */}
-                    <TabPanel>
-                      <VStack spacing={4} align="stretch">
-                        <Alert status="info" borderRadius="md">
-                          <AlertIcon />
-                          <Box>
-                            <AlertTitle>Pago en Efectivo</AlertTitle>
-                            <AlertDescription>
-                              Paga en efectivo al momento de la entrega.
-                            </AlertDescription>
-                          </Box>
-                        </Alert>
-                        
-                        <Button 
-                          colorScheme="yellow" 
-                          leftIcon={<CheckIcon />} 
-                          mt={2} 
-                          onClick={handlePayment}
-                          isLoading={isProcessingPayment}
-                        >
-                          Continuar con Pago en Efectivo
-                        </Button>
-                      </VStack>
-                    </TabPanel>
-                  </TabPanels>
-                  </Tabs>
-                )}
-              </>
-            ) : (
-              <Alert status="info" mb={4}>
-                <AlertIcon />
-                <Box>
-                  <AlertTitle>Estado de pago: {order.paymentStatus}</AlertTitle>
-                  <AlertDescription>
-                    Método de pago: {order.paymentMethod}
-                  </AlertDescription>
-                </Box>
-              </Alert>
-            )}
-            
-            <Flex justify="center" mt={6}>
-              <Button as={RouterLink} to="/guest-order" colorScheme="blue" mr={4}>
-                Realizar otro pedido
-              </Button>
-              <Button as={RouterLink} to="/" variant="outline">
-                Volver al inicio
-              </Button>
-            </Flex>
-          </Box>
-        </CardBody>
-      </Card>
-    </Container>
+                      )) || (
+                        <Text fontSize="sm" color="gray.500">No hay información de productos</Text>
+                      )}
+                    </VStack>
+                  </Box>
+
+                  {/* Total */}
+                  <Box w="full" p={4} border="1px" borderColor="gray.200" borderRadius="md">
+                    <HStack justify="space-between">
+                      <Text fontWeight="bold" fontSize="lg">Total:</Text>
+                      <Text fontWeight="bold" fontSize="lg" color="blue.600">
+                        S/ {parseFloat(order.total || 0).toFixed(2)}
+                      </Text>
+                    </HStack>
+                  </Box>
+
+                  {/* Botones de acción */}
+                  <HStack spacing={4} w="full">
+                    <Button
+                      leftIcon={<FaHome />}
+                      colorScheme="blue"
+                      onClick={() => navigate('/guest-order')}
+                      flex={1}
+                    >
+                      Nuevo Pedido
+                    </Button>
+                    <Button
+                      leftIcon={<FaTruck />}
+                      colorScheme="green"
+                      variant="outline"
+                      onClick={() => navigate(`/receipt/${order.id}`)}
+                      flex={1}
+                    >
+                      Ver Recibo
+                    </Button>
+                  </HStack>
+                </VStack>
+              </CardBody>
+            </Card>
+          )}
+        </VStack>
+      </Box>
+    </Box>
   );
 };
 

@@ -151,9 +151,10 @@ exports.createGuestPayment = async (req, res) => {
       
       const pdfPath = await documentGeneratorService.generateDocumentPDF(orderData, documentType, invoiceDataObj);
       
-      // Guardar la ruta del PDF en el registro de pago
+      // Guardar solo el nombre del archivo en el registro de pago
+      const fileName = pdfPath.split('\\').pop() || pdfPath.split('/').pop();
       await payment.update({
-        documentPath: pdfPath
+        documentPath: fileName
       }, { transaction: t });
     } catch (pdfError) {
       console.error('Error al generar el PDF:', pdfError);

@@ -56,10 +56,10 @@ exports.register = async (req, res) => {
 // Inicio de sesión
 exports.login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { username, password } = req.body;
 
-    // Buscar usuario por email
-    const user = await User.findOne({ where: { email } });
+    // Buscar usuario por username
+    const user = await User.findOne({ where: { username } });
     if (!user) {
       return res.status(404).json({ message: 'Usuario no encontrado' });
     }
@@ -78,8 +78,8 @@ exports.login = async (req, res) => {
     // Generar token JWT
     const token = jwt.sign(
       { id: user.id, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRATION }
+      process.env.JWT_SECRET || 'tu_clave_secreta_muy_segura_aqui_2024',
+      { expiresIn: process.env.JWT_EXPIRATION || '24h' }
     );
 
     return res.status(200).json({

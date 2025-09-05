@@ -2,859 +2,532 @@ import React, { useState, useEffect } from 'react';
 import {
   Box,
   Button,
-  Container,
-  Flex,
-  FormControl,
-  FormLabel,
-  Grid,
-  Heading,
-  Input,
-  Stack,
-  Text,
-  Image,
-  useToast,
   Card,
   CardBody,
-  Divider,
-  Badge,
-  IconButton,
+  CardHeader,
+  Flex,
+  Heading,
+  Text,
+  VStack,
+  HStack,
+  Input,
+  FormControl,
+  FormLabel,
+  NumberInput,
+  NumberInputField,
+  NumberInputStepper,
+  NumberIncrementStepper,
+  NumberDecrementStepper,
+  Select,
   Textarea,
   Alert,
   AlertIcon,
-  AlertTitle,
-  AlertDescription,
-  Link,
-  InputGroup,
-  InputLeftElement,
-  Select
+  Spinner,
+  Center,
+  SimpleGrid,
+  useBreakpointValue,
+  Badge,
+  Divider,
+  useToast
 } from '@chakra-ui/react';
-import { FaPlus, FaMinus, FaTrash, FaUser, FaPhone, FaEnvelope, FaMapMarkerAlt, FaShoppingCart } from 'react-icons/fa';
-import axios from 'axios';
-import { Link as RouterLink } from 'react-router-dom';
-import DeliveryFeeService from '../services/DeliveryFeeService';
+import { useNavigate } from 'react-router-dom';
+import { FaShoppingCart, FaTruck, FaMapMarkerAlt, FaPhone, FaUser } from 'react-icons/fa';
+import useProductStore from '../stores/productStore';
+import useDeliveryStore from '../stores/deliveryStore';
 
 const GuestOrder = () => {
-  const [products, setProducts] = useState([]);
-  const [cart, setCart] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [guestInfo, setGuestInfo] = useState({
-    guestName: '',
-    guestPhone: '',
-    guestEmail: '',
-    shippingAddress: '',
-    deliveryDistrict: ''
-  });
-  
-  const [deliveryFee, setDeliveryFee] = useState(0);
-  const [documentNumber, setDocumentNumber] = useState('');
-  const [searchingClient, setSearchingClient] = useState(false);
-  const [orderSuccess, setOrderSuccess] = useState(false);
-  const [orderId, setOrderId] = useState(null);
+  const navigate = useNavigate();
   const toast = useToast();
+  const isMobile = useBreakpointValue({ base: true, md: false });
 
-  // Lista de distritos con sus tarifas de envío
-  // Estado para almacenar los distritos y sus tarifas de envío
-  const [districts, setDistricts] = useState([
-    { name: 'San Isidro', deliveryFee: 0 },
-    { name: 'Miraflores', deliveryFee: 5 },
-    { name: 'San Borja', deliveryFee: 5 },
-    { name: 'San Miguel', deliveryFee: 8 },
-    { name: 'Surco', deliveryFee: 8 },
-    { name: 'La Molina', deliveryFee: 10 },
-    { name: 'Callao', deliveryFee: 12 },
-    { name: 'Otros', deliveryFee: 15 }
-  ]);
-  const [loadingDistricts, setLoadingDistricts] = useState(true);
+  // Stores
+  const { products, fetchProducts, calculatePrice } = useProductStore();
+  const { deliveryFees, fetchDeliveryFees } = useDeliveryStore();
 
-  // Función para buscar cliente por número de documento
-  const searchClientByDocument = async () => {
-    if (!documentNumber) {
+  // Estados locales
+  const [cart, setCart] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [calculatingPrice, setCalculatingPrice] = useState(false);
+
+  // Datos del cliente visitante
+  const [clientData, setClientData] = useState({
+    name: '',
+    phone: '',
+    email: '',
+    address: '',
+    district: '',
+    reference: '',
+    notes: ''
+  });
+
+  useEffect(() => {
+    fetchProducts();
+    fetchDeliveryFees();
+  }, [fetchProducts, fetchDeliveryFees]);
+
+  const addToCart = async (product) => {
+    setCalculatingPrice(true);
+    try {
+      console.log('Agregando producto al carrito:', product);
+      console.log('Carrito actual:', cart);
+      
+      const result = await calculatePrice(product.id, 1);
+      if (result.success) {
+        const pricing = result.data;
+        console.log('Precio calculado:', pricing);
+        
+        // Verificar si el producto ya existe en el carrito (comparar por productId)
+        const existingItemIndex = cart.findIndex(item => item.productId === product.id);
+        console.log('Índice del item existente:', existingItemIndex);
+        
+        if (existingItemIndex !== -1) {
+          // Si existe, incrementar la cantidad y recalcular precio
+          const updatedCart = [...cart];
+          const newQuantity = updatedCart[existingItemIndex].quantity + 1;
+          console.log('Incrementando cantidad a:', newQuantity);
+          
+          // Recalcular precio con la nueva cantidad
+          const newResult = await calculatePrice(product.id, newQuantity);
+          if (newResult.success) {
+            const newPricing = newResult.data;
+            console.log('Nuevo precio calculado:', newPricing);
+            updatedCart[existingItemIndex].quantity = newQuantity;
+            updatedCart[existingItemIndex].unitPrice = newPricing.unitPrice;
+            updatedCart[existingItemIndex].subtotal = newPricing.unitPrice * newQuantity;
+            updatedCart[existingItemIndex].pricing = newPricing;
+            setCart(updatedCart);
+            console.log('Carrito actualizado:', updatedCart);
+          }
+        } else {
+          // Si no existe, agregar nuevo item
+          const cartItem = {
+            id: `${product.id}-${Date.now()}`, // Clave única para React
+            productId: product.id, // ID del producto original
+            name: product.name,
+            type: product.type,
+            unitPrice: pricing.unitPrice,
+            quantity: 1,
+            subtotal: pricing.unitPrice,
+            pricing: pricing
+          };
+          console.log('Agregando nuevo item:', cartItem);
+          setCart([...cart, cartItem]);
+        }
+        
+        toast({
+          title: 'Producto agregado',
+          description: `${product.name} agregado al carrito`,
+          status: 'success',
+          duration: 2000,
+          isClosable: true,
+        });
+      }
+    } catch (error) {
+      console.error('Error al calcular precio:', error);
+    } finally {
+      setCalculatingPrice(false);
+    }
+  };
+
+  const updateQuantity = async (itemId, newQuantity) => {
+    if (newQuantity <= 0) {
+      setCart(cart.filter(item => item.id !== itemId));
+      return;
+    }
+
+    setCalculatingPrice(true);
+    try {
+      const cartItem = cart.find(item => item.id === itemId);
+      if (!cartItem) return;
+      
+      const result = await calculatePrice(cartItem.productId, newQuantity);
+      if (result.success) {
+        const pricing = result.data;
+        setCart(cart.map(item => 
+          item.id === itemId 
+            ? { 
+                ...item, 
+                quantity: newQuantity, 
+                unitPrice: pricing.unitPrice,
+                subtotal: pricing.unitPrice * newQuantity,
+                pricing: pricing
+              }
+            : item
+        ));
+      }
+    } catch (error) {
+      console.error('Error al actualizar cantidad:', error);
+    } finally {
+      setCalculatingPrice(false);
+    }
+  };
+
+  const getDeliveryFee = () => {
+    if (!clientData.district) return 0;
+    const fee = deliveryFees.find(f => f.district === clientData.district);
+    return fee ? fee.amount : 0;
+  };
+
+  const getSubtotal = () => {
+    return cart.reduce((sum, item) => sum + item.subtotal, 0);
+  };
+
+  const getTotal = () => {
+    return getSubtotal() + getDeliveryFee();
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    
+    if (cart.length === 0) {
       toast({
-        title: 'Ingrese un número de documento',
+        title: 'Carrito vacío',
+        description: 'Agrega al menos un producto al carrito',
         status: 'warning',
         duration: 3000,
         isClosable: true,
       });
       return;
     }
-    
-    setSearchingClient(true);
-    
-    try {
-      const response = await axios.get(`/api/clients/document/${documentNumber}`);
-      
-      if (response.data) {
-        // Llenar el formulario con los datos del cliente
-        setGuestInfo({
-          guestName: response.data.name || '',
-          guestPhone: response.data.phone || '',
-          guestEmail: response.data.email || '',
-          shippingAddress: response.data.address || '',
-          deliveryDistrict: guestInfo.deliveryDistrict // Mantener el distrito seleccionado
-        });
-        
-        toast({
-          title: 'Cliente encontrado',
-          description: `Se han cargado los datos de ${response.data.name}`,
-          status: 'success',
-          duration: 3000,
-          isClosable: true,
-        });
-      }
-    } catch (error) {
-      console.error('Error al buscar cliente:', error);
-      
-      if (error.response && error.response.status === 404) {
-        toast({
-          title: 'Cliente no encontrado',
-          description: 'No se encontró ningún cliente con ese número de documento',
-          status: 'error',
-          duration: 3000,
-          isClosable: true,
-        });
-      } else {
-        toast({
-          title: 'Error',
-          description: 'Ocurrió un error al buscar el cliente',
-          status: 'error',
-          duration: 3000,
-          isClosable: true,
-        });
-      }
-    } finally {
-      setSearchingClient(false);
+
+    if (!clientData.name || !clientData.phone || !clientData.address || !clientData.district) {
+      toast({
+        title: 'Datos incompletos',
+        description: 'Completa todos los campos obligatorios',
+        status: 'warning',
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
     }
-  };
-  
-  // Cargar productos
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const response = await axios.get('/api/products');
-        const validProducts = response.data
-          .filter(product => product.stock > 0)
-          .map(product => ({
-            ...product,
-            price: parseFloat(product.unitPrice) || 0
-          }));
-        setProducts(validProducts);
-        setLoading(false);
-      } catch (err) {
-        setError('Error al cargar productos. Por favor, intente de nuevo más tarde.');
-        setLoading(false);
-      }
+
+    // Guardar datos en localStorage para el siguiente paso
+    const orderData = {
+      client: clientData,
+      items: cart,
+      subtotal: getSubtotal(),
+      deliveryFee: getDeliveryFee(),
+      total: getTotal()
     };
-
-    const fetchDeliveryFees = async () => {
-      try {
-        setLoadingDistricts(true);
-        const response = await DeliveryFeeService.getAllDeliveryFees();
-        if (response && response.length > 0) {
-          // Transformar los datos de la API al formato esperado
-          const apiDistricts = response.map(item => ({
-            name: item.district,
-            deliveryFee: parseFloat(item.fee) || 0,
-            active: item.active
-          }));
-          // Filtrar solo distritos activos
-          const activeDistricts = apiDistricts.filter(d => d.active);
-          if (activeDistricts.length > 0) {
-            setDistricts(activeDistricts);
-          }
-        }
-      } catch (err) {
-        console.error('Error al cargar tarifas de envío:', err);
-        // Mantener los distritos por defecto en caso de error
-      } finally {
-        setLoadingDistricts(false);
-      }
-    };
-
-    fetchProducts();
-    fetchDeliveryFees();
-  }, []);
-
-  // Manejar cambios en los campos del formulario
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setGuestInfo(prev => ({
-      ...prev,
-      [name]: value
-    }));
     
-    // Actualizar tarifa de envío cuando cambia el distrito
-    if (name === 'deliveryDistrict') {
-      const selectedDistrict = districts.find(d => d.name === value);
-      if (selectedDistrict) {
-        setDeliveryFee(selectedDistrict.deliveryFee);
-      } else {
-        setDeliveryFee(0);
-      }
+    localStorage.setItem('guestOrderData', JSON.stringify(orderData));
+    navigate('/payment-method');
+  };
+
+  const getTypeColor = (type) => {
+    switch (type) {
+      case 'bidon':
+        return 'blue';
+      case 'botella':
+        return 'green';
+      default:
+        return 'gray';
     }
   };
 
-  // Calcular precio con descuentos según cantidad y tipo de producto
-  const calculateDiscountedPrice = (product, quantity) => {
-    let price = product.price;
-    
-    // Aplicar descuento para bidones cuando se compran 2 o más
-    if ((product.name.toLowerCase().includes('bidon') || product.type === 'bidon') && quantity >= 2) {
-      price = 5.00; // Precio especial de 5 soles por bidón
-    }
-    
-    // Aplicar precio especial para paquetes de botellas de agua
-    if ((product.name.toLowerCase().includes('botella') || product.name.toLowerCase().includes('agua') || product.type === 'botella') && quantity >= 50) {
-      price = 9.00; // Precio especial de 9 soles por paquete
-    }
-    
-    return price;
-  };
-  
-  // Agregar producto al carrito
-  const addToCart = (product) => {
-    const existingItem = cart.find(item => item.productId === product.id);
-    
-    if (existingItem) {
-      // Si ya está en el carrito, aumentar cantidad
-      const newQuantity = existingItem.quantity + 1;
-      const newPrice = calculateDiscountedPrice(product, newQuantity);
-      
-      setCart(cart.map(item => 
-        item.productId === product.id 
-          ? { ...item, quantity: newQuantity, price: newPrice } 
-          : item
-      ));
-    } else {
-      // Si no está en el carrito, agregarlo
-      setCart([...cart, {
-        productId: product.id,
-        name: product.name,
-        price: product.price,
-        quantity: 1,
-        image: product.image,
-        type: product.type
-      }]);
-    }
-
-    toast({
-      title: 'Producto agregado',
-      description: `${product.name} agregado al carrito`,
-      status: 'success',
-      duration: 2000,
-      isClosable: true,
-    });
-  };
-
-  // Remover producto del carrito
-  const removeFromCart = (productId) => {
-    setCart(cart.filter(item => item.productId !== productId));
-  };
-
-  // Actualizar cantidad de un producto en el carrito
-  const updateQuantity = (productId, newQuantity) => {
-    if (newQuantity < 1) return;
-    
-    const product = products.find(p => p.id === productId);
-    if (product && newQuantity > product.stock) {
-      toast({
-        title: 'Stock insuficiente',
-        description: `Solo hay ${product.stock} unidades disponibles`,
-        status: 'error',
-        duration: 3000,
-        isClosable: true,
-      });
-      return;
-    }
-    
-    // Calcular el nuevo precio basado en la cantidad
-    const newPrice = calculateDiscountedPrice(product, newQuantity);
-    
-    setCart(cart.map(item => 
-      item.productId === productId 
-        ? { ...item, quantity: newQuantity, price: newPrice } 
-        : item
-    ));
-  };
-
-  // Calcular total del carrito
-  const calculateSubtotal = () => {
-    return cart.reduce((total, item) => {
-      const price = item.price || 0;
-      const quantity = item.quantity || 0;
-      return total + (price * quantity);
-    }, 0);
-  };
-  
-  // Calcular total del carrito (incluyendo tarifa de envío)
-  const calculateTotal = () => {
-    return calculateSubtotal() + deliveryFee;
-  };
-
-  // Enviar pedido
-  const submitOrder = async () => {
-    // Validar información del cliente
-    if (!guestInfo.guestName || !guestInfo.guestPhone || !guestInfo.guestEmail || !guestInfo.shippingAddress) {
-      toast({
-        title: 'Información incompleta',
-        description: 'Por favor complete todos los campos requeridos',
-        status: 'error',
-        duration: 3000,
-        isClosable: true,
-      });
-      return;
-    }
-
-    // Validar carrito
-    if (cart.length === 0) {
-      toast({
-        title: 'Carrito vacío',
-        description: 'Agregue al menos un producto al carrito',
-        status: 'error',
-        duration: 3000,
-        isClosable: true,
-      });
-      return;
-    }
-
-    try {
-      const orderData = {
-        ...guestInfo,
-        products: cart.map(item => ({
-          productId: item.productId,
-          quantity: item.quantity
-        })),
-        // No establecemos método de pago aquí, se seleccionará en la siguiente pantalla
-      };
-
-      const response = await axios.post('/api/guest-orders', orderData);
-      
-      // Redirigir a la página de selección de método de pago
-      window.location.href = `/payment-method/${response.data.orderId}`;
-      
-    } catch (err) {
-      toast({
-        title: 'Error al crear pedido',
-        description: err.response?.data?.message || 'Ocurrió un error al procesar su pedido',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
+  const getTypeText = (type) => {
+    switch (type) {
+      case 'bidon':
+        return 'Bidón';
+      case 'botella':
+        return 'Botella';
+      default:
+        return type;
     }
   };
 
-  // Si hay un error al cargar productos
-  if (error) {
+  if (loading) {
     return (
-      <Container maxW="container.xl" py={8}>
-        <Alert status="error">
-          <AlertIcon />
-          <AlertTitle mr={2}>Error!</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      </Container>
-    );
-  }
-
-  // Si el pedido fue exitoso
-  if (orderSuccess) {
-    return (
-      <Container maxW="container.md" py={8}>
-        <Card borderRadius="xl" borderColor="green.100" boxShadow="xl">
-          <CardBody>
-            <Box 
-              bg="green.50" 
-              p={4} 
-              borderRadius="lg" 
-              mb={6}
-              position="relative"
-              overflow="hidden"
-            >
-              <Box 
-                position="absolute" 
-                top="-10px" 
-                right="-10px" 
-                bg="green.100" 
-                borderRadius="full" 
-                w="80px" 
-                h="80px" 
-                opacity="0.5"
-              />
-              <Flex direction="column" align="center">
-                <Box 
-                  bg="green.100" 
-                  color="green.700" 
-                  borderRadius="full" 
-                  p={3} 
-                  mb={3}
-                  boxShadow="md"
-                >
-                  <FaShoppingCart size={24} />
-                </Box>
-                <Heading size="lg" color="green.700" mb={2}>¡Pedido realizado con éxito!</Heading>
-                <Text fontSize="md" color="green.600">
-                  Su pedido ha sido registrado y está siendo procesado
-                </Text>
-              </Flex>
-            </Box>
-            
-            <Box p={4} bg="gray.50" borderRadius="md" mb={6}>
-              <Text mb={2} fontWeight="medium" color="gray.600">Número de pedido:</Text>
-              <Text 
-                fontSize="2xl" 
-                fontWeight="bold" 
-                letterSpacing="wide" 
-                color="green.600"
-                p={2}
-                bg="white"
-                borderRadius="md"
-                boxShadow="sm"
-                mb={4}
-              >
-                {orderId}
-              </Text>
-              
-              <Text fontSize="sm" color="gray.500">
-                Guarde este número para futuras referencias
-              </Text>
-            </Box>
-            
-            <Stack spacing={4} align="center">
-              <Button 
-                as={RouterLink} 
-                to={`/track-order/${orderId}`} 
-                colorScheme="green" 
-                size="lg"
-                width="full"
-                boxShadow="md"
-                _hover={{ transform: "translateY(-2px)", boxShadow: "lg" }}
-                transition="all 0.2s"
-              >
-                Seguir mi pedido
-              </Button>
-              
-              <Button 
-                as={RouterLink} 
-                to="/" 
-                variant="outline"
-                width="full"
-                _hover={{ bg: "gray.50" }}
-              >
-                Volver al inicio
-              </Button>
-            </Stack>
-          </CardBody>
-        </Card>
-      </Container>
+      <Center h="400px">
+        <Spinner size="xl" />
+      </Center>
     );
   }
 
   return (
-    <Container maxW="container.2xl" py={{ base: 8, xl: 12 }}>
-      <Box
-        bg="teal.50"
-        p={{ base: 4, xl: 6 }}
-        borderRadius="lg"
-        mb={{ base: 6, xl: 8 }}
-        boxShadow="sm"
-      >
-        <Heading mb={2} color="teal.700" size={{ base: "md", xl: "lg" }}>Realizar pedido como invitado</Heading>
-        <Text color="gray.600" fontSize={{ base: "md", xl: "lg" }}>Complete el formulario y seleccione los productos que desea ordenar</Text>
-      </Box>
-
-      <Grid templateColumns={{ base: "1fr", md: "3fr 2fr", xl: "4fr 3fr" }} gap={{ base: 8, xl: 12 }}>
-        {/* Lista de productos */}
-        <Box>
-          <Box
-            bg="linear-gradient(to right, blue.500, blue.600)"
-            p={{ base: 4, xl: 6 }}
-            borderRadius="lg"
-            mb={{ base: 4, xl: 6 }}
-            display="flex"
-            justifyContent="space-between"
-            alignItems="center"
-            boxShadow="md"
-            color="white"
-            position="relative"
-            overflow="hidden"
-          >
-            <Box
-              position="absolute"
-              top="-20px"
-              right="-20px"
-              bg="blue.400"
-              borderRadius="full"
-              w={{ base: "100px", xl: "120px" }}
-              h={{ base: "100px", xl: "120px" }}
-              opacity="0.3"
-            />
-            <Heading size={{ base: "md", xl: "lg" }}>Productos disponibles</Heading>
-            <Badge colorScheme="blue" fontSize={{ base: "md", xl: "lg" }} borderRadius="full" px={{ base: 3, xl: 4 }} py={{ base: 1, xl: 2 }} bg="white" color="blue.700">
-              {products.length} productos
-            </Badge>
+    <Box minH="100vh" bg="gray.50" py={8}>
+      <Box maxW="1200px" mx="auto" px={4}>
+        <VStack spacing={8}>
+          {/* Header */}
+          <Box textAlign="center">
+            <Heading size="xl" color="blue.600" mb={2}>
+              Pedido de Agua
+            </Heading>
+            <Text color="gray.600" fontSize="lg">
+              Realiza tu pedido de agua de forma rápida y segura
+            </Text>
           </Box>
-          
-          {loading ? (
-            <Flex direction="column" align="center" justify="center" py={10}>
-              <Box as="span" fontSize="3xl" mb={4} animation="spin 2s infinite linear">🔄</Box>
-              <Text fontSize="lg" color="gray.500" fontWeight="medium">Cargando productos...</Text>
-            </Flex>
-          ) : (
-            <Grid templateColumns={{ base: "1fr", sm: "repeat(2, 1fr)", lg: "repeat(3, 1fr)", xl: "repeat(4, 1fr)", "2xl": "repeat(5, 1fr)" }} gap={{ base: 6, xl: 8 }}>
-              {products.map(product => (
-                <Card
-                  key={product.id}
-                  overflow="hidden"
-                  borderRadius="lg"
-                  boxShadow="md"
-                  transition="all 0.3s"
-                  _hover={{ transform: "translateY(-5px)", boxShadow: "lg" }}
-                  borderColor="blue.100"
-                  borderWidth="1px"
-                  minH={{ base: "auto", xl: "400px" }}
-                >
-                  <Box position="relative">
-                    {product.image ? (
-                      <Image 
-                        src={product.image} 
-                        alt={product.name} 
-                        height="200px" 
-                        objectFit="cover" 
-                        width="100%"
-                      />
-                    ) : (
-                      <Flex 
-                        height="200px" 
-                        bg="gray.100" 
-                        justify="center" 
-                        align="center"
-                      >
-                        <Text color="gray.400">Sin imagen</Text>
-                      </Flex>
-                    )}
-                    {product.stock <= 5 && product.stock > 0 && (
-                      <Badge 
-                        position="absolute" 
-                        top="10px" 
-                        right="10px" 
-                        colorScheme="orange" 
-                        variant="solid"
-                        borderRadius="full"
-                        px={2}
-                      >
-                        ¡Últimas unidades!
-                      </Badge>
-                    )}
-                  </Box>
-                  
-                  <CardBody>
-                    <Heading size="sm" mb={2} noOfLines={2}>{product.name}</Heading>
-                    <Flex justify="space-between" align="center" mb={2}>
-                      <Text color="blue.600" fontSize="xl" fontWeight="bold">
-                        S/ {(product.price || 0).toFixed(2)}
-                      </Text>
-                      <Badge colorScheme={product.stock > 10 ? "green" : "orange"} variant="subtle">
-                        Stock: {product.stock}
-                      </Badge>
-                    </Flex>
-                    <Button 
-                      colorScheme="blue" 
-                      leftIcon={<FaPlus />} 
-                      onClick={() => addToCart(product)}
-                      size="sm"
-                      width="full"
-                      borderRadius="md"
-                      boxShadow="sm"
-                      _hover={{ transform: "scale(1.02)", boxShadow: "md" }}
-                      transition="all 0.2s"
-                    >
-                      Agregar al carrito
-                    </Button>
-                  </CardBody>
-                </Card>
-              ))}
-            </Grid>
-          )}
-        </Box>
-        
-        {/* Carrito y formulario */}
-        <Box>
-          <Card mb={6} borderRadius="lg" boxShadow="md" borderColor="blue.100" borderWidth="1px">
-            <CardBody>
-              <Box 
-                bg="blue.50" 
-                p={3} 
-                borderRadius="md" 
-                mb={4} 
-                display="flex" 
-                justifyContent="space-between" 
-                alignItems="center"
-              >
-                <Heading size="md" color="blue.700">Su pedido</Heading>
-                <Badge colorScheme="blue" fontSize="md" borderRadius="full" px={3} py={1}>
-                  {cart.length} {cart.length === 1 ? 'producto' : 'productos'}
-                </Badge>
-              </Box>
-              
-              {cart.length === 0 ? (
-                <Flex direction="column" align="center" justify="center" py={6} bg="gray.50" borderRadius="md">
-                  <Box as="span" fontSize="3xl" mb={3}>🛒</Box>
-                  <Text fontSize="lg" color="gray.500">No hay productos en el carrito</Text>
-                  <Text fontSize="sm" color="gray.400" mt={2}>Agregue productos desde la lista de disponibles</Text>
-                </Flex>
-              ) : (
-                <Stack spacing={4}>
-                  {cart.map(item => (
-                    <Box 
-                      key={item.productId} 
-                      p={3} 
-                      borderWidth="1px" 
-                      borderRadius="md"
-                      boxShadow="sm"
-                      bg="white"
-                      transition="all 0.2s"
-                      _hover={{ borderColor: "blue.200", boxShadow: "md" }}
-                    >
-                      <Flex justify="space-between" wrap={{base: "wrap", sm: "nowrap"}}>
-                        <Box flex="1" mr={3} mb={{base: 2, sm: 0}}>
-                          <Text fontWeight="bold" fontSize="md" mb={1}>{item.name}</Text>
-                          <Text color="gray.600">S/ {(item.price || 0).toFixed(2)} x {item.quantity || 0}</Text>
-                        </Box>
-                        <Box>
-                          <Text fontWeight="bold" color="blue.600" fontSize="lg" textAlign="right">
-                            S/ {((item.price || 0) * (item.quantity || 0)).toFixed(2)}
-                          </Text>
-                          <Flex align="center" mt={2} justify="flex-end">
-                            <IconButton 
-                              icon={<FaMinus />} 
-                              size="xs" 
-                              colorScheme="blue"
-                              variant="outline"
-                              onClick={() => updateQuantity(item.productId, item.quantity - 1)}
-                              aria-label="Disminuir cantidad"
-                              isDisabled={item.quantity <= 1}
-                              borderRadius="md"
-                            />
-                            <Text mx={2} fontWeight="medium" minW="20px" textAlign="center">{item.quantity}</Text>
-                            <IconButton 
-                              icon={<FaPlus />} 
-                              size="xs" 
-                              colorScheme="blue"
-                              variant="outline"
-                              onClick={() => updateQuantity(item.productId, item.quantity + 1)}
-                              aria-label="Aumentar cantidad"
-                              borderRadius="md"
-                            />
-                            <IconButton 
-                              icon={<FaTrash />} 
-                              size="xs" 
-                              colorScheme="red" 
-                              ml={2}
-                              onClick={() => removeFromCart(item.productId)}
-                              aria-label="Eliminar del carrito"
-                              borderRadius="md"
-                              variant="outline"
-                            />
-                          </Flex>
-                        </Box>
-                      </Flex>
-                    </Box>
-                  ))}
-                  
-                  <Divider />
-                  
-                  <Box 
-                    p={3} 
-                    bg="blue.50" 
-                    borderRadius="md"
-                  >
-                    <Stack spacing={2}>
-                      <Flex justify="space-between" align="center">
-                        <Text fontWeight="medium">Subtotal:</Text>
-                        <Text fontWeight="medium">S/ {(calculateSubtotal() || 0).toFixed(2)}</Text>
-                      </Flex>
-                      
-                      {deliveryFee > 0 && (
-                        <Flex justify="space-between" align="center">
-                          <Text fontWeight="medium">Costo de envío:</Text>
-                          <Text fontWeight="medium">S/ {deliveryFee.toFixed(2)}</Text>
-                        </Flex>
-                      )}
-                      
-                      <Divider />
-                      
-                      <Flex justify="space-between" align="center">
-                        <Text fontWeight="bold" fontSize="lg">Total:</Text>
-                        <Text fontWeight="bold" fontSize="xl" color="blue.700">S/ {(calculateTotal() || 0).toFixed(2)}</Text>
-                      </Flex>
-                    </Stack>
-                  </Box>
-                </Stack>
-              )}
-            </CardBody>
-          </Card>
-          
-          <Card borderRadius="lg" boxShadow="md" borderColor="teal.100" borderWidth="1px">
-            <CardBody>
-              <Box 
-                bg="teal.50" 
-                p={3} 
-                borderRadius="md" 
-                mb={4}
-                display="flex"
-                alignItems="center"
-              >
-                <Heading size="md" color="teal.700">Información de contacto</Heading>
-              </Box>
-              
-              {/* Búsqueda de cliente frecuente */}
-              <Box mb={4} p={4} borderWidth="1px" borderRadius="lg" bg="gray.50">
-                <Heading as="h3" size="md" mb={3}>
-                  ¿Cliente frecuente?
+
+          <SimpleGrid columns={{ base: 1, lg: 2 }} spacing={8} w="full">
+            {/* Productos */}
+            <Card>
+              <CardHeader>
+                <Heading size="md" color="gray.700">
+                  Productos Disponibles
                 </Heading>
-                <Text mb={3}>Busque por número de documento para autocompletar los datos</Text>
-                
-                <Flex mb={2}>
-                  <Input
-                    placeholder="Ingrese DNI o RUC"
-                    value={documentNumber}
-                    onChange={(e) => setDocumentNumber(e.target.value)}
-                    mr={2}
-                  />
-                  <Button
-                    colorScheme="blue"
-                    onClick={searchClientByDocument}
-                    isLoading={searchingClient}
-                  >
-                    Buscar
-                  </Button>
-                </Flex>
-              </Box>
-              
-              <Stack spacing={4}>
-                <FormControl isRequired>
-                  <FormLabel fontWeight="medium" color="gray.700">Nombre completo</FormLabel>
-                  <InputGroup>
-                    <InputLeftElement pointerEvents="none">
-                      <FaUser color="gray.300" />
-                    </InputLeftElement>
-                    <Input 
-                      name="guestName" 
-                      value={guestInfo.guestName} 
-                      onChange={handleInputChange} 
-                      placeholder="Ingrese su nombre completo"
-                      borderRadius="md"
-                      focusBorderColor="teal.400"
-                    />
-                  </InputGroup>
-                </FormControl>
-                
-                <FormControl isRequired>
-                  <FormLabel fontWeight="medium" color="gray.700">Teléfono</FormLabel>
-                  <InputGroup>
-                    <InputLeftElement pointerEvents="none">
-                      <FaPhone color="gray.300" />
-                    </InputLeftElement>
-                    <Input 
-                      name="guestPhone" 
-                      value={guestInfo.guestPhone} 
-                      onChange={handleInputChange} 
-                      placeholder="Ingrese su número de teléfono"
-                      borderRadius="md"
-                      focusBorderColor="teal.400"
-                    />
-                  </InputGroup>
-                </FormControl>
-                
-                <FormControl isRequired>
-                  <FormLabel fontWeight="medium" color="gray.700">Email</FormLabel>
-                  <InputGroup>
-                    <InputLeftElement pointerEvents="none">
-                      <FaEnvelope color="gray.300" />
-                    </InputLeftElement>
-                    <Input 
-                      name="guestEmail" 
-                      type="email"
-                      value={guestInfo.guestEmail} 
-                      onChange={handleInputChange} 
-                      placeholder="Ingrese su email"
-                      borderRadius="md"
-                      focusBorderColor="teal.400"
-                    />
-                  </InputGroup>
-                </FormControl>
-                
-                <FormControl isRequired>
-                  <FormLabel fontWeight="medium" color="gray.700">Distrito</FormLabel>
-                  <Select
-                    name="deliveryDistrict"
-                    value={guestInfo.deliveryDistrict}
-                    onChange={handleInputChange}
-                    placeholder="Seleccione su distrito"
-                    borderRadius="md"
-                    focusBorderColor="teal.400"
-                  >
-                    {districts.map(district => (
-                      <option key={district.name} value={district.name}>
-                        {district.name} {district.deliveryFee > 0 ? `(+S/ ${district.deliveryFee.toFixed(2)})` : '(Gratis)'}
-                      </option>
-                    ))}
-                  </Select>
-                  <Text fontSize="sm" color="gray.500" mt={1}>
-                    {deliveryFee > 0 ? 
-                      `Se cobrará un costo adicional de S/ ${deliveryFee.toFixed(2)} por envío a este distrito` : 
-                      'Envío gratuito para este distrito'}
-                  </Text>
-                </FormControl>
-                
-                <FormControl isRequired>
-                  <FormLabel fontWeight="medium" color="gray.700">Dirección de entrega</FormLabel>
-                  <InputGroup>
-                    <InputLeftElement pointerEvents="none">
-                      <FaMapMarkerAlt color="gray.300" />
-                    </InputLeftElement>
-                    <Textarea 
-                      name="shippingAddress" 
-                      value={guestInfo.shippingAddress} 
-                      onChange={handleInputChange} 
-                      placeholder="Ingrese su dirección completa para la entrega"
-                      borderRadius="md"
-                      focusBorderColor="teal.400"
-                      minH="100px"
-                      paddingLeft="2.5rem"
-                    />
-                  </InputGroup>
-                  <Text fontSize="sm" color="gray.500" mt={1}>Incluya calle, número, ciudad y código postal</Text>
-                </FormControl>
-                
-                <Button 
-                  colorScheme="teal" 
-                  size="lg" 
-                  width="full" 
-                  mt={4} 
-                  onClick={submitOrder}
-                  isDisabled={cart.length === 0}
-                  borderRadius="md"
-                  boxShadow="md"
-                  _hover={{ transform: "translateY(-2px)", boxShadow: "lg" }}
-                  transition="all 0.2s"
-                  leftIcon={<FaShoppingCart />}
-                  fontWeight="bold"
-                  letterSpacing="wide"
-                  py={6}
-                >
-                  Realizar pedido
-                </Button>
-                
-                <Text fontSize="sm" textAlign="center" mt={2}>
-                  ¿Ya tiene una cuenta? <Link as={RouterLink} to="/login" color="teal.500" fontWeight="medium">Inicie sesión</Link>
-                </Text>
-              </Stack>
-            </CardBody>
-          </Card>
-        </Box>
-      </Grid>
-    </Container>
+              </CardHeader>
+              <CardBody>
+                <VStack spacing={4}>
+                  {products.map((product) => (
+                    <Card key={product.id} variant="outline" w="full">
+                      <CardBody>
+                        <VStack align="start" spacing={3}>
+                          <HStack justify="space-between" w="full">
+                            <VStack align="start" spacing={1}>
+                              <Text fontWeight="bold" fontSize="lg">
+                                {product.name}
+                              </Text>
+                              <Text color="gray.600" fontSize="sm">
+                                {product.description}
+                              </Text>
+                            </VStack>
+                            <Badge colorScheme={getTypeColor(product.type)}>
+                              {getTypeText(product.type)}
+                            </Badge>
+                          </HStack>
+
+                          <HStack spacing={4}>
+                            <Text fontWeight="bold" color="blue.600" fontSize="lg">
+                              S/ {parseFloat(product.unitPrice).toFixed(2)}
+                            </Text>
+                            <Text color="gray.500" fontSize="sm">
+                              Stock: {product.stock}
+                            </Text>
+                          </HStack>
+
+                          {(product.wholesalePrice || product.wholesalePrice2) && (
+                            <Box bg="gray.50" p={3} borderRadius="md" w="full">
+                              <Text fontSize="sm" fontWeight="bold" mb={2} color="gray.700">
+                                Precios de Mayoreo:
+                              </Text>
+                              <VStack spacing={1} align="start">
+                                {product.wholesalePrice && (
+                                  <Text fontSize="sm" color="blue.600">
+                                    • S/ {parseFloat(product.wholesalePrice).toFixed(2)} 
+                                    (mín. {product.wholesaleMinQuantity} unidades)
+                                  </Text>
+                                )}
+                                {product.wholesalePrice2 && (
+                                  <Text fontSize="sm" color="purple.600">
+                                    • S/ {parseFloat(product.wholesalePrice2).toFixed(2)} 
+                                    (mín. {product.wholesaleMinQuantity2} unidades)
+                                  </Text>
+                                )}
+                              </VStack>
+                            </Box>
+                          )}
+
+                          <Button
+                            colorScheme="blue"
+                            size="sm"
+                            leftIcon={<FaShoppingCart />}
+                            onClick={() => addToCart(product)}
+                            isLoading={calculatingPrice}
+                            loadingText="Calculando..."
+                            w="full"
+                          >
+                            Agregar al Carrito
+                          </Button>
+                        </VStack>
+                      </CardBody>
+                    </Card>
+                  ))}
+                </VStack>
+              </CardBody>
+            </Card>
+
+            {/* Formulario y Carrito */}
+            <VStack spacing={6}>
+              {/* Datos del Cliente */}
+              <Card w="full">
+                <CardHeader>
+                  <Heading size="md" color="gray.700">
+                    <FaUser style={{ display: 'inline', marginRight: '8px' }} />
+                    Datos del Cliente
+                  </Heading>
+                </CardHeader>
+                <CardBody>
+                  <form onSubmit={handleSubmit}>
+                    <VStack spacing={4}>
+                      <FormControl isRequired>
+                        <FormLabel>Nombre Completo</FormLabel>
+                        <Input
+                          value={clientData.name}
+                          onChange={(e) => setClientData({ ...clientData, name: e.target.value })}
+                          placeholder="Tu nombre completo"
+                        />
+                      </FormControl>
+
+                      <FormControl isRequired>
+                        <FormLabel>Teléfono</FormLabel>
+                        <Input
+                          value={clientData.phone}
+                          onChange={(e) => setClientData({ ...clientData, phone: e.target.value })}
+                          placeholder="Tu número de teléfono"
+                        />
+                      </FormControl>
+
+                      <FormControl>
+                        <FormLabel>Email (opcional)</FormLabel>
+                        <Input
+                          type="email"
+                          value={clientData.email}
+                          onChange={(e) => setClientData({ ...clientData, email: e.target.value })}
+                          placeholder="Tu correo electrónico"
+                        />
+                      </FormControl>
+
+                      <FormControl isRequired>
+                        <FormLabel>Dirección</FormLabel>
+                        <Textarea
+                          value={clientData.address}
+                          onChange={(e) => setClientData({ ...clientData, address: e.target.value })}
+                          placeholder="Dirección completa de entrega"
+                          rows={3}
+                        />
+                      </FormControl>
+
+                      <FormControl isRequired>
+                        <FormLabel>Distrito</FormLabel>
+                        <Select
+                          value={clientData.district}
+                          onChange={(e) => setClientData({ ...clientData, district: e.target.value })}
+                          placeholder="Selecciona tu distrito"
+                        >
+                          {deliveryFees.map((fee) => (
+                            <option key={fee.id} value={fee.district}>
+                              {fee.district} - S/ {parseFloat(fee.amount).toFixed(2)}
+                            </option>
+                          ))}
+                        </Select>
+                      </FormControl>
+
+                      <FormControl>
+                        <FormLabel>Referencia</FormLabel>
+                        <Input
+                          value={clientData.reference}
+                          onChange={(e) => setClientData({ ...clientData, reference: e.target.value })}
+                          placeholder="Referencia del lugar (opcional)"
+                        />
+                      </FormControl>
+
+                      <FormControl>
+                        <FormLabel>Notas Adicionales</FormLabel>
+                        <Textarea
+                          value={clientData.notes}
+                          onChange={(e) => setClientData({ ...clientData, notes: e.target.value })}
+                          placeholder="Instrucciones especiales para la entrega"
+                          rows={2}
+                        />
+                      </FormControl>
+                    </VStack>
+                  </form>
+                </CardBody>
+              </Card>
+
+              {/* Carrito */}
+              <Card w="full">
+                <CardHeader>
+                  <Heading size="md" color="gray.700">
+                    <FaShoppingCart style={{ display: 'inline', marginRight: '8px' }} />
+                    Carrito de Compras
+                  </Heading>
+                </CardHeader>
+                <CardBody>
+                  {cart.length === 0 ? (
+                    <Alert status="info">
+                      <AlertIcon />
+                      Tu carrito está vacío
+                    </Alert>
+                  ) : (
+                    <VStack spacing={4}>
+                      {cart.map((item) => (
+                        <Box key={item.id} w="full" p={3} border="1px" borderColor="gray.200" borderRadius="md">
+                          <VStack spacing={2}>
+                            <HStack justify="space-between" w="full">
+                              <Text fontWeight="bold">{item.name}</Text>
+                              <Badge colorScheme={getTypeColor(item.type)}>
+                                {getTypeText(item.type)}
+                              </Badge>
+                            </HStack>
+                            
+                            <HStack justify="space-between" w="full">
+                              <Text color="gray.600" fontSize="sm">
+                                S/ {parseFloat(item.unitPrice).toFixed(2)} c/u
+                              </Text>
+                              <HStack spacing={2}>
+                                <Button
+                                  size="sm"
+                                  onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                                  disabled={calculatingPrice}
+                                >
+                                  -
+                                </Button>
+                                <Text minW="20px" textAlign="center">
+                                  {item.quantity}
+                                </Text>
+                                <Button
+                                  size="sm"
+                                  onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                                  disabled={calculatingPrice}
+                                >
+                                  +
+                                </Button>
+                              </HStack>
+                            </HStack>
+                            
+                            <HStack justify="space-between" w="full">
+                              <Text fontWeight="bold" color="blue.600">
+                                Subtotal: S/ {parseFloat(item.subtotal).toFixed(2)}
+                              </Text>
+                            </HStack>
+                          </VStack>
+                        </Box>
+                      ))}
+
+                      <Divider />
+
+                      <VStack spacing={2} w="full">
+                        <HStack justify="space-between" w="full">
+                          <Text>Subtotal:</Text>
+                          <Text fontWeight="bold">S/ {parseFloat(getSubtotal()).toFixed(2)}</Text>
+                        </HStack>
+                        
+                        <HStack justify="space-between" w="full">
+                          <Text>Flete:</Text>
+                          <Text fontWeight="bold">S/ {parseFloat(getDeliveryFee()).toFixed(2)}</Text>
+                        </HStack>
+                        
+                        <Divider />
+                        
+                        <HStack justify="space-between" w="full">
+                          <Text fontWeight="bold" fontSize="lg">Total:</Text>
+                          <Text fontWeight="bold" fontSize="lg" color="blue.600">
+                            S/ {parseFloat(getTotal()).toFixed(2)}
+                          </Text>
+                        </HStack>
+                      </VStack>
+
+                      <Button
+                        colorScheme="green"
+                        size="lg"
+                        w="full"
+                        leftIcon={<FaTruck />}
+                        onClick={handleSubmit}
+                        isLoading={calculatingPrice}
+                        loadingText="Procesando..."
+                      >
+                        Proceder al Pago
+                      </Button>
+                    </VStack>
+                  )}
+                </CardBody>
+              </Card>
+            </VStack>
+          </SimpleGrid>
+        </VStack>
+      </Box>
+    </Box>
   );
 };
 

@@ -1,21 +1,21 @@
 const express = require('express');
 const router = express.Router();
 const orderController = require('../controllers/order.controller');
-const { verifyToken, checkRole } = require('../middlewares/auth.middleware');
+const { authMiddleware, requireRole } = require('../middlewares/auth.middleware');
 
 // Rutas públicas (para clientes registrados)
 // Crear un nuevo pedido
-router.post('/', verifyToken, checkRole(['cliente']), orderController.createOrder);
+router.post('/', authMiddleware, requireRole(['cliente']), orderController.createOrder);
 
 // Obtener pedidos del cliente autenticado
-router.get('/my-orders', verifyToken, checkRole(['cliente']), async (req, res) => {
+router.get('/my-orders', authMiddleware, requireRole(['cliente']), async (req, res) => {
   // Redirigir a la función que obtiene pedidos por cliente usando el ID del usuario autenticado
   req.params.clientId = req.userId;
   return orderController.getOrdersByClient(req, res);
 });
 
 // Obtener un pedido específico del cliente autenticado
-router.get('/my-orders/:id', verifyToken, checkRole(['cliente']), async (req, res) => {
+router.get('/my-orders/:id', authMiddleware, requireRole(['cliente']), async (req, res) => {
   try {
     const orderId = req.params.id;
     const userId = req.userId;
@@ -39,33 +39,33 @@ router.get('/my-orders/:id', verifyToken, checkRole(['cliente']), async (req, re
 
 // Rutas para administradores y vendedores
 // Obtener todos los pedidos
-router.get('/', verifyToken, checkRole(['admin', 'vendedor']), orderController.getAllOrders);
+router.get('/', authMiddleware, requireRole(['admin', 'vendedor']), orderController.getAllOrders);
 
 // Obtener un pedido por ID
-router.get('/:id', verifyToken, checkRole(['admin', 'vendedor']), orderController.getOrderById);
+router.get('/:id', authMiddleware, requireRole(['admin', 'vendedor']), orderController.getOrderById);
 
 // Actualizar estado de un pedido
-router.put('/:id/status', verifyToken, checkRole(['admin', 'vendedor']), orderController.updateOrderStatus);
+router.put('/:id/status', authMiddleware, requireRole(['admin', 'vendedor']), orderController.updateOrderStatus);
 
 // Asignar repartidor a un pedido
-router.put('/:id/assign', verifyToken, checkRole(['admin']), orderController.assignDeliveryPerson);
+router.put('/:id/assign', authMiddleware, requireRole(['admin']), orderController.assignDeliveryPerson);
 
 // Actualizar estado de pago
-router.put('/:id/payment', verifyToken, checkRole(['admin', 'vendedor']), orderController.updatePaymentStatus);
+router.put('/:id/payment', authMiddleware, requireRole(['admin', 'vendedor']), orderController.updatePaymentStatus);
 
 // Obtener pedidos por cliente
-router.get('/client/:clientId', verifyToken, checkRole(['admin', 'vendedor']), orderController.getOrdersByClient);
+router.get('/client/:clientId', authMiddleware, requireRole(['admin', 'vendedor']), orderController.getOrdersByClient);
 
 // Rutas para repartidores
 // Obtener pedidos asignados al repartidor autenticado
-router.get('/delivery/my-assignments', verifyToken, checkRole(['repartidor']), async (req, res) => {
+router.get('/delivery/my-assignments', authMiddleware, requireRole(['repartidor']), async (req, res) => {
   // Redirigir a la función que obtiene pedidos por repartidor usando el ID del usuario autenticado
   req.params.deliveryPersonId = req.userId;
   return orderController.getOrdersByDeliveryPerson(req, res);
 });
 
 // Actualizar estado de un pedido asignado al repartidor
-router.put('/delivery/:id/status', verifyToken, checkRole(['repartidor']), async (req, res) => {
+router.put('/delivery/:id/status', authMiddleware, requireRole(['repartidor']), async (req, res) => {
   try {
     const orderId = req.params.id;
     const deliveryPersonId = req.userId;
