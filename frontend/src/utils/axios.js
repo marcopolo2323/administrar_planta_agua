@@ -15,39 +15,106 @@ instance.interceptors.request.use(
     const token = localStorage.getItem('token');
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
-      // Asegurarse de que el token esté correctamente formateado
-      console.log('Token enviado:', `Bearer ${token}`);
+      // Solo logear en desarrollo
+      if (import.meta.env.DEV) {
+        console.log('🔑 Token enviado para:', config.url);
+      }
     }
     return config;
   },
   (error) => {
-    console.error('Error en la solicitud:', error);
+    console.error('❌ Error en la solicitud:', error);
     return Promise.reject(error);
   }
 );
+
+// Variable para evitar múltiples intentos de renovación
+let isRefreshing = false;
+let failedQueue = [];
+
+// Función para procesar la cola de solicitudes fallidas
+const processQueue = (error, token = null) => {
+  failedQueue.forEach(prom => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  
+  failedQueue = [];
+};
 
 // Interceptor para manejar errores de respuesta
 instance.interceptors.response.use(
   (response) => {
     return response;
   },
-  (error) => {
-    console.error('Error en la respuesta:', error);
+  async (error) => {
+    const originalRequest = error.config;
     
-    // Manejar errores de autenticación (401)
-    if (error.response && error.response.status === 401) {
-      console.log('Error de autenticación, redirigiendo al login');
-      localStorage.removeItem('token');
-      window.location.href = '/';
-    } else if (error.response && error.response.status === 403) {
-      // Solo mostrar mensaje de autorización, no cerrar sesión
+    // Solo manejar errores 401 en rutas protegidas
+    if (error.response && error.response.status === 401 && !originalRequest._retry) {
+      const currentPath = window.location.pathname;
+      
+      // Solo intentar renovar si estamos en rutas protegidas
+      if (currentPath.startsWith('/dashboard') || currentPath.startsWith('/admin')) {
+        
+        if (isRefreshing) {
+          // Si ya estamos renovando, agregar a la cola
+          return new Promise((resolve, reject) => {
+            failedQueue.push({ resolve, reject });
+          }).then(token => {
+            originalRequest.headers['Authorization'] = 'Bearer ' + token;
+            return instance(originalRequest);
+          }).catch(err => {
+            return Promise.reject(err);
+          });
+        }
+
+        originalRequest._retry = true;
+        isRefreshing = true;
+
+        try {
+          console.log('🔄 Intentando renovar token...');
+          // Intentar renovar el token
+          const response = await instance.post('/auth/refresh');
+          const { token } = response.data;
+          
+          localStorage.setItem('token', token);
+          instance.defaults.headers.common['Authorization'] = 'Bearer ' + token;
+          
+          console.log('✅ Token renovado exitosamente');
+          processQueue(null, token);
+          
+          // Reintentar la solicitud original
+          originalRequest.headers['Authorization'] = 'Bearer ' + token;
+          return instance(originalRequest);
+          
+        } catch (refreshError) {
+          console.error('❌ Error al renovar token:', refreshError);
+          processQueue(refreshError, null);
+          
+          // Si falla la renovación, cerrar sesión
+          console.log('🚪 Cerrando sesión por fallo en renovación');
+          localStorage.removeItem('token');
+          window.location.href = '/';
+          return Promise.reject(refreshError);
+        } finally {
+          isRefreshing = false;
+        }
+      }
+    }
+    
+    // Para otros errores, solo logear
+    if (error.response && error.response.status === 403) {
       console.log('Error de autorización:', error.response.data);
     } else if (error.response && error.response.status === 404) {
-      // No cerrar sesión en 404, solo mostrar mensaje si es necesario
       console.log('Recurso no encontrado:', error.response.data);
     } else if (error.response && error.response.status === 500) {
       console.error('Error del servidor:', error.response.data);
     }
+    
     return Promise.reject(error);
   }
 );

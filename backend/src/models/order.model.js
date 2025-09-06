@@ -80,11 +80,6 @@ const Order = sequelize.define('Order', {
   timestamps: true
 });
 
-// Relaciones
-Order.belongsTo(Client, { foreignKey: 'clientId' });
-Order.belongsTo(User, { foreignKey: 'deliveryPersonId', as: 'deliveryPerson' });
-Order.belongsTo(User, { foreignKey: 'userId', as: 'createdBy' });
-
-// La relación con GuestOrder se establece en guestOrder.model.js
+// Las relaciones se establecen en models/index.js para evitar conflictos
 
 module.exports = Order;

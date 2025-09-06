@@ -93,6 +93,12 @@ const useCashRegisterStore = create((set, get) => ({
         return { success: false, error: response.data.message };
       }
     } catch (error) {
+      // No mostrar error si es 401 (el interceptor se encarga)
+      if (error.response && error.response.status === 401) {
+        set({ loading: false });
+        return { success: false, error: 'No autorizado' };
+      }
+      
       const errorMessage = error.response?.data?.message || 'Error al obtener caja actual';
       set({ 
         error: errorMessage,
@@ -192,6 +198,12 @@ const useCashRegisterStore = create((set, get) => ({
         return { success: false, error: response.data.message };
       }
     } catch (error) {
+      // No mostrar error si es 401 (el interceptor se encarga)
+      if (error.response && error.response.status === 401) {
+        set({ loading: false });
+        return { success: false, error: 'No autorizado' };
+      }
+      
       const errorMessage = error.response?.data?.message || 'Error al obtener estadísticas';
       set({ 
         error: errorMessage,

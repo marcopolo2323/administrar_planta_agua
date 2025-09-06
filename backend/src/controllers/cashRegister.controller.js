@@ -3,6 +3,7 @@ const CashMovement = require('../models/cashMovement.model');
 const User = require('../models/user.model');
 const Sale = require('../models/sale.model');
 const Order = require('../models/order.model');
+const { Op } = require('sequelize');
 
 // Abrir caja
 exports.openCashRegister = async (req, res) => {
@@ -138,6 +139,15 @@ exports.getCurrentCashRegister = async (req, res) => {
   try {
     const userId = req.user.id;
 
+    // Verificar que el usuario existe
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuario no encontrado'
+      });
+    }
+
     const cashRegister = await CashRegister.findOne({
       where: { 
         userId: userId,
@@ -146,7 +156,7 @@ exports.getCurrentCashRegister = async (req, res) => {
       include: [
         {
           model: User,
-          attributes: ['id', 'username', 'name']
+          attributes: ['id', 'username', 'email']
         }
       ]
     });
@@ -212,7 +222,7 @@ exports.getCashRegisterHistory = async (req, res) => {
       include: [
         {
           model: User,
-          attributes: ['id', 'username', 'name']
+          attributes: ['id', 'username', 'email']
         }
       ],
       order: [['createdAt', 'DESC']],
@@ -293,6 +303,15 @@ exports.getCashRegisterStats = async (req, res) => {
     const userId = req.user.id;
     const { startDate, endDate } = req.query;
 
+    // Verificar que el usuario existe
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuario no encontrado'
+      });
+    }
+
     const whereClause = { userId };
     if (startDate && endDate) {
       whereClause.createdAt = {
@@ -300,34 +319,37 @@ exports.getCashRegisterStats = async (req, res) => {
       };
     }
 
+    // Obtener cajas registradoras sin incluir movimientos para evitar problemas de asociación
     const cashRegisters = await CashRegister.findAll({
-      where: whereClause,
-      include: [
-        {
-          model: CashMovement,
-          as: 'movements'
-        }
-      ]
+      where: whereClause
     });
+
+    // Obtener movimientos por separado
+    const cashRegisterIds = cashRegisters.map(cr => cr.id);
+    let movements = [];
+    
+    if (cashRegisterIds.length > 0) {
+      movements = await CashMovement.findAll({
+        where: {
+          cashRegisterId: {
+            [Op.in]: cashRegisterIds
+          }
+        }
+      });
+    }
 
     // Calcular estadísticas
     const totalCajas = cashRegisters.length;
     const cajasAbiertas = cashRegisters.filter(cr => cr.status === 'abierta').length;
     const cajasCerradas = cashRegisters.filter(cr => cr.status === 'cerrada').length;
 
-    const totalIngresos = cashRegisters.reduce((sum, cr) => {
-      const ingresos = cr.movements
-        .filter(m => m.type === 'ingreso' || m.type === 'venta')
-        .reduce((s, m) => s + parseFloat(m.amount), 0);
-      return sum + ingresos;
-    }, 0);
+    const totalIngresos = movements
+      .filter(m => m.type === 'ingreso' || m.type === 'venta')
+      .reduce((sum, m) => sum + parseFloat(m.amount), 0);
 
-    const totalEgresos = cashRegisters.reduce((sum, cr) => {
-      const egresos = cr.movements
-        .filter(m => m.type === 'egreso' || m.type === 'gasto' || m.type === 'retiro')
-        .reduce((s, m) => s + parseFloat(m.amount), 0);
-      return sum + egresos;
-    }, 0);
+    const totalEgresos = movements
+      .filter(m => m.type === 'egreso' || m.type === 'gasto' || m.type === 'retiro')
+      .reduce((sum, m) => sum + parseFloat(m.amount), 0);
 
     res.json({
       success: true,

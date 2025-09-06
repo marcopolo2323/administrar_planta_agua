@@ -1,15 +1,17 @@
 const express = require('express');
 const router = express.Router();
 const deliveryFeeController = require('../controllers/deliveryFee.controller');
-const { authMiddleware, requireAdmin } = require('../middlewares/auth.middleware');
+const { authMiddleware } = require('../middlewares/auth.middleware');
 
-// Rutas públicas
-router.get('/', deliveryFeeController.getAllDeliveryFees);
-router.get('/district/:district', deliveryFeeController.getDeliveryFeeByDistrict);
+// Aplicar middleware de autenticación a todas las rutas
+router.use(authMiddleware);
 
-// Rutas protegidas (solo admin)
-router.post('/', [authMiddleware, requireAdmin], deliveryFeeController.createDeliveryFee);
-router.put('/:id', [authMiddleware, requireAdmin], deliveryFeeController.updateDeliveryFee);
-router.delete('/:id', [authMiddleware, requireAdmin], deliveryFeeController.deleteDeliveryFee);
+// Rutas de tarifas de envío
+router.get('/', deliveryFeeController.getDeliveryFees);
+router.get('/:id', deliveryFeeController.getDeliveryFeeById);
+router.post('/', deliveryFeeController.createDeliveryFee);
+router.put('/:id', deliveryFeeController.updateDeliveryFee);
+router.delete('/:id', deliveryFeeController.deleteDeliveryFee);
+router.post('/calculate', deliveryFeeController.calculateDeliveryCost);
 
 module.exports = router;

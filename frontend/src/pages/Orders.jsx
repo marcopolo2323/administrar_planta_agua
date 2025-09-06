@@ -46,6 +46,7 @@ import {
 import { SearchIcon, EditIcon, ViewIcon } from '@chakra-ui/icons';
 import useOrderStore from '../stores/orderStore';
 import useClientStore from '../stores/clientStore';
+import useGuestOrderStore from '../stores/guestOrderStore';
 
 const Orders = () => {
   // Stores
@@ -66,6 +67,12 @@ const Orders = () => {
     fetchClients
   } = useClientStore();
 
+  const {
+    orders: guestOrders,
+    loading: guestOrdersLoading,
+    fetchOrders: fetchGuestOrders
+  } = useGuestOrderStore();
+
   // Estados locales
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -81,10 +88,17 @@ const Orders = () => {
 
   const isMobile = useBreakpointValue({ base: true, md: false });
 
+  // Combinar pedidos regulares y de invitados
+  const allOrders = [
+    ...(orders || []).map(order => ({ ...order, type: 'regular' })),
+    ...(guestOrders || []).map(order => ({ ...order, type: 'guest' }))
+  ].sort((a, b) => new Date(b.createdAt || b.created_at) - new Date(a.createdAt || a.created_at));
+
   useEffect(() => {
     fetchOrders();
+    fetchGuestOrders();
     fetchClients();
-  }, [fetchOrders, fetchClients]);
+  }, [fetchOrders, fetchGuestOrders, fetchClients]);
 
   // Mostrar errores del store
   useEffect(() => {
@@ -196,11 +210,21 @@ const Orders = () => {
     }
   };
 
-  const filteredOrders = getFilteredOrders(searchTerm).filter(order => 
-    statusFilter === 'all' || order.status === statusFilter
-  );
+  const filteredOrders = allOrders.filter(order => {
+    const searchLower = searchTerm.toLowerCase();
+    const clientName = order.clientName || order.customerName || '';
+    const clientPhone = order.clientPhone || order.customerPhone || '';
+    const orderId = order.id?.toString() || '';
+    
+    return clientName.toLowerCase().includes(searchLower) ||
+           clientPhone.includes(searchLower) ||
+           orderId.includes(searchLower);
+  }).filter(order => {
+    if (statusFilter === 'all') return true;
+    return order.status === statusFilter;
+  });
   const orderStats = getOrderStats();
-  const loading = ordersLoading || clientsLoading;
+  const loading = ordersLoading || guestOrdersLoading || clientsLoading;
 
   if (loading) {
     return (
@@ -339,13 +363,18 @@ const Orders = () => {
                 {filteredOrders.map((order) => (
                   <Tr key={order.id}>
                     <Td>
-                      <Text fontWeight="bold">#{order.id}</Text>
+                      <VStack align="start" spacing={1}>
+                        <Text fontWeight="bold">#{order.id}</Text>
+                        <Badge size="sm" colorScheme={order.type === 'regular' ? 'blue' : 'green'}>
+                          {order.type === 'regular' ? 'Cliente Frecuente' : 'Invitado'}
+                        </Badge>
+                      </VStack>
                     </Td>
                     <Td>
                       <VStack align="start" spacing={1}>
-                        <Text fontWeight="bold">{order.clientName || 'N/A'}</Text>
+                        <Text fontWeight="bold">{order.clientName || order.customerName || 'N/A'}</Text>
                         <Text fontSize="sm" color="gray.500">
-                          {order.clientPhone || 'N/A'}
+                          {order.clientPhone || order.customerPhone || 'N/A'}
                         </Text>
                       </VStack>
                     </Td>
@@ -371,7 +400,7 @@ const Orders = () => {
                     </Td>
                     <Td>
                       <Text fontSize="sm">
-                        {new Date(order.createdAt).toLocaleDateString()}
+                        {new Date(order.createdAt || order.created_at).toLocaleDateString()}
                       </Text>
                     </Td>
                     <Td>

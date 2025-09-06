@@ -34,6 +34,7 @@ import { useNavigate } from 'react-router-dom';
 import { FaShoppingCart, FaTruck, FaMapMarkerAlt, FaPhone, FaUser } from 'react-icons/fa';
 import useProductStore from '../stores/productStore';
 import useDeliveryStore from '../stores/deliveryStore';
+import useDistrictStore from '../stores/districtStore';
 
 const GuestOrder = () => {
   const navigate = useNavigate();
@@ -43,11 +44,13 @@ const GuestOrder = () => {
   // Stores
   const { products, fetchProducts, calculatePrice } = useProductStore();
   const { deliveryFees, fetchDeliveryFees } = useDeliveryStore();
+  const { districts, fetchDistricts } = useDistrictStore();
 
   // Estados locales
   const [cart, setCart] = useState([]);
   const [loading, setLoading] = useState(false);
   const [calculatingPrice, setCalculatingPrice] = useState(false);
+  const [loadingProducts, setLoadingProducts] = useState(new Set());
 
   // Datos del cliente visitante
   const [clientData, setClientData] = useState({
@@ -63,10 +66,21 @@ const GuestOrder = () => {
   useEffect(() => {
     fetchProducts();
     fetchDeliveryFees();
-  }, [fetchProducts, fetchDeliveryFees]);
+    fetchDistricts();
+  }, [fetchProducts, fetchDeliveryFees, fetchDistricts]);
+
+  // Efecto para recalcular el total cuando cambie el distrito
+  useEffect(() => {
+    // Forzar re-render cuando cambie el distrito para actualizar el total
+    console.log('Distrito seleccionado:', clientData.district);
+    console.log('Flete calculado:', getDeliveryFee());
+    console.log('Total calculado:', getTotal());
+  }, [clientData.district, cart]);
 
   const addToCart = async (product) => {
-    setCalculatingPrice(true);
+    if (loadingProducts.has(product.id)) return; // Prevenir múltiples clics
+    
+    setLoadingProducts(prev => new Set(prev).add(product.id));
     try {
       console.log('Agregando producto al carrito:', product);
       console.log('Carrito actual:', cart);
@@ -125,7 +139,11 @@ const GuestOrder = () => {
     } catch (error) {
       console.error('Error al calcular precio:', error);
     } finally {
-      setCalculatingPrice(false);
+      setLoadingProducts(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(product.id);
+        return newSet;
+      });
     }
   };
 
@@ -164,8 +182,8 @@ const GuestOrder = () => {
 
   const getDeliveryFee = () => {
     if (!clientData.district) return 0;
-    const fee = deliveryFees.find(f => f.district === clientData.district);
-    return fee ? fee.amount : 0;
+    const district = districts.find(d => d.name === clientData.district);
+    return district ? parseFloat(district.deliveryFee) : 0;
   };
 
   const getSubtotal = () => {
@@ -183,6 +201,17 @@ const GuestOrder = () => {
       toast({
         title: 'Carrito vacío',
         description: 'Agrega al menos un producto al carrito',
+        status: 'warning',
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    if (!clientData.district) {
+      toast({
+        title: 'Distrito requerido',
+        description: 'Selecciona un distrito para calcular el flete de envío',
         status: 'warning',
         duration: 3000,
         isClosable: true,
@@ -322,7 +351,7 @@ const GuestOrder = () => {
                             size="sm"
                             leftIcon={<FaShoppingCart />}
                             onClick={() => addToCart(product)}
-                            isLoading={calculatingPrice}
+                            isLoading={loadingProducts.has(product.id)}
                             loadingText="Calculando..."
                             w="full"
                           >
@@ -394,11 +423,11 @@ const GuestOrder = () => {
                           onChange={(e) => setClientData({ ...clientData, district: e.target.value })}
                           placeholder="Selecciona tu distrito"
                         >
-                          {deliveryFees.map((fee) => (
-                            <option key={fee.id} value={fee.district}>
-                              {fee.district} - S/ {parseFloat(fee.amount).toFixed(2)}
+                          {Array.isArray(districts) ? districts.map((district) => (
+                            <option key={district.id} value={district.name}>
+                              {district.name} - S/ {parseFloat(district.deliveryFee).toFixed(2)}
                             </option>
-                          ))}
+                          )) : null}
                         </Select>
                       </FormControl>
 
@@ -495,15 +524,17 @@ const GuestOrder = () => {
                         
                         <HStack justify="space-between" w="full">
                           <Text>Flete:</Text>
-                          <Text fontWeight="bold">S/ {parseFloat(getDeliveryFee()).toFixed(2)}</Text>
+                          <Text fontWeight="bold" color={clientData.district ? "green.600" : "red.500"}>
+                            {clientData.district ? `S/ ${parseFloat(getDeliveryFee()).toFixed(2)}` : "Selecciona distrito"}
+                          </Text>
                         </HStack>
                         
                         <Divider />
                         
                         <HStack justify="space-between" w="full">
                           <Text fontWeight="bold" fontSize="lg">Total:</Text>
-                          <Text fontWeight="bold" fontSize="lg" color="blue.600">
-                            S/ {parseFloat(getTotal()).toFixed(2)}
+                          <Text fontWeight="bold" fontSize="lg" color={clientData.district ? "blue.600" : "red.500"}>
+                            {clientData.district ? `S/ ${parseFloat(getTotal()).toFixed(2)}` : "Selecciona distrito"}
                           </Text>
                         </HStack>
                       </VStack>
@@ -516,8 +547,9 @@ const GuestOrder = () => {
                         onClick={handleSubmit}
                         isLoading={calculatingPrice}
                         loadingText="Procesando..."
+                        isDisabled={!clientData.district || cart.length === 0}
                       >
-                        Proceder al Pago
+                        {!clientData.district ? "Selecciona un distrito" : "Proceder al Pago"}
                       </Button>
                     </VStack>
                   )}

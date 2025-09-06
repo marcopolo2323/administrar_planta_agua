@@ -44,8 +44,12 @@ const authMiddleware = async (req, res, next) => {
         id: user.id,
         username: user.username,
         role: user.role,
-        name: user.name
+        email: user.email
       };
+      
+      // También agregar userId para compatibilidad
+      req.userId = user.id;
+      req.userRole = user.role;
 
       next();
     } catch (jwtError) {

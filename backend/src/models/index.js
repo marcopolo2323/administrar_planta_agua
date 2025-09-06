@@ -19,7 +19,10 @@ const OrderDetail = require('./orderDetail.model');
 const Payment = require('./payment.model');
 const DeliveryPerson = require('./deliveryPerson.model');
 const GuestOrder = require('./guestOrder.model');
+const GuestOrderProduct = require('./guestOrderProduct.model');
 const DeliveryFee = require('./deliveryFee.model');
+const District = require('./district.model');
+const Voucher = require('./voucher.model');
 
 // Definir relaciones después de que todos los modelos estén inicializados
 // Relaciones de ventas
@@ -55,8 +58,21 @@ Credit.hasMany(CreditPayment, { foreignKey: 'creditId' });
 CreditPayment.belongsTo(Credit, { foreignKey: 'creditId' });
 
 // Relaciones de caja
-CashRegister.hasMany(CashMovement, { foreignKey: 'cashRegisterId' });
-CashMovement.belongsTo(CashRegister, { foreignKey: 'cashRegisterId' });
+CashRegister.hasMany(CashMovement, { 
+  foreignKey: 'cashRegisterId',
+  as: 'CashMovements'
+});
+CashMovement.belongsTo(CashRegister, { 
+  foreignKey: 'cashRegisterId',
+  as: 'CashRegister'
+});
+
+// Relaciones de usuario con caja
+User.hasMany(CashRegister, { foreignKey: 'userId' });
+CashRegister.belongsTo(User, { foreignKey: 'userId' });
+
+User.hasMany(CashMovement, { foreignKey: 'userId' });
+CashMovement.belongsTo(User, { foreignKey: 'userId' });
 
 CashRegister.hasMany(Sale, { foreignKey: 'cashRegisterId', as: 'sales' });
 Sale.belongsTo(CashRegister, { foreignKey: 'cashRegisterId' });
@@ -113,6 +129,38 @@ GuestOrder.belongsTo(Order, {
   as: 'order' 
 });
 
+// Relaciones de pedidos de invitados
+GuestOrder.hasMany(GuestOrderProduct, { 
+  foreignKey: 'guestOrderId', 
+  as: 'products' 
+});
+GuestOrderProduct.belongsTo(GuestOrder, { 
+  foreignKey: 'guestOrderId', 
+  as: 'guestOrder' 
+});
+GuestOrderProduct.belongsTo(Product, { 
+  foreignKey: 'productId', 
+  as: 'product' 
+});
+
+// Relaciones de vales
+User.hasMany(Voucher, { foreignKey: 'clientId', as: 'clientVouchers' });
+Voucher.belongsTo(User, { foreignKey: 'clientId', as: 'client' });
+
+User.hasMany(Voucher, { foreignKey: 'deliveryPersonId', as: 'deliveryVouchers' });
+Voucher.belongsTo(User, { foreignKey: 'deliveryPersonId', as: 'deliveryPerson' });
+
+Product.hasMany(Voucher, { foreignKey: 'productId', as: 'vouchers' });
+Voucher.belongsTo(Product, { foreignKey: 'productId', as: 'product' });
+
+// Relaciones de GuestOrder con District y User (deliveryPerson)
+GuestOrder.belongsTo(District, { foreignKey: 'districtId', as: 'district' });
+District.hasMany(GuestOrder, { foreignKey: 'districtId', as: 'guestOrders' });
+
+GuestOrder.belongsTo(User, { foreignKey: 'deliveryPersonId', as: 'deliveryPerson' });
+User.hasMany(GuestOrder, { foreignKey: 'deliveryPersonId', as: 'assignedOrders' });
+
+
 // Exportar modelos y conexión
 module.exports = {
   sequelize,
@@ -134,5 +182,8 @@ module.exports = {
   Payment,
   DeliveryPerson,
   GuestOrder,
-  DeliveryFee
+  GuestOrderProduct,
+  DeliveryFee,
+  District,
+  Voucher
 };

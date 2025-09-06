@@ -1,278 +1,255 @@
-const Notification = require('../models/notification.model');
-const User = require('../models/user.model');
-const Client = require('../models/client.model');
-const DeliveryPerson = require('../models/deliveryPerson.model');
+const { User, Voucher } = require('../models');
 
-// Crear una nueva notificación
-exports.createNotification = async (req, res) => {
+// Enviar notificación de pago pendiente
+exports.sendPaymentReminder = async (req, res) => {
   try {
-    const { userId, userModel, title, message, type, orderId } = req.body;
-
-    // Validar que el usuario existe
-    let userExists = false;
-    if (userModel === 'User') {
-      userExists = await User.exists({ _id: userId });
-    } else if (userModel === 'Client') {
-      userExists = await Client.exists({ _id: userId });
-    } else if (userModel === 'DeliveryPerson') {
-      userExists = await DeliveryPerson.exists({ _id: userId });
-    }
-
-    if (!userExists) {
-      return res.status(400).json({ message: 'Usuario no encontrado' });
-    }
-
-    const notification = new Notification({
-      userId,
-      userModel,
-      title,
-      message,
-      type,
-      orderId
-    });
-
-    await notification.save();
-    res.status(201).json(notification);
-  } catch (error) {
-    console.error('Error al crear notificación:', error);
-    res.status(500).json({ message: 'Error al crear la notificación', error: error.message });
-  }
-};
-
-// Crear notificaciones para múltiples usuarios
-exports.createMultipleNotifications = async (req, res) => {
-  try {
-    const { notifications } = req.body;
-
-    if (!Array.isArray(notifications) || notifications.length === 0) {
-      return res.status(400).json({ message: 'Se requiere un array de notificaciones' });
-    }
-
-    const createdNotifications = await Notification.insertMany(notifications);
-    res.status(201).json(createdNotifications);
-  } catch (error) {
-    console.error('Error al crear notificaciones múltiples:', error);
-    res.status(500).json({ message: 'Error al crear notificaciones múltiples', error: error.message });
-  }
-};
-
-// Obtener notificaciones de un usuario
-exports.getUserNotifications = async (req, res) => {
-  try {
-    const userId = req.user.id;
-    let userModel;
-
-    // Determinar el modelo de usuario según el rol
-    if (req.user.role === 'admin' || req.user.role === 'vendedor') {
-      userModel = 'User';
-    } else if (req.user.role === 'cliente') {
-      userModel = 'Client';
-    } else if (req.user.role === 'repartidor') {
-      userModel = 'DeliveryPerson';
-    } else {
-      return res.status(400).json({ message: 'Rol de usuario no válido' });
-    }
-
-    // Buscar notificaciones por userId como string para evitar problemas de conversión
-    const userIdString = userId.toString();
+    const { clientId } = req.params;
     
-    const notifications = await Notification.find({ 
-      userId: userIdString,
-      userModel: userModel
-    })
-    .sort({ createdAt: -1 })
-    .limit(50); // Limitar a las 50 notificaciones más recientes
-
-    res.status(200).json(notifications);
-  } catch (error) {
-    console.error('Error al obtener notificaciones:', error);
-    res.status(500).json({ message: 'Error al obtener notificaciones', error: error.message });
-  }
-};
-
-// Marcar una notificación como leída
-exports.markAsRead = async (req, res) => {
-  try {
-    const notificationId = req.params.id;
-    const userId = req.user.id;
-    const userIdString = userId.toString();
-
-    const notification = await Notification.findById(notificationId);
-
-    if (!notification) {
-      return res.status(404).json({ message: 'Notificación no encontrada' });
-    }
-
-    // Verificar que la notificación pertenece al usuario
-    const notificationUserId = notification.userId.toString ? notification.userId.toString() : notification.userId;
-    if (notificationUserId !== userIdString && req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'No autorizado para marcar esta notificación como leída' });
-    }
-
-    notification.read = true;
-    await notification.save();
-
-    res.status(200).json({ message: 'Notificación marcada como leída', notification });
-  } catch (error) {
-    console.error('Error al marcar notificación como leída:', error);
-    res.status(500).json({ message: 'Error al marcar notificación como leída', error: error.message });
-  }
-};
-
-// Marcar todas las notificaciones de un usuario como leídas
-exports.markAllAsRead = async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const userIdString = userId.toString();
-    let userModel;
-
-    // Determinar el modelo de usuario según el rol
-    if (req.user.role === 'admin' || req.user.role === 'vendedor') {
-      userModel = 'User';
-    } else if (req.user.role === 'cliente') {
-      userModel = 'Client';
-    } else if (req.user.role === 'repartidor') {
-      userModel = 'DeliveryPerson';
-    } else {
-      return res.status(400).json({ message: 'Rol de usuario no válido' });
-    }
-
-    const result = await Notification.updateMany(
-      { userId: userIdString, userModel: userModel, read: false },
-      { $set: { read: true } }
-    );
-
-    res.status(200).json({ 
-      message: 'Todas las notificaciones marcadas como leídas',
-      modifiedCount: result.modifiedCount
-    });
-  } catch (error) {
-    console.error('Error al marcar todas las notificaciones como leídas:', error);
-    res.status(500).json({ 
-      message: 'Error al marcar todas las notificaciones como leídas', 
-      error: error.message 
-    });
-  }
-};
-
-// Eliminar una notificación
-exports.deleteNotification = async (req, res) => {
-  try {
-    const notificationId = req.params.id;
-    const userId = req.user.id;
-    const userIdString = userId.toString();
-
-    const notification = await Notification.findById(notificationId);
-
-    if (!notification) {
-      return res.status(404).json({ message: 'Notificación no encontrada' });
-    }
-
-    // Verificar que la notificación pertenece al usuario o es administrador
-    const notificationUserId = notification.userId.toString ? notification.userId.toString() : notification.userId;
-    if (notificationUserId !== userIdString && req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'No autorizado para eliminar esta notificación' });
-    }
-
-    await Notification.findByIdAndDelete(notificationId);
-
-    res.status(200).json({ message: 'Notificación eliminada correctamente' });
-  } catch (error) {
-    console.error('Error al eliminar notificación:', error);
-    res.status(500).json({ message: 'Error al eliminar notificación', error: error.message });
-  }
-};
-
-// Variable para almacenar el servicio WebSocket
-let wsService = null;
-
-// Función para establecer el servicio WebSocket desde index.js
-exports.setWebSocketService = (service) => {
-  wsService = service;
-  console.log('Servicio WebSocket establecido en el controlador de notificaciones');
-};
-
-// Servicio para crear notificaciones desde otros controladores
-exports.createNotificationService = async (notificationData) => {
-  try {
-    const notification = new Notification(notificationData);
-    await notification.save();
-    
-    // Enviar notificación en tiempo real si el servicio WebSocket está disponible
-    if (wsService) {
-      wsService.sendNotification(
-        notification.userId,
-        notification.userModel,
-        {
-          _id: notification._id,
-          title: notification.title,
-          message: notification.message,
-          type: notification.type,
-          orderId: notification.orderId,
-          createdAt: notification.createdAt
-        }
-      );
-    }
-    
-    return notification;
-  } catch (error) {
-    console.error('Error en servicio de notificación:', error);
-    throw error;
-  }
-};
-
-// Servicio para crear notificaciones para múltiples usuarios desde otros controladores
-exports.createMultipleNotificationsService = async (notificationsArray) => {
-  try {
-    if (!Array.isArray(notificationsArray) || notificationsArray.length === 0) {
-      throw new Error('Se requiere un array de notificaciones');
-    }
-    const notifications = await Notification.insertMany(notificationsArray);
-    
-    // Enviar notificaciones en tiempo real si el servicio WebSocket está disponible
-    if (wsService) {
-      notifications.forEach(notification => {
-        wsService.sendNotification(
-          notification.userId,
-          notification.userModel,
-          {
-            _id: notification._id,
-            title: notification.title,
-            message: notification.message,
-            type: notification.type,
-            orderId: notification.orderId,
-            createdAt: notification.createdAt
-          }
-        );
+    // Obtener cliente
+    const client = await User.findByPk(clientId);
+    if (!client) {
+      return res.status(404).json({
+        success: false,
+        message: 'Cliente no encontrado'
       });
     }
-    return notifications;
+
+    // Obtener vales pendientes del cliente
+    const pendingVouchers = await Voucher.findAll({
+      where: {
+        clientId: clientId,
+        status: 'delivered'
+      },
+      include: [
+        { model: User, as: 'deliveryPerson', attributes: ['username', 'email'] },
+        { model: require('../models').Product, as: 'product', attributes: ['name'] }
+      ]
+    });
+
+    const totalPending = pendingVouchers.reduce((sum, v) => sum + parseFloat(v.totalAmount || 0), 0);
+
+    if (pendingVouchers.length === 0) {
+      return res.json({
+        success: true,
+        message: 'No hay vales pendientes para este cliente'
+      });
+    }
+
+    // Simular envío de email (en producción usaría un servicio como SendGrid, Nodemailer, etc.)
+    const emailData = {
+      to: client.email,
+      subject: 'Recordatorio de Pago - Agua Pura',
+      html: generatePaymentReminderEmail(client, pendingVouchers, totalPending)
+    };
+
+    console.log('📧 Email de recordatorio enviado:', emailData);
+
+    res.json({
+      success: true,
+      message: 'Notificación enviada correctamente',
+      data: {
+        client: client.username,
+        email: client.email,
+        pendingVouchers: pendingVouchers.length,
+        totalAmount: totalPending
+      }
+    });
+
   } catch (error) {
-    console.error('Error en servicio de notificaciones múltiples:', error);
-    throw error;
+    console.error('Error al enviar notificación:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
   }
 };
 
-  // Función de debug - agregar temporalmente
-exports.debugNotifications = async (req, res) => {
+// Enviar notificación de fin de mes a todos los clientes
+exports.sendMonthlyReminders = async (req, res) => {
   try {
-    console.log('🔍 Estado de conexión MongoDB:', mongoose.connection.readyState);
-    
-    const count = await Notification.countDocuments();
-    const notifications = await Notification.find().limit(5);
-    
-    res.json({
-      message: 'Debug de notificaciones',
-      mongoState: mongoose.connection.readyState,
-      totalNotifications: count,
-      sampleNotifications: notifications
+    // Obtener todos los clientes con vales pendientes
+    const clientsWithPendingVouchers = await User.findAll({
+      where: { role: 'cliente' },
+      include: [
+        {
+          model: Voucher,
+          as: 'clientVouchers',
+          where: { status: 'delivered' },
+          required: true
+        }
+      ]
     });
+
+    const results = [];
+
+    for (const client of clientsWithPendingVouchers) {
+      const pendingVouchers = await Voucher.findAll({
+        where: {
+          clientId: client.id,
+          status: 'delivered'
+        }
+      });
+
+      const totalPending = pendingVouchers.reduce((sum, v) => sum + parseFloat(v.totalAmount || 0), 0);
+
+      // Simular envío de email
+      const emailData = {
+        to: client.email,
+        subject: '¡Es fin de mes! - Recordatorio de Pago - Agua Pura',
+        html: generateMonthlyReminderEmail(client, pendingVouchers, totalPending)
+      };
+
+      console.log('📧 Email de fin de mes enviado:', emailData);
+
+      results.push({
+        client: client.username,
+        email: client.email,
+        pendingVouchers: pendingVouchers.length,
+        totalAmount: totalPending
+      });
+    }
+
+    res.json({
+      success: true,
+      message: `Notificaciones enviadas a ${results.length} clientes`,
+      data: results
+    });
+
   } catch (error) {
-    console.error('❌ Error en debug:', error);
+    console.error('Error al enviar notificaciones mensuales:', error);
     res.status(500).json({
-      message: 'Error en debug',
-      error: error.message,
-      mongoState: mongoose.connection.readyState
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
     });
   }
-};  
+};
+
+// Generar HTML para email de recordatorio de pago
+const generatePaymentReminderEmail = (client, vouchers, totalAmount) => {
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>Recordatorio de Pago - Agua Pura</title>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #2563eb; color: white; padding: 20px; text-align: center; }
+        .content { padding: 20px; background: #f8fafc; }
+        .voucher-item { background: white; margin: 10px 0; padding: 15px; border-radius: 5px; border-left: 4px solid #2563eb; }
+        .total { background: #2563eb; color: white; padding: 15px; text-align: center; font-size: 18px; font-weight: bold; }
+        .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>💧 AGUA PURA</h1>
+          <p>Recordatorio de Pago</p>
+        </div>
+        
+        <div class="content">
+          <h2>Hola ${client.username},</h2>
+          <p>Tienes <strong>${vouchers.length} vales</strong> pendientes de pago por un total de <strong>S/ ${totalAmount.toFixed(2)}</strong>.</p>
+          
+          <h3>Detalle de Vales Pendientes:</h3>
+          ${vouchers.map(voucher => `
+            <div class="voucher-item">
+              <strong>Vale #${voucher.id}</strong> - ${voucher.product?.name || 'N/A'}<br>
+              Cantidad: ${voucher.quantity} | Monto: S/ ${parseFloat(voucher.totalAmount || 0).toFixed(2)}
+            </div>
+          `).join('')}
+          
+          <div class="total">
+            TOTAL A PAGAR: S/ ${totalAmount.toFixed(2)}
+          </div>
+          
+          <p>Puedes realizar tu pago a través de:</p>
+          <ul>
+            <li>💳 Tarjeta de crédito/débito en tu cuenta</li>
+            <li>📱 Yape</li>
+            <li>💰 Efectivo con tu repartidor</li>
+          </ul>
+          
+          <p style="text-align: center; margin-top: 30px;">
+            <a href="http://localhost:3000/client-dashboard/payments" 
+               style="background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px;">
+              Pagar Ahora
+            </a>
+          </p>
+        </div>
+        
+        <div class="footer">
+          <p>Este es un recordatorio automático del sistema Agua Pura.</p>
+          <p>Para consultas: contacto@aguapura.com</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+};
+
+// Generar HTML para email de fin de mes
+const generateMonthlyReminderEmail = (client, vouchers, totalAmount) => {
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>¡Es fin de mes! - Agua Pura</title>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #dc2626; color: white; padding: 20px; text-align: center; }
+        .content { padding: 20px; background: #fef2f2; }
+        .alert { background: #fef3cd; border: 1px solid #fde68a; padding: 15px; border-radius: 5px; margin: 15px 0; }
+        .total { background: #dc2626; color: white; padding: 15px; text-align: center; font-size: 20px; font-weight: bold; }
+        .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>🚨 ¡ES FIN DE MES!</h1>
+          <p>Recordatorio de Pago - Agua Pura</p>
+        </div>
+        
+        <div class="content">
+          <div class="alert">
+            <strong>⚠️ Atención:</strong> Es fin de mes y tienes vales pendientes de pago.
+          </div>
+          
+          <h2>Hola ${client.username},</h2>
+          <p>Tienes <strong>${vouchers.length} vales</strong> pendientes de pago por un total de <strong>S/ ${totalAmount.toFixed(2)}</strong>.</p>
+          
+          <div class="total">
+            TOTAL A PAGAR: S/ ${totalAmount.toFixed(2)}
+          </div>
+          
+          <p><strong>Es momento de coordinar el pago con tu repartidor:</strong></p>
+          <ul>
+            <li>💰 Efectivo</li>
+            <li>📱 Yape</li>
+            <li>💳 Tarjeta</li>
+          </ul>
+          
+          <p style="text-align: center; margin-top: 30px;">
+            <a href="http://localhost:3000/client-dashboard/payments" 
+               style="background: #dc2626; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-size: 16px;">
+              Ver Mis Pagos
+            </a>
+          </p>
+        </div>
+        
+        <div class="footer">
+          <p>Este es un recordatorio automático del sistema Agua Pura.</p>
+          <p>Para consultas: contacto@aguapura.com</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+};

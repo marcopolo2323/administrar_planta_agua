@@ -1,0 +1,492 @@
+import React, { useState, useEffect } from 'react';
+import {
+  Box,
+  VStack,
+  HStack,
+  Text,
+  Card,
+  CardBody,
+  CardHeader,
+  Heading,
+  Badge,
+  Button,
+  Spinner,
+  Center,
+  SimpleGrid,
+  Stat,
+  StatLabel,
+  StatNumber,
+  StatHelpText,
+  useToast,
+  Select,
+  Flex,
+  Icon,
+  Table,
+  Thead,
+  Tbody,
+  Tr,
+  Th,
+  Td,
+  TableContainer
+} from '@chakra-ui/react';
+import {
+  FaUser,
+  FaGift,
+  FaClock,
+  FaCheckCircle,
+  FaBox,
+  FaMoneyBillWave,
+  FaShoppingCart
+} from 'react-icons/fa';
+import { Link } from 'react-router-dom';
+import axios from '../utils/axios';
+import { useRole } from '../hooks/useRole';
+import MonthlyPaymentNotification from '../components/MonthlyPaymentNotification';
+import VoucherFlowExplanation from '../components/VoucherFlowExplanation';
+
+const ClientDashboard = () => {
+  const [vouchers, setVouchers] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState('all');
+  const { user } = useRole();
+  const toast = useToast();
+
+  useEffect(() => {
+    fetchVouchers();
+    fetchOrders();
+    fetchStats();
+  }, [statusFilter]);
+
+  const fetchVouchers = async () => {
+    try {
+      setLoading(true);
+      const params = statusFilter !== 'all' ? `?status=${statusFilter}` : '';
+      const response = await axios.get(`/api/vouchers/client${params}`);
+      
+      if (response.data.success) {
+        setVouchers(response.data.data);
+      }
+    } catch (error) {
+      console.error('Error al cargar vales:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudieron cargar los vales',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchOrders = async () => {
+    try {
+      const response = await axios.get('/api/orders/my-orders');
+      if (response.data.success) {
+        setOrders(response.data.data || []);
+      }
+    } catch (error) {
+      console.error('Error al cargar pedidos:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudieron cargar los pedidos',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+  };
+
+  const fetchStats = async () => {
+    try {
+      const response = await axios.get('/api/vouchers/client/stats');
+      if (response.data.success) {
+        setStats(response.data.data);
+      }
+    } catch (error) {
+      console.error('Error al cargar estadísticas:', error);
+    }
+  };
+
+  const updateVoucherStatus = async (voucherId, newStatus) => {
+    try {
+      await axios.put(`/api/vouchers/${voucherId}/status`, {
+        status: newStatus
+      });
+
+      toast({
+        title: 'Estado Actualizado',
+        description: 'El estado del vale se actualizó correctamente',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+
+      fetchVouchers();
+    } catch (error) {
+      console.error('Error al actualizar estado:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudo actualizar el estado del vale',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+  };
+
+  const getStatusColor = (status) => {
+    const colors = {
+      pending: 'yellow',
+      delivered: 'blue',
+      paid: 'green'
+    };
+    return colors[status] || 'gray';
+  };
+
+  const getStatusText = (status) => {
+    const texts = {
+      pending: 'Pendiente',
+      delivered: 'Entregado',
+      paid: 'Pagado'
+    };
+    return texts[status] || status;
+  };
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('es-ES', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  if (loading) {
+    return (
+      <Center h="400px">
+        <Spinner size="xl" />
+      </Center>
+    );
+  }
+
+  return (
+    <Box p={6}>
+      <VStack spacing={6} align="stretch">
+        {/* Header */}
+        <Box>
+          <HStack justify="space-between" align="center">
+            <VStack align="start" spacing={1}>
+              <Heading size="lg">
+                <Icon as={FaUser} mr={2} />
+                Área de Cliente
+              </Heading>
+              <Text color="gray.600">
+                Bienvenido, {user?.username}. Gestiona tus vales y pedidos.
+              </Text>
+            </VStack>
+            <HStack spacing={3}>
+              <Button
+                as={Link}
+                to="/client-dashboard/order"
+                leftIcon={<FaShoppingCart />}
+                colorScheme="blue"
+                size="lg"
+              >
+                Hacer Pedido
+              </Button>
+              <Button
+                as={Link}
+                to="/client-dashboard/payments"
+                leftIcon={<FaMoneyBillWave />}
+                colorScheme="green"
+                size="lg"
+              >
+                Mis Pagos
+              </Button>
+            </HStack>
+          </HStack>
+        </Box>
+
+        {/* Notificación de pago mensual */}
+        <MonthlyPaymentNotification />
+
+        {/* Explicación del sistema de vales */}
+        <VoucherFlowExplanation />
+
+        {/* Estadísticas */}
+        <SimpleGrid columns={{ base: 1, md: 4 }} spacing={4}>
+          <Card>
+            <CardBody>
+              <Stat>
+                <StatLabel>Total Pedidos</StatLabel>
+                <StatNumber>{orders.length}</StatNumber>
+              </Stat>
+            </CardBody>
+          </Card>
+          <Card>
+            <CardBody>
+              <Stat>
+                <StatLabel>Pedidos Pendientes</StatLabel>
+                <StatNumber color="yellow.500">
+                  {orders.filter(order => order.status === 'pendiente').length}
+                </StatNumber>
+              </Stat>
+            </CardBody>
+          </Card>
+          <Card>
+            <CardBody>
+              <Stat>
+                <StatLabel>Pedidos Entregados</StatLabel>
+                <StatNumber color="blue.500">
+                  {orders.filter(order => order.status === 'entregado').length}
+                </StatNumber>
+              </Stat>
+            </CardBody>
+          </Card>
+          <Card>
+            <CardBody>
+              <Stat>
+                <StatLabel>Total Vales</StatLabel>
+                <StatNumber color="green.500">{stats?.totalVouchers || 0}</StatNumber>
+              </Stat>
+            </CardBody>
+          </Card>
+        </SimpleGrid>
+
+        {/* Resumen de montos */}
+        {stats && (
+          <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4}>
+            <Card>
+              <CardBody>
+                <Stat>
+                  <StatLabel>Total Pendiente</StatLabel>
+                  <StatNumber color="yellow.500">S/ {stats.pendingAmount.toFixed(2)}</StatNumber>
+                </Stat>
+              </CardBody>
+            </Card>
+            <Card>
+              <CardBody>
+                <Stat>
+                  <StatLabel>Total Entregado</StatLabel>
+                  <StatNumber color="blue.500">S/ {stats.deliveredAmount.toFixed(2)}</StatNumber>
+                </Stat>
+              </CardBody>
+            </Card>
+            <Card>
+              <CardBody>
+                <Stat>
+                  <StatLabel>Total Pagado</StatLabel>
+                  <StatNumber color="green.500">S/ {stats.paidAmount.toFixed(2)}</StatNumber>
+                </Stat>
+              </CardBody>
+            </Card>
+          </SimpleGrid>
+        )}
+
+        {/* Filtros */}
+        <Card>
+          <CardBody>
+            <HStack spacing={4}>
+              <Text fontWeight="bold">Filtrar por estado:</Text>
+              <Select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                maxW="200px"
+              >
+                <option value="all">Todos</option>
+                <option value="pending">Pendientes</option>
+                <option value="delivered">Entregados</option>
+                <option value="paid">Pagados</option>
+              </Select>
+            </HStack>
+          </CardBody>
+        </Card>
+
+        {/* Pedidos Recientes */}
+        <Card>
+          <CardHeader>
+            <Heading size="md">
+              <Icon as={FaShoppingCart} mr={2} />
+              Mis Pedidos Recientes
+            </Heading>
+          </CardHeader>
+          <CardBody>
+            {orders.length === 0 ? (
+              <Box textAlign="center" py={10}>
+                <Text color="gray.500" fontSize="lg">
+                  No tienes pedidos registrados
+                </Text>
+                <Button
+                  as={Link}
+                  to="/client-dashboard/order"
+                  colorScheme="blue"
+                  mt={4}
+                  leftIcon={<FaShoppingCart />}
+                >
+                  Hacer mi primer pedido
+                </Button>
+              </Box>
+            ) : (
+              <TableContainer>
+                <Table variant="simple">
+                  <Thead>
+                    <Tr>
+                      <Th>ID</Th>
+                      <Th>Total</Th>
+                      <Th>Estado</Th>
+                      <Th>Fecha</Th>
+                      <Th>Acciones</Th>
+                    </Tr>
+                  </Thead>
+                  <Tbody>
+                    {orders.slice(0, 5).map((order) => (
+                      <Tr key={order.id}>
+                        <Td>
+                          <Text fontWeight="bold">#{order.id}</Text>
+                        </Td>
+                        <Td>
+                          <Text fontWeight="bold" color="blue.600">
+                            S/ {parseFloat(order.total || 0).toFixed(2)}
+                          </Text>
+                        </Td>
+                        <Td>
+                          <Badge colorScheme={
+                            order.status === 'pendiente' ? 'yellow' :
+                            order.status === 'entregado' ? 'blue' :
+                            order.status === 'pagado' ? 'green' : 'gray'
+                          }>
+                            {order.status === 'pendiente' ? 'Pendiente' :
+                             order.status === 'entregado' ? 'Entregado' :
+                             order.status === 'pagado' ? 'Pagado' : order.status}
+                          </Badge>
+                        </Td>
+                        <Td>
+                          <Text fontSize="sm">
+                            {formatDate(order.createdAt)}
+                          </Text>
+                        </Td>
+                        <Td>
+                          <Button size="sm" variant="outline">
+                            Ver Detalles
+                          </Button>
+                        </Td>
+                      </Tr>
+                    ))}
+                  </Tbody>
+                </Table>
+              </TableContainer>
+            )}
+          </CardBody>
+        </Card>
+
+        {/* Lista de vales */}
+        <Card>
+          <CardHeader>
+            <Heading size="md">
+              <Icon as={FaGift} mr={2} />
+              Mis Vales
+            </Heading>
+          </CardHeader>
+          <CardBody>
+            {vouchers.length === 0 ? (
+              <Box textAlign="center" py={10}>
+                <Text color="gray.500" fontSize="lg">
+                  No tienes vales registrados
+                </Text>
+              </Box>
+            ) : (
+              <TableContainer>
+                <Table variant="simple">
+                  <Thead>
+                    <Tr>
+                      <Th>Producto</Th>
+                      <Th>Cantidad</Th>
+                      <Th>Precio Unit.</Th>
+                      <Th>Total</Th>
+                      <Th>Estado</Th>
+                      <Th>Repartidor</Th>
+                      <Th>Fecha</Th>
+                      <Th>Acciones</Th>
+                    </Tr>
+                  </Thead>
+                  <Tbody>
+                    {vouchers.map((voucher) => (
+                      <Tr key={voucher.id}>
+                        <Td>
+                          <VStack align="start" spacing={1}>
+                            <Text fontWeight="bold">{voucher.product?.name}</Text>
+                            <Text fontSize="sm" color="gray.600">
+                              {voucher.product?.description}
+                            </Text>
+                          </VStack>
+                        </Td>
+                        <Td>{voucher.quantity}</Td>
+                        <Td>S/ {parseFloat(voucher.unitPrice).toFixed(2)}</Td>
+                        <Td fontWeight="bold">S/ {parseFloat(voucher.totalAmount).toFixed(2)}</Td>
+                        <Td>
+                          <Badge colorScheme={getStatusColor(voucher.status)}>
+                            {getStatusText(voucher.status)}
+                          </Badge>
+                        </Td>
+                        <Td>{voucher.deliveryPerson?.username}</Td>
+                        <Td fontSize="sm">{formatDate(voucher.createdAt)}</Td>
+                        <Td>
+                          {voucher.status === 'delivered' && (
+                            <Button
+                              size="sm"
+                              colorScheme="green"
+                              leftIcon={<FaMoneyBillWave />}
+                              onClick={() => updateVoucherStatus(voucher.id, 'paid')}
+                            >
+                              Marcar Pagado
+                            </Button>
+                          )}
+                        </Td>
+                      </Tr>
+                    ))}
+                  </Tbody>
+                </Table>
+              </TableContainer>
+            )}
+          </CardBody>
+        </Card>
+
+        {/* Botón para hacer pedido rápido */}
+        <Card>
+          <CardBody textAlign="center">
+            <VStack spacing={4}>
+              <Icon as={FaShoppingCart} fontSize="3xl" color="blue.500" />
+              <Heading size="md">¿Necesitas hacer un pedido?</Heading>
+              <Text color="gray.600">
+                Puedes hacer un pedido rápido sin vales o contactar a tu repartidor para crear vales
+              </Text>
+              <HStack spacing={4}>
+                <Button
+                  colorScheme="blue"
+                  leftIcon={<FaShoppingCart />}
+                  onClick={() => window.open('/guest-order', '_blank')}
+                >
+                  Pedido Rápido
+                </Button>
+                <Button
+                  colorScheme="green"
+                  variant="outline"
+                  leftIcon={<FaGift />}
+                >
+                  Solicitar Vales
+                </Button>
+              </HStack>
+            </VStack>
+          </CardBody>
+        </Card>
+      </VStack>
+    </Box>
+  );
+};
+
+export default ClientDashboard;

@@ -1,107 +1,14 @@
 const express = require('express');
 const cors = require('cors');
-const dotenv = require('dotenv');
-const mongoose = require('mongoose'); // Agregar mongoose
-
-// Load environment variables
-dotenv.config();
-
-// Conectar a MongoDB para las notificaciones
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/punto_de_venta', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-  serverSelectionTimeoutMS: 30000,
-  socketTimeoutMS: 45000,
-  // bufferMaxEntries: 0, <- REMOVER ESTA LÍNEA
-  maxPoolSize: 10,
-  minPoolSize: 5,
-}).then(() => {
-  console.log('✅ MongoDB conectado exitosamente para notificaciones');
-}).catch(err => {
-  console.error('❌ Error al conectar a MongoDB:', err);
-});
-
-// Event listeners para MongoDB
-mongoose.connection.on('error', (err) => {
-  console.error('❌ Error de conexión MongoDB:', err);
-});
-
-mongoose.connection.on('disconnected', () => {
-  console.log('⚠️  MongoDB desconectado');
-});
-
-mongoose.connection.on('reconnected', () => {
-  console.log('✅ MongoDB reconectado');
-});
-
-// Import database and models
+const mongoose = require('mongoose');
 const { sequelize } = require('./models');
 
-// Import routes - Organizadas por funcionalidad
-// Autenticación y usuarios
-const authRoutes = require('./routes/auth.routes');
-const clientAuthRoutes = require('./routes/client.auth.routes');
-const deliveryAuthRoutes = require('./routes/delivery.auth.routes');
-
-// Gestión de productos e inventario
-const productRoutes = require('./routes/product.routes');
-const inventoryRoutes = require('./routes/inventory.routes');
-
-// Gestión de clientes y créditos
-const clientRoutes = require('./routes/client.routes');
-const creditRoutes = require('./routes/credit.routes');
-
-// Ventas y pedidos
-const saleRoutes = require('./routes/sale.routes');
-const orderRoutes = require('./routes/order.routes');
-const guestOrderRoutes = require('./routes/guestOrder.routes');
-
-// Pagos y facturación
-const paymentRoutes = require('./routes/payment.routes');
-const guestPaymentRoutes = require('./routes/guestPayment.routes');
-const electronicInvoiceRoutes = require('./routes/electronicInvoice.routes');
-
-// Compras y proveedores
-const purchaseRoutes = require('./routes/purchase.routes');
-
-// Caja y finanzas
-const cashRegisterRoutes = require('./routes/cashRegister.routes');
-
-// Entregas y repartidores
-const deliveryPersonRoutes = require('./routes/deliveryPerson.routes');
-const deliveryFeeRoutes = require('./routes/deliveryFee.routes');
-const deliveryOrdersRoutes = require('./routes/delivery.orders.routes');
-
-// Documentos y notificaciones
-const documentRoutes = require('./routes/document.routes');
-const notificationRoutes = require('./routes/notification.routes');
-
-// Reportes y análisis
-const reportRoutes = require('./routes/report.routes');
-
-// Initialize Express app
 const app = express();
-const PORT = process.env.PORT || 5000;
-
-// Crear directorio para documentos si no existe
-const path = require('path');
-const fs = require('fs-extra');
-const documentsDir = path.join(__dirname, '..', 'documents');
-fs.ensureDirSync(documentsDir);
-
-// Configurar directorio de documentos como estático
-app.use('/documents', express.static(documentsDir));
-
-// Crear servidor HTTP para WebSocket
-const server = require('http').createServer(app);
-
-// Inicializar servicio WebSocket
-const WebSocketService = require('./services/websocket.service');
-const wsService = new WebSocketService(server);
+const PORT = 5000;
 
 // Middleware
 app.use(cors({
-  origin: process.env.FRONTEND_URL || ['http://localhost:3000', 'http://localhost:5173'],
+  origin: ['http://localhost:3000', 'http://localhost:5173'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
@@ -110,98 +17,278 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Routes - Organizadas por funcionalidad
-// Autenticación y usuarios
-app.use('/api/auth', authRoutes);
-app.use('/api/client-auth', clientAuthRoutes);
-app.use('/api/delivery-auth', deliveryAuthRoutes);
+// Conectar a MongoDB para las notificaciones (opcional)
+if (process.env.MONGODB_URI) {
+  mongoose.connect(process.env.MONGODB_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+    serverSelectionTimeoutMS: 5000,
+    socketTimeoutMS: 10000,
+    maxPoolSize: 10,
+    minPoolSize: 5,
+  }).then(() => {
+    console.log('✅ MongoDB conectado exitosamente para notificaciones');
+  }).catch(err => {
+    console.log('⚠️  MongoDB no disponible, continuando sin notificaciones:', err.message);
+  });
+} else {
+  console.log('⚠️  MongoDB no configurado, continuando sin notificaciones');
+}
 
-// Gestión de productos e inventario
-app.use('/api/products', productRoutes);
-app.use('/api/inventory', inventoryRoutes);
+// Importar modelos
+const { Product, GuestOrder, GuestOrderProduct, District, DeliveryFee } = require('./models');
 
-// Gestión de clientes y créditos
-app.use('/api/clients', clientRoutes);
-app.use('/api/credits', creditRoutes);
-
-// Ventas y pedidos
-app.use('/api/sales', saleRoutes);
-app.use('/api/orders', orderRoutes);
-app.use('/api/guest-orders', guestOrderRoutes);
-
-// Pagos y facturación
-app.use('/api/payments', paymentRoutes);
-app.use('/api/guest-payments', guestPaymentRoutes);
-app.use('/api/electronic-invoices', electronicInvoiceRoutes);
-
-// Compras y proveedores
-app.use('/api/purchases', purchaseRoutes);
-
-// Caja y finanzas
-app.use('/api/cash-register', cashRegisterRoutes);
-
-// Entregas y repartidores
-app.use('/api/delivery-persons', deliveryPersonRoutes);
-app.use('/api/delivery-fees', deliveryFeeRoutes);
-app.use('/api/delivery-orders', deliveryOrdersRoutes);
-
-// Documentos y notificaciones
-app.use('/api/documents', documentRoutes);
-app.use('/api/notifications', notificationRoutes);
-
-// Reportes y análisis
-app.use('/api/reports', reportRoutes);
-
-// Root route
+// Rutas básicas
 app.get('/', (req, res) => {
   res.json({ message: 'Bienvenido a la API de la Planta de Agua' });
 });
 
-// Función para inicializar ambas bases de datos
-async function initializeDatabases() {
+// Importar y usar todas las rutas
+const authRoutes = require('./routes/auth.routes');
+const clientAuthRoutes = require('./routes/client.auth.routes');
+const productRoutes = require('./routes/product.routes');
+const clientRoutes = require('./routes/client.routes');
+const orderRoutes = require('./routes/order.routes');
+const saleRoutes = require('./routes/sale.routes');
+const creditRoutes = require('./routes/credit.routes');
+const paymentRoutes = require('./routes/payment.routes');
+const inventoryRoutes = require('./routes/inventory.routes');
+const reportRoutes = require('./routes/report.routes');
+const notificationRoutes = require('./routes/notification.routes');
+const deliveryFeeRoutes = require('./routes/deliveryFee.routes');
+const deliveryPersonRoutes = require('./routes/deliveryPerson.routes');
+const districtRoutes = require('./routes/district.routes');
+const cashRegisterRoutes = require('./routes/cashRegister.routes');
+const electronicInvoiceRoutes = require('./routes/electronicInvoice.routes');
+const guestOrderRoutes = require('./routes/guestOrder.routes');
+const guestPaymentRoutes = require('./routes/guestPayment.routes');
+const deliveryOrdersRoutes = require('./routes/delivery.orders.routes');
+const deliveryAuthRoutes = require('./routes/delivery.auth.routes');
+const deliveryAssignedRoutes = require('./routes/delivery.assigned.routes');
+const voucherRoutes = require('./routes/voucher.routes');
+const userRoutes = require('./routes/user.routes');
+
+// Usar las rutas
+app.use('/api/auth', authRoutes);
+app.use('/api/client', clientAuthRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api/clients', clientRoutes);
+app.use('/api/orders', orderRoutes);
+app.use('/api/sales', saleRoutes);
+app.use('/api/credits', creditRoutes);
+app.use('/api/payments', paymentRoutes);
+app.use('/api/inventory', inventoryRoutes);
+app.use('/api/reports', reportRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/delivery-fees', deliveryFeeRoutes);
+app.use('/api/delivery-persons', deliveryPersonRoutes);
+app.use('/api/districts', districtRoutes);
+app.use('/api/cash-register', cashRegisterRoutes);
+app.use('/api/electronic-invoices', electronicInvoiceRoutes);
+app.use('/api/guest-orders', guestOrderRoutes);
+app.use('/api/guest-payments', guestPaymentRoutes);
+app.use('/api/delivery-orders', deliveryOrdersRoutes);
+app.use('/api/delivery-auth', deliveryAuthRoutes);
+app.use('/api/delivery', deliveryAssignedRoutes);
+app.use('/api/vouchers', voucherRoutes);
+app.use('/api/users', userRoutes);
+
+// Rutas de productos (mantener compatibilidad)
+app.get('/api/products', async (req, res) => {
   try {
-    // Sincronizar PostgreSQL
-    await sequelize.sync({ alter: true });
-    console.log('✅ PostgreSQL: Base de datos sincronizada correctamente');
+    const products = await Product.findAll();
+    res.json(products);
+  } catch (error) {
+    console.error('Error al obtener productos:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// Rutas de distritos (mantener compatibilidad)
+app.get('/api/districts', async (req, res) => {
+  try {
+    const districts = await District.findAll();
+    res.json(districts);
+  } catch (error) {
+    console.error('Error al obtener distritos:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// Rutas de tarifas de envío (mantener compatibilidad)
+app.get('/api/delivery-fees', async (req, res) => {
+  try {
+    const deliveryFees = await DeliveryFee.findAll();
+    res.json(deliveryFees);
+  } catch (error) {
+    console.error('Error al obtener tarifas de envío:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// Rutas de pedidos de invitados (mantener compatibilidad)
+app.post('/api/guest-orders', async (req, res) => {
+  try {
+    console.log('Datos recibidos:', req.body);
     
-    // Verificar conexión de MongoDB
-    if (mongoose.connection.readyState === 1) {
-      console.log('✅ MongoDB: Conexión verificada');
-    } else {
-      console.log('⚠️  MongoDB: Esperando conexión...');
+    const {
+      clientName,
+      clientPhone,
+      clientEmail,
+      deliveryAddress,
+      deliveryDistrict,
+      deliveryReference,
+      deliveryNotes,
+      items,
+      subtotal,
+      deliveryFee,
+      total,
+      status = 'pendiente'
+    } = req.body;
+
+    // Validar datos requeridos
+    if (!clientName || !clientPhone || !deliveryAddress || !deliveryDistrict || !items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Datos requeridos faltantes'
+      });
+    }
+
+    // Crear el pedido
+    const guestOrder = await GuestOrder.create({
+      customerName: clientName,
+      customerPhone: clientPhone,
+      customerEmail: clientEmail,
+      deliveryAddress,
+      deliveryDistrict,
+      deliveryNotes: deliveryNotes || deliveryReference,
+      totalAmount: parseFloat(total),
+      deliveryFee: parseFloat(deliveryFee),
+      status: 'pending',
+      paymentMethod: 'cash',
+      paymentStatus: 'pending'
+    });
+
+    // Crear los productos del pedido
+    const orderProducts = await Promise.all(
+      items.map(async (item) => {
+        return await GuestOrderProduct.create({
+          guestOrderId: guestOrder.id,
+          productId: item.productId,
+          quantity: item.quantity,
+          price: parseFloat(item.unitPrice),
+          subtotal: parseFloat(item.subtotal)
+        });
+      })
+    );
+
+    // Obtener el pedido completo con productos
+    const completeOrder = await GuestOrder.findByPk(guestOrder.id, {
+      include: [
+        {
+          model: GuestOrderProduct,
+          as: 'products',
+          include: [
+            {
+              model: Product,
+              as: 'product',
+              attributes: ['id', 'name', 'unitPrice']
+            }
+          ]
+        }
+      ]
+    });
+
+    res.status(201).json({
+      success: true,
+      data: completeOrder
+    });
+  } catch (error) {
+    console.error('Error al crear pedido de invitado:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+});
+
+// Ruta para obtener pedidos de invitados (mantener compatibilidad)
+app.get('/api/guest-orders', async (req, res) => {
+  try {
+    const orders = await GuestOrder.findAll({
+      include: [
+        {
+          model: GuestOrderProduct,
+          as: 'products',
+          include: [
+            {
+              model: Product,
+              as: 'product',
+              attributes: ['id', 'name', 'unitPrice']
+            }
+          ]
+        }
+      ],
+      order: [['createdAt', 'DESC']]
+    });
+
+    res.json({
+      success: true,
+      data: orders
+    });
+  } catch (error) {
+    console.error('Error al obtener pedidos:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+});
+
+// Rutas de notificaciones (simplificadas)
+app.get('/api/notifications', async (req, res) => {
+  try {
+    // Si MongoDB no está disponible, devolver array vacío
+    if (!mongoose.connection.readyState) {
+      return res.json([]);
     }
     
-    return true;
+    // Aquí iría la lógica de notificaciones
+    res.json([]);
   } catch (error) {
-    console.error('❌ Error al inicializar las bases de datos:', error);
-    return false;
+    console.error('Error al obtener notificaciones:', error);
+    res.json([]);
+  }
+});
+
+// Inicializar base de datos y servidor
+async function startServer() {
+  try {
+    console.log('🔄 Inicializando base de datos...');
+    await sequelize.authenticate();
+    console.log('✅ PostgreSQL: Conexión establecida correctamente');
+    
+    // Sincronizar solo si es necesario
+    await sequelize.sync({ alter: false });
+    console.log('✅ PostgreSQL: Base de datos sincronizada correctamente');
+    
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`🚀 Servidor ejecutándose en el puerto ${PORT}`);
+      console.log(`📋 Rutas disponibles:`);
+      console.log(`   - POST /api/auth/login - Iniciar sesión`);
+      console.log(`   - POST /api/auth/register - Registro de usuarios`);
+      console.log(`   - GET /api/products - Obtener productos`);
+      console.log(`   - POST /api/products/:id/calculate-price - Calcular precio`);
+      console.log(`   - GET /api/districts - Obtener distritos`);
+      console.log(`   - GET /api/delivery-fees - Obtener tarifas de envío`);
+      console.log(`   - POST /api/guest-orders - Crear pedido de invitado`);
+    });
+  } catch (error) {
+    console.error('❌ Error al inicializar:', error);
+    process.exit(1);
   }
 }
 
-// Inicializar bases de datos y luego iniciar el servidor
-initializeDatabases()
-  .then((success) => {
-    if (success) {
-      console.log('🎉 Todas las bases de datos inicializadas correctamente');
-    } else {
-      console.log('⚠️  Algunas bases de datos tuvieron problemas al inicializar');
-    }
-    
-    // Importar el controlador de notificaciones para establecer el servicio WebSocket
-    const notificationController = require('./controllers/notification.controller');
-
-    // Start server with WebSocket support
-    server.listen(PORT, () => {
-      console.log(`🚀 Servidor corriendo en el puerto ${PORT} with WebSocket support`);
-      
-      // Establecer el servicio WebSocket en el controlador de notificaciones
-      notificationController.setWebSocketService(wsService);
-    });
-  })
-  .catch(error => {
-    console.error('❌ Error crítico al inicializar:', error);
-    process.exit(1);
-  });
-
-// Exportar la aplicación
-exports.app = app;
+startServer();

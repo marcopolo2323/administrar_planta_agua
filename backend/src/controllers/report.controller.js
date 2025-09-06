@@ -1,213 +1,238 @@
-const { Sale, SaleDetail, Product, Client, User, sequelize } = require('../models');
 const { Op } = require('sequelize');
+const { Sale, Order, GuestOrder, Client, Product, DeliveryPerson } = require('../models');
 
-// Reporte de ventas por período
-exports.getSalesByPeriod = async (req, res) => {
+// Generar reporte general
+exports.generateReport = async (req, res) => {
   try {
-    const { startDate, endDate } = req.query;
+    const { type, startDate, endDate } = req.query;
 
-    const sales = await Sale.findAll({
-      where: {
-        date: {
-          [Op.between]: [new Date(startDate), new Date(endDate)]
-        },
-        status: 'pagado'
-      },
-      include: [
-        { model: Client },
-        { model: User, as: 'seller', attributes: ['id', 'username'] },
-        { 
-          model: SaleDetail,
-          include: [{ model: Product }]
-        }
-      ],
-      order: [['date', 'DESC']]
-    });
-
-    // Calcular totales
-    const totalVentas = sales.length;
-    const montoTotal = sales.reduce((sum, sale) => sum + parseFloat(sale.total), 0);
-
-    // Agrupar por tipo de factura
-    const ventasPorTipo = {
-      boleta: sales.filter(sale => sale.invoiceType === 'boleta').length,
-      factura: sales.filter(sale => sale.invoiceType === 'factura').length,
-      vale: sales.filter(sale => sale.invoiceType === 'vale').length
-    };
-
-    return res.status(200).json({
-      sales,
-      resumen: {
-        totalVentas,
-        montoTotal,
-        ventasPorTipo
-      }
-    });
-  } catch (error) {
-    console.error('Error al generar reporte de ventas por período:', error);
-    return res.status(500).json({ message: 'Error en el servidor' });
-  }
-};
-
-// Reporte de ventas por cliente
-exports.getSalesByClient = async (req, res) => {
-  try {
-    const { startDate, endDate } = req.query;
-
-    // Obtener todas las ventas en el período
-    const sales = await Sale.findAll({
-      where: {
-        date: {
-          [Op.between]: [new Date(startDate), new Date(endDate)]
-        },
-        status: 'pagado'
-      },
-      include: [
-        { model: Client },
-        { 
-          model: SaleDetail,
-          include: [{ model: Product }]
-        }
-      ]
-    });
-
-    // Agrupar ventas por cliente
-    const clientSales = {};
-    
-    for (const sale of sales) {
-      const clientId = sale.Client.id;
-      const clientName = sale.Client.name;
-      
-      if (!clientSales[clientId]) {
-        clientSales[clientId] = {
-          clientId,
-          clientName,
-          totalVentas: 0,
-          montoTotal: 0,
-          ventas: []
-        };
-      }
-      
-      clientSales[clientId].totalVentas += 1;
-      clientSales[clientId].montoTotal += parseFloat(sale.total);
-      clientSales[clientId].ventas.push({
-        id: sale.id,
-        fecha: sale.date,
-        total: sale.total,
-        tipoFactura: sale.invoiceType
+    if (!type) {
+      return res.status(400).json({
+        success: false,
+        message: 'Tipo de reporte es requerido'
       });
     }
 
-    // Convertir a array y ordenar por monto total
-    const result = Object.values(clientSales).sort((a, b) => b.montoTotal - a.montoTotal);
-
-    return res.status(200).json(result);
-  } catch (error) {
-    console.error('Error al generar reporte de ventas por cliente:', error);
-    return res.status(500).json({ message: 'Error en el servidor' });
-  }
-};
-
-// Reporte de ventas por producto
-exports.getSalesByProduct = async (req, res) => {
-  try {
-    const { startDate, endDate } = req.query;
-
-    // Obtener todos los detalles de venta en el período
-    const saleDetails = await SaleDetail.findAll({
-      include: [
-        { 
-          model: Sale,
-          where: {
-            date: {
-              [Op.between]: [new Date(startDate), new Date(endDate)]
-            },
-            status: 'pagado'
-          }
-        },
-        { model: Product }
-      ]
-    });
-
-    // Agrupar por producto
-    const productSales = {};
-    
-    for (const detail of saleDetails) {
-      const productId = detail.Product.id;
-      const productName = detail.Product.name;
-      
-      if (!productSales[productId]) {
-        productSales[productId] = {
-          productId,
-          productName,
-          cantidadTotal: 0,
-          montoTotal: 0
-        };
-      }
-      
-      productSales[productId].cantidadTotal += detail.quantity;
-      productSales[productId].montoTotal += parseFloat(detail.subtotal);
+    const whereClause = {};
+    if (startDate && endDate) {
+      whereClause.createdAt = {
+        [Op.between]: [new Date(startDate), new Date(endDate)]
+      };
     }
 
-    // Convertir a array y ordenar por cantidad total
-    const result = Object.values(productSales).sort((a, b) => b.cantidadTotal - a.cantidadTotal);
+    let reportData = {};
 
-    return res.status(200).json(result);
-  } catch (error) {
-    console.error('Error al generar reporte de ventas por producto:', error);
-    return res.status(500).json({ message: 'Error en el servidor' });
-  }
-};
-
-// Reporte de ventas por distrito
-exports.getSalesByDistrict = async (req, res) => {
-  try {
-    const { startDate, endDate } = req.query;
-
-    // Obtener todas las ventas en el período con clientes que tienen distrito
-    const sales = await Sale.findAll({
-      where: {
-        date: {
-          [Op.between]: [new Date(startDate), new Date(endDate)]
-        },
-        status: 'pagado'
-      },
-      include: [
-        { 
-          model: Client,
-          where: {
-            district: {
-              [Op.not]: null
-            }
-          }
-        }
-      ]
-    });
-
-    // Agrupar por distrito
-    const districtSales = {};
-    
-    for (const sale of sales) {
-      const district = sale.Client.district;
-      
-      if (!districtSales[district]) {
-        districtSales[district] = {
-          distrito: district,
-          totalVentas: 0,
-          montoTotal: 0
-        };
-      }
-      
-      districtSales[district].totalVentas += 1;
-      districtSales[district].montoTotal += parseFloat(sale.total);
+    switch (type) {
+      case 'sales':
+        reportData = await generateSalesReport(whereClause);
+        break;
+      case 'orders':
+        reportData = await generateOrdersReport(whereClause);
+        break;
+      case 'deliveries':
+        reportData = await generateDeliveriesReport(whereClause);
+        break;
+      case 'customers':
+        reportData = await generateCustomersReport(whereClause);
+        break;
+      case 'products':
+        reportData = await generateProductsReport(whereClause);
+        break;
+      default:
+        return res.status(400).json({
+          success: false,
+          message: 'Tipo de reporte no válido'
+        });
     }
 
-    // Convertir a array y ordenar por monto total
-    const result = Object.values(districtSales).sort((a, b) => b.montoTotal - a.montoTotal);
-
-    return res.status(200).json(result);
+    res.json({
+      success: true,
+      data: reportData
+    });
   } catch (error) {
-    console.error('Error al generar reporte de ventas por distrito:', error);
-    return res.status(500).json({ message: 'Error en el servidor' });
+    console.error('Error al generar reporte:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
   }
 };
+
+// Reporte de ventas
+async function generateSalesReport(whereClause) {
+  const sales = await Sale.findAll({
+    where: whereClause,
+    include: [
+      { model: Client, attributes: ['id', 'name'] }
+    ],
+    order: [['createdAt', 'DESC']]
+  });
+
+  const totalSales = sales.reduce((sum, sale) => sum + parseFloat(sale.totalAmount || 0), 0);
+  const totalCount = sales.length;
+  const averageOrderValue = totalCount > 0 ? totalSales / totalCount : 0;
+
+  // Calcular crecimiento (comparar con período anterior)
+  const previousPeriodStart = new Date(whereClause.createdAt[Op.between][0]);
+  const previousPeriodEnd = new Date(whereClause.createdAt[Op.between][1]);
+  const periodLength = previousPeriodEnd - previousPeriodStart;
+  previousPeriodStart.setTime(previousPeriodStart.getTime() - periodLength);
+  previousPeriodEnd.setTime(previousPeriodEnd.getTime() - periodLength);
+
+  const previousSales = await Sale.findAll({
+    where: {
+      createdAt: {
+        [Op.between]: [previousPeriodStart, previousPeriodEnd]
+      }
+    }
+  });
+
+  const previousTotal = previousSales.reduce((sum, sale) => sum + parseFloat(sale.totalAmount || 0), 0);
+  const growthPercentage = previousTotal > 0 ? ((totalSales - previousTotal) / previousTotal) * 100 : 0;
+
+  return {
+    totalSales,
+    totalCount,
+    averageOrderValue,
+    growthPercentage: Math.round(growthPercentage * 100) / 100,
+    details: sales.map(sale => ({
+      date: sale.createdAt,
+      description: `Venta #${sale.id}`,
+      amount: sale.totalAmount,
+      status: 'completed'
+    }))
+  };
+}
+
+// Reporte de pedidos
+async function generateOrdersReport(whereClause) {
+  const orders = await Order.findAll({
+    where: whereClause,
+    include: [
+      { model: Client, attributes: ['id', 'name'] },
+      { model: DeliveryPerson, attributes: ['id', 'name'] }
+    ],
+    order: [['createdAt', 'DESC']]
+  });
+
+  const guestOrders = await GuestOrder.findAll({
+    where: whereClause,
+    order: [['createdAt', 'DESC']]
+  });
+
+  const allOrders = [...orders, ...guestOrders];
+  const totalOrders = allOrders.length;
+  const completedOrders = allOrders.filter(order => order.status === 'delivered').length;
+  const pendingOrders = allOrders.filter(order => ['pending', 'confirmed', 'preparing'].includes(order.status)).length;
+
+  return {
+    totalOrders,
+    completedOrders,
+    pendingOrders,
+    completionRate: totalOrders > 0 ? (completedOrders / totalOrders) * 100 : 0,
+    details: allOrders.map(order => ({
+      date: order.createdAt,
+      description: `Pedido #${order.id}`,
+      amount: order.totalAmount || 0,
+      status: order.status
+    }))
+  };
+}
+
+// Reporte de entregas
+async function generateDeliveriesReport(whereClause) {
+  const orders = await Order.findAll({
+    where: {
+      ...whereClause,
+      status: 'delivered'
+    },
+    include: [
+      { model: DeliveryPerson, attributes: ['id', 'name'] }
+    ],
+    order: [['updatedAt', 'DESC']]
+  });
+
+  const guestOrders = await GuestOrder.findAll({
+    where: {
+      ...whereClause,
+      status: 'delivered'
+    },
+    order: [['updatedAt', 'DESC']]
+  });
+
+  const allDeliveries = [...orders, ...guestOrders];
+  const totalDeliveries = allDeliveries.length;
+
+  // Estadísticas por repartidor
+  const deliveryStats = {};
+  allDeliveries.forEach(delivery => {
+    if (delivery.DeliveryPerson) {
+      const personName = delivery.DeliveryPerson.name;
+      if (!deliveryStats[personName]) {
+        deliveryStats[personName] = 0;
+      }
+      deliveryStats[personName]++;
+    }
+  });
+
+  return {
+    totalDeliveries,
+    deliveryStats,
+    details: allDeliveries.map(delivery => ({
+      date: delivery.updatedAt,
+      description: `Entrega #${delivery.id}`,
+      amount: delivery.totalAmount || 0,
+      status: 'delivered'
+    }))
+  };
+}
+
+// Reporte de clientes
+async function generateCustomersReport(whereClause) {
+  const clients = await Client.findAll({
+    where: whereClause,
+    order: [['createdAt', 'DESC']]
+  });
+
+  const totalCustomers = clients.length;
+  const newCustomers = clients.filter(client => {
+    const clientDate = new Date(client.createdAt);
+    const startDate = whereClause.createdAt ? new Date(whereClause.createdAt[Op.between][0]) : new Date();
+    return clientDate >= startDate;
+  }).length;
+
+  return {
+    totalCustomers,
+    newCustomers,
+    details: clients.map(client => ({
+      date: client.createdAt,
+      description: `Cliente: ${client.name}`,
+      amount: 0,
+      status: 'active'
+    }))
+  };
+}
+
+// Reporte de productos
+async function generateProductsReport(whereClause) {
+  const products = await Product.findAll({
+    where: whereClause,
+    order: [['createdAt', 'DESC']]
+  });
+
+  const totalProducts = products.length;
+  const activeProducts = products.filter(product => product.active).length;
+
+  return {
+    totalProducts,
+    activeProducts,
+    inactiveProducts: totalProducts - activeProducts,
+    details: products.map(product => ({
+      date: product.createdAt,
+      description: product.name,
+      amount: product.price || 0,
+      status: product.active ? 'active' : 'inactive'
+    }))
+  };
+}

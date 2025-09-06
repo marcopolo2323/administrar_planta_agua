@@ -82,21 +82,19 @@ exports.createOrder = async (req, res) => {
     // Añadir tarifa de entrega al total
     total += deliveryFee;
 
-    // Verificar si el cliente tiene crédito habilitado
+    // Verificar que el cliente existe (para clientes frecuentes)
     const client = await Client.findByPk(clientId);
     const isCredit = paymentMethod === 'credito';
     
-    // Si el método de pago es crédito, verificar que el cliente exista y tenga crédito habilitado
+    // Si el método de pago es crédito, verificar que el cliente exista
     if (isCredit) {
       if (!client) {
         await transaction.rollback();
-        return res.status(400).json({ message: 'Para pagar a crédito debe ser un cliente registrado' });
+        return res.status(400).json({ message: 'Cliente no encontrado' });
       }
       
-      if (!client.hasCredit) {
-        await transaction.rollback();
-        return res.status(403).json({ message: 'Este cliente no tiene habilitado el pago a crédito' });
-      }
+      // Los clientes frecuentes siempre pueden pagar a crédito (con vales)
+      console.log(`Cliente ${client.name} (ID: ${clientId}) realizando pedido a crédito con vales`);
     }
     
     // Crear el pedido

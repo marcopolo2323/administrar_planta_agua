@@ -4,7 +4,17 @@ const { User } = require('../models');
 // Registro de usuario
 exports.register = async (req, res) => {
   try {
-    const { username, email, password, role, isClient } = req.body;
+    const { 
+      username, 
+      email, 
+      password, 
+      role, 
+      isClient, 
+      phone, 
+      address, 
+      district, 
+      reference 
+    } = req.body;
 
     // Verificar si el usuario ya existe
     const existingUser = await User.findOne({ where: { email } });
@@ -35,7 +45,11 @@ exports.register = async (req, res) => {
       username,
       email,
       password,
-      role: userRole
+      role: userRole,
+      phone: phone || null,
+      address: address || null,
+      district: district || null,
+      reference: reference || null
     });
 
     return res.status(201).json({
@@ -44,7 +58,10 @@ exports.register = async (req, res) => {
         id: user.id,
         username: user.username,
         email: user.email,
-        role: user.role
+        role: user.role,
+        phone: user.phone,
+        address: user.address,
+        district: user.district
       }
     });
   } catch (error) {
@@ -76,10 +93,13 @@ exports.login = async (req, res) => {
     }
 
     // Generar token JWT
+    const expiration = process.env.JWT_EXPIRATION || '7d';
+    console.log('🔑 Generando JWT con expiración:', expiration);
+    
     const token = jwt.sign(
       { id: user.id, role: user.role },
       process.env.JWT_SECRET || 'tu_clave_secreta_muy_segura_aqui_2024',
-      { expiresIn: process.env.JWT_EXPIRATION || '24h' }
+      { expiresIn: expiration }
     );
 
     return res.status(200).json({
@@ -114,6 +134,39 @@ exports.getProfile = async (req, res) => {
     return res.status(200).json(user);
   } catch (error) {
     console.error('Error al obtener perfil:', error);
+    return res.status(500).json({ message: 'Error en el servidor' });
+  }
+};
+
+// Renovar token JWT
+exports.refreshToken = async (req, res) => {
+  try {
+    const userId = req.userId;
+
+    const user = await User.findByPk(userId, {
+      attributes: ['id', 'username', 'email', 'role']
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+
+    // Generar nuevo token
+    const expiration = process.env.JWT_EXPIRATION || '7d';
+    console.log('🔄 Renovando JWT con expiración:', expiration);
+    
+    const token = jwt.sign(
+      { id: user.id, role: user.role },
+      process.env.JWT_SECRET || 'tu_clave_secreta_muy_segura_aqui_2024',
+      { expiresIn: expiration }
+    );
+
+    return res.status(200).json({
+      message: 'Token renovado exitosamente',
+      token
+    });
+  } catch (error) {
+    console.error('Error al renovar token:', error);
     return res.status(500).json({ message: 'Error en el servidor' });
   }
 };

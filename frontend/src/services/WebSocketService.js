@@ -82,9 +82,20 @@ class WebSocketService {
 
       this.socket.onerror = (error) => {
         console.error('Error en la conexión WebSocket:', error);
-        // No mostrar errores en modo desarrollo para evitar ruido en la consola
+        this.isConnected = false;
+        
+        // En modo desarrollo, intentar reconectar después de un delay
         if (import.meta.env.MODE === 'development') {
-          console.log('WebSocket desactivado en modo desarrollo para evitar errores de conexión');
+          console.log('Error de WebSocket en desarrollo, intentando reconectar en 5 segundos...');
+          setTimeout(() => {
+            if (this.reconnectAttempts < 3) {
+              this.reconnectAttempts++;
+              this.connect(token);
+            } else {
+              console.log('WebSocket desactivado después de múltiples intentos de reconexión');
+            }
+          }, 5000);
+          return;
         }
       };
 

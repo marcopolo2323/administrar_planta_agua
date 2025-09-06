@@ -11,60 +11,45 @@ const DeliveryPerson = sequelize.define('DeliveryPerson', {
     type: DataTypes.STRING,
     allowNull: false
   },
-  documentType: {
-    type: DataTypes.ENUM('DNI', 'CE'),
-    allowNull: false,
-    defaultValue: 'DNI'
-  },
-  documentNumber: {
-    type: DataTypes.STRING,
-    allowNull: false,
-    unique: true
-  },
   phone: {
     type: DataTypes.STRING,
     allowNull: false
   },
   email: {
     type: DataTypes.STRING,
-    allowNull: true,
-    validate: {
-      isEmail: true
-    }
-  },
-  address: {
-    type: DataTypes.STRING,
     allowNull: true
   },
   vehicleType: {
-    type: DataTypes.ENUM('moto', 'bicicleta', 'auto', 'a_pie'),
+    type: DataTypes.ENUM('motorcycle', 'car', 'bicycle', 'truck'),
     allowNull: false,
-    defaultValue: 'moto'
+    defaultValue: 'motorcycle'
   },
   vehiclePlate: {
     type: DataTypes.STRING,
+    allowNull: false
+  },
+  licenseNumber: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  address: {
+    type: DataTypes.TEXT,
     allowNull: true
   },
   status: {
-    type: DataTypes.ENUM('disponible', 'en_ruta', 'no_disponible'),
+    type: DataTypes.ENUM('available', 'busy', 'offline'),
     allowNull: false,
-    defaultValue: 'disponible'
-  },
-  userId: {
-    type: DataTypes.INTEGER,
-    allowNull: true,
-    unique: true
-  },
-  active: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: true
+    defaultValue: 'available'
   },
   notes: {
     type: DataTypes.TEXT,
     allowNull: true
   }
 }, {
-  timestamps: true
+  tableName: 'delivery_persons',
+  timestamps: true,
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
 });
 
 module.exports = DeliveryPerson;

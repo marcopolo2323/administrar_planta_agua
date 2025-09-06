@@ -1,84 +1,67 @@
 import { create } from 'zustand';
 import axios from '../utils/axios';
 
-export const useReportStore = create((set, get) => ({
+const useReportStore = create((set, get) => ({
   // Estado
-  periodReport: null,
-  clientReport: null,
-  productReport: null,
-  districtReport: null,
+  reportData: null,
   loading: false,
   error: null,
 
   // Acciones
-  fetchSalesByPeriod: async (startDate, endDate) => {
+  generateReport: async (reportType, startDate, endDate) => {
     set({ loading: true, error: null });
     try {
-      const response = await axios.get(`/api/reports/sales/period?startDate=${startDate}&endDate=${endDate}`);
-      set({ periodReport: response.data, loading: false });
-      return response.data;
-    } catch (error) {
-      set({
-        error: error.response?.data?.message || 'Error al cargar reporte por período',
-        loading: false
+      const response = await axios.get('/api/reports', {
+        params: {
+          type: reportType,
+          startDate,
+          endDate
+        }
       });
-      return null;
+      set({ 
+        reportData: response.data, 
+        loading: false 
+      });
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Error al generar reporte:', error);
+      set({ 
+        error: error.response?.data?.message || 'Error al generar reporte',
+        loading: false 
+      });
+      return { success: false, error: error.response?.data?.message || 'Error al generar reporte' };
     }
   },
 
-  fetchSalesByClient: async (startDate, endDate) => {
-    set({ loading: true, error: null });
-    try {
-      const response = await axios.get(`/api/reports/sales/client?startDate=${startDate}&endDate=${endDate}`);
-      set({ clientReport: response.data, loading: false });
-      return response.data;
-    } catch (error) {
-      set({
-        error: error.response?.data?.message || 'Error al cargar reporte por cliente',
-        loading: false
+  exportReport: (reportType, startDate, endDate) => {
+    const { reportData } = get();
+    if (!reportData) return;
+
+    // Crear CSV simple
+    const csvContent = get().generateCSV(reportData);
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `reporte_${reportType}_${startDate}_${endDate}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  },
+
+  generateCSV: (data) => {
+    if (!data) return '';
+    
+    let csv = 'Fecha,Descripción,Monto,Estado\n';
+    if (data.details) {
+      data.details.forEach(item => {
+        csv += `${item.date},${item.description},${item.amount},${item.status}\n`;
       });
-      return null;
     }
+    return csv;
   },
 
-  fetchSalesByProduct: async (startDate, endDate) => {
-    set({ loading: true, error: null });
-    try {
-      const response = await axios.get(`/api/reports/sales/product?startDate=${startDate}&endDate=${endDate}`);
-      set({ productReport: response.data, loading: false });
-      return response.data;
-    } catch (error) {
-      set({
-        error: error.response?.data?.message || 'Error al cargar reporte por producto',
-        loading: false
-      });
-      return null;
-    }
-  },
-
-  fetchSalesByDistrict: async (startDate, endDate) => {
-    set({ loading: true, error: null });
-    try {
-      const response = await axios.get(`/api/reports/sales/district?startDate=${startDate}&endDate=${endDate}`);
-      set({ districtReport: response.data, loading: false });
-      return response.data;
-    } catch (error) {
-      set({
-        error: error.response?.data?.message || 'Error al cargar reporte por distrito',
-        loading: false
-      });
-      return null;
-    }
-  },
-
-  clearReports: () => {
-    set({
-      periodReport: null,
-      clientReport: null,
-      productReport: null,
-      districtReport: null
-    });
-  },
-
-  clearError: () => set({ error: null })
+  clearError: () => set({ error: null }),
+  clearReport: () => set({ reportData: null })
 }));
+
+export default useReportStore;

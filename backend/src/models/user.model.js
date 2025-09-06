@@ -29,6 +29,22 @@ const User = sequelize.define('User', {
     type: DataTypes.ENUM('admin', 'vendedor', 'cliente', 'repartidor'),
     defaultValue: 'cliente'
   },
+  phone: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  address: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
+  district: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  reference: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
   active: {
     type: DataTypes.BOOLEAN,
     defaultValue: true

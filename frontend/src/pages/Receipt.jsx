@@ -29,6 +29,9 @@ import {
 import { useNavigate, useParams } from 'react-router-dom';
 import { FaHome, FaDownload, FaPrint, FaWhatsapp, FaTruck } from 'react-icons/fa';
 import useOrderStore from '../stores/orderStore';
+import axios from '../utils/axios';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 const Receipt = () => {
   const navigate = useNavigate();
@@ -47,22 +50,52 @@ const Receipt = () => {
     const loadOrder = async () => {
       try {
         if (id) {
-          // Si tenemos ID, buscar en el store
-          const orderData = getOrderById(parseInt(id));
-          if (orderData) {
-            setOrder(orderData);
-          } else {
-            // Si no está en el store, intentar cargar desde localStorage
-            const savedOrderData = localStorage.getItem('guestOrderData');
-            if (savedOrderData) {
-              const orderData = JSON.parse(savedOrderData);
+          // Si tenemos ID, intentar cargar desde el servidor (ruta pública)
+          try {
+            // Usar la ruta pública que no requiere autenticación
+            const response = await axios.get(`/api/guest-orders/${id}`);
+            if (response.data.success) {
+              const orderData = response.data.data;
+              // Transformar los datos para que coincidan con el formato esperado
               setOrder({
-                id: id,
-                ...orderData,
-                status: 'pendiente',
-                createdAt: new Date().toISOString()
+                id: orderData.id,
+                client: {
+                  name: orderData.customerName,
+                  phone: orderData.customerPhone,
+                  email: orderData.customerEmail,
+                  address: orderData.deliveryAddress,
+                  district: orderData.deliveryDistrict,
+                  reference: orderData.deliveryNotes,
+                  notes: orderData.deliveryNotes
+                },
+                items: orderData.products?.map(product => ({
+                  name: product.product?.name || 'Producto',
+                  quantity: product.quantity,
+                  unitPrice: product.price,
+                  subtotal: product.subtotal
+                })) || [],
+                subtotal: orderData.totalAmount - orderData.deliveryFee,
+                deliveryFee: orderData.deliveryFee,
+                total: orderData.totalAmount,
+                status: orderData.status === 'pending' ? 'pendiente' : orderData.status,
+                createdAt: orderData.createdAt
               });
+              return;
             }
+          } catch (serverError) {
+            console.log('No se pudo cargar desde el servidor, intentando localStorage');
+          }
+          
+          // Si no se pudo cargar desde el servidor, intentar desde localStorage
+          const savedOrderData = localStorage.getItem('guestOrderData');
+          if (savedOrderData) {
+            const orderData = JSON.parse(savedOrderData);
+            setOrder({
+              id: id,
+              ...orderData,
+              status: 'pendiente',
+              createdAt: new Date().toISOString()
+            });
           }
         } else {
           // Si no hay ID, cargar desde localStorage
@@ -94,15 +127,120 @@ const Receipt = () => {
     loadOrder();
   }, [id, getOrderById, toast]);
 
-  const handleDownloadPDF = () => {
-    // TODO: Implementar descarga de PDF
-    toast({
-      title: 'Descarga PDF',
-      description: 'Funcionalidad de descarga en desarrollo',
-      status: 'info',
-      duration: 3000,
-      isClosable: true,
-    });
+  const handleDownloadPDF = async () => {
+    if (!order) return;
+    
+    try {
+      toast({
+        title: 'Generando PDF',
+        description: 'Preparando el documento...',
+        status: 'info',
+        duration: 2000,
+        isClosable: true,
+      });
+
+      // Crear un nuevo PDF
+      const pdf = new jsPDF();
+      
+      // Configurar el PDF
+      pdf.setFontSize(20);
+      pdf.setFont(undefined, 'bold');
+      pdf.text('PLANTA DE AGUA PURA', 20, 30);
+      
+      pdf.setFontSize(16);
+      pdf.setFont(undefined, 'normal');
+      pdf.text('Recibo de Pedido', 20, 45);
+      
+      // Información del pedido
+      pdf.setFontSize(12);
+      pdf.text(`Pedido #${order.id}`, 20, 60);
+      pdf.text(`Fecha: ${new Date(order.createdAt).toLocaleDateString('es-ES')}`, 20, 70);
+      pdf.text(`Estado: ${getStatusText(order.status)}`, 20, 80);
+      
+      // Información del cliente
+      pdf.setFont(undefined, 'bold');
+      pdf.text('DATOS DEL CLIENTE:', 20, 95);
+      pdf.setFont(undefined, 'normal');
+      pdf.text(`Nombre: ${order.client.name}`, 20, 105);
+      pdf.text(`Teléfono: ${order.client.phone}`, 20, 115);
+      if (order.client.email) {
+        pdf.text(`Email: ${order.client.email}`, 20, 125);
+      }
+      pdf.text(`Dirección: ${order.client.address}`, 20, order.client.email ? 135 : 125);
+      pdf.text(`Distrito: ${order.client.district}`, 20, order.client.email ? 145 : 135);
+      
+      // Productos
+      let yPosition = order.client.email ? 160 : 150;
+      pdf.setFont(undefined, 'bold');
+      pdf.text('PRODUCTOS:', 20, yPosition);
+      yPosition += 10;
+      
+      pdf.setFontSize(10);
+      pdf.setFont(undefined, 'bold');
+      pdf.text('Producto', 20, yPosition);
+      pdf.text('Cant.', 100, yPosition);
+      pdf.text('Precio', 120, yPosition);
+      pdf.text('Subtotal', 150, yPosition);
+      yPosition += 5;
+      
+      // Línea separadora
+      pdf.line(20, yPosition, 190, yPosition);
+      yPosition += 10;
+      
+      pdf.setFont(undefined, 'normal');
+      order.items.forEach((item) => {
+        pdf.text(item.name, 20, yPosition);
+        pdf.text(item.quantity.toString(), 100, yPosition);
+        pdf.text(`S/ ${parseFloat(item.unitPrice).toFixed(2)}`, 120, yPosition);
+        pdf.text(`S/ ${parseFloat(item.subtotal).toFixed(2)}`, 150, yPosition);
+        yPosition += 8;
+      });
+      
+      // Totales
+      yPosition += 10;
+      pdf.line(20, yPosition, 190, yPosition);
+      yPosition += 10;
+      
+      pdf.setFont(undefined, 'bold');
+      pdf.text('Subtotal:', 120, yPosition);
+      pdf.text(`S/ ${parseFloat(order.subtotal).toFixed(2)}`, 150, yPosition);
+      yPosition += 8;
+      
+      pdf.text('Flete:', 120, yPosition);
+      pdf.text(`S/ ${parseFloat(order.deliveryFee).toFixed(2)}`, 150, yPosition);
+      yPosition += 8;
+      
+      pdf.setFontSize(12);
+      pdf.text('TOTAL:', 120, yPosition);
+      pdf.text(`S/ ${parseFloat(order.total).toFixed(2)}`, 150, yPosition);
+      
+      // Pie de página
+      yPosition += 20;
+      pdf.setFontSize(8);
+      pdf.setFont(undefined, 'normal');
+      pdf.text('Gracias por su compra', 20, yPosition);
+      pdf.text('Planta de Agua Pura - Sistema de Gestión', 20, yPosition + 10);
+      
+      // Descargar el PDF
+      pdf.save(`pedido-${order.id}.pdf`);
+      
+      toast({
+        title: 'PDF Descargado',
+        description: 'El recibo se ha descargado correctamente',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+    } catch (error) {
+      console.error('Error al generar PDF:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudo generar el PDF',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    }
   };
 
   const handlePrint = () => {

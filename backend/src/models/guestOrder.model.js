@@ -1,6 +1,5 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
-const Order = require('./order.model');
 
 const GuestOrder = sequelize.define('GuestOrder', {
   id: {
@@ -8,32 +7,77 @@ const GuestOrder = sequelize.define('GuestOrder', {
     primaryKey: true,
     autoIncrement: true
   },
-  guestName: {
+  customerName: {
     type: DataTypes.STRING,
     allowNull: false
   },
-  guestPhone: {
+  customerPhone: {
     type: DataTypes.STRING,
     allowNull: false
   },
-  guestEmail: {
+  customerEmail: {
     type: DataTypes.STRING,
-    allowNull: true,
-    validate: {
-      isEmail: true
-    }
+    allowNull: true
   },
-  orderId: {
-    type: DataTypes.INTEGER,
+  deliveryAddress: {
+    type: DataTypes.TEXT,
+    allowNull: false
+  },
+  deliveryDistrict: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  deliveryNotes: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
+  status: {
+    type: DataTypes.ENUM('pending', 'confirmed', 'preparing', 'ready', 'delivered', 'cancelled'),
+    defaultValue: 'pending'
+  },
+  totalAmount: {
+    type: DataTypes.DECIMAL(10, 2),
     allowNull: false,
-    unique: true
+    defaultValue: 0
+  },
+  deliveryFee: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: true,
+    defaultValue: 0
+  },
+  paymentMethod: {
+    type: DataTypes.ENUM('cash', 'card', 'transfer'),
+    defaultValue: 'cash'
+  },
+  paymentStatus: {
+    type: DataTypes.ENUM('pending', 'paid', 'failed'),
+    defaultValue: 'pending'
+  },
+  estimatedDeliveryTime: {
+    type: DataTypes.DATE,
+    allowNull: true
+  },
+  actualDeliveryTime: {
+    type: DataTypes.DATE,
+    allowNull: true
+  },
+  notes: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
+  deliveryPersonId: {
+    type: DataTypes.INTEGER,
+    allowNull: true
+  },
+  districtId: {
+    type: DataTypes.INTEGER,
+    allowNull: true
   }
 }, {
-  timestamps: true
+  tableName: 'guest_orders',
+  timestamps: true,
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
 });
-
-// Relación con Order
-GuestOrder.belongsTo(Order, { foreignKey: 'orderId' });
-Order.hasOne(GuestOrder, { foreignKey: 'orderId' });
 
 module.exports = GuestOrder;

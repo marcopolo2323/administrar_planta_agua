@@ -60,6 +60,11 @@ const Product = sequelize.define('Product', {
   active: {
     type: DataTypes.BOOLEAN,
     defaultValue: true
+  },
+  image: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    comment: 'URL de la imagen del producto'
   }
 }, {
   timestamps: true

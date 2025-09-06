@@ -45,9 +45,9 @@ const useOrderStore = create((set, get) => ({
       const updatedOrder = response.data;
       
       set(state => ({
-        orders: state.orders.map(order => 
+        orders: Array.isArray(state.orders) ? state.orders.map(order => 
           order.id === orderId ? updatedOrder : order
-        ),
+        ) : [],
         loading: false
       }));
       
@@ -65,7 +65,7 @@ const useOrderStore = create((set, get) => ({
       await axios.delete(`/api/orders/${orderId}`);
       
       set(state => ({
-        orders: state.orders.filter(order => order.id !== orderId),
+        orders: Array.isArray(state.orders) ? state.orders.filter(order => order.id !== orderId) : [],
         loading: false
       }));
       
@@ -81,7 +81,7 @@ const useOrderStore = create((set, get) => ({
   getFilteredOrders: (searchTerm) => {
     const { orders } = get();
     
-    return orders.filter(order => {
+    return Array.isArray(orders) ? orders.filter(order => {
       const deliveryAddress = order.deliveryAddress ? order.deliveryAddress.toLowerCase() : '';
       const contactPhone = order.contactPhone ? order.contactPhone.toLowerCase() : '';
       const notes = order.notes ? order.notes.toLowerCase() : '';
@@ -89,32 +89,33 @@ const useOrderStore = create((set, get) => ({
       return deliveryAddress.includes(searchTerm.toLowerCase()) ||
              contactPhone.includes(searchTerm.toLowerCase()) ||
              notes.includes(searchTerm.toLowerCase());
-    });
+    }) : [];
   },
 
   // Obtener pedido por ID
   getOrderById: (orderId) => {
     const { orders } = get();
-    return orders.find(order => order.id === orderId);
+    return Array.isArray(orders) ? orders.find(order => order.id === orderId) : null;
   },
 
   // Filtrar por estado
   getOrdersByStatus: (status) => {
     const { orders } = get();
-    return orders.filter(order => order.status === status);
+    return Array.isArray(orders) ? orders.filter(order => order.status === status) : [];
   },
 
   // Estadísticas
   getOrderStats: () => {
     const { orders } = get();
     
-    const totalOrders = orders.length;
-    const pendingOrders = orders.filter(order => order.status === 'pendiente').length;
-    const confirmedOrders = orders.filter(order => order.status === 'confirmado').length;
-    const inProgressOrders = orders.filter(order => order.status === 'en_preparacion').length;
-    const onTheWayOrders = orders.filter(order => order.status === 'en_camino').length;
-    const deliveredOrders = orders.filter(order => order.status === 'entregado').length;
-    const cancelledOrders = orders.filter(order => order.status === 'cancelado').length;
+    const ordersArray = Array.isArray(orders) ? orders : [];
+    const totalOrders = ordersArray.length;
+    const pendingOrders = ordersArray.filter(order => order.status === 'pendiente').length;
+    const confirmedOrders = ordersArray.filter(order => order.status === 'confirmado').length;
+    const inProgressOrders = ordersArray.filter(order => order.status === 'en_preparacion').length;
+    const onTheWayOrders = ordersArray.filter(order => order.status === 'en_camino').length;
+    const deliveredOrders = ordersArray.filter(order => order.status === 'entregado').length;
+    const cancelledOrders = ordersArray.filter(order => order.status === 'cancelado').length;
     
     return {
       totalOrders,

@@ -100,9 +100,10 @@ const useSaleStore = create((set, get) => ({
   getSalesStats: () => {
     const { sales } = get();
     
-    const totalSales = sales.length;
-    const totalAmount = sales.reduce((sum, sale) => sum + parseFloat(sale.total), 0);
-    const todaySales = sales.filter(sale => {
+    const salesArray = Array.isArray(sales) ? sales : [];
+    const totalSales = salesArray.length;
+    const totalAmount = salesArray.reduce((sum, sale) => sum + parseFloat(sale.total || 0), 0);
+    const todaySales = salesArray.filter(sale => {
       const saleDate = new Date(sale.date);
       const today = new Date();
       return saleDate.toDateString() === today.toDateString();
@@ -112,7 +113,7 @@ const useSaleStore = create((set, get) => ({
       totalSales,
       totalAmount,
       todaySales: todaySales.length,
-      todayAmount: todaySales.reduce((sum, sale) => sum + parseFloat(sale.total), 0)
+      todayAmount: todaySales.reduce((sum, sale) => sum + parseFloat(sale.total || 0), 0)
     };
   },
 

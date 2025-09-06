@@ -9,5 +9,6 @@ router.post('/login', authController.login);
 
 // Rutas protegidas
 router.get('/profile', authMiddleware, authController.getProfile);
+router.post('/refresh', authMiddleware, authController.refreshToken);
 
 module.exports = router;

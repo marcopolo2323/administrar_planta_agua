@@ -39,8 +39,8 @@ exports.loginDeliveryPerson = async (req, res) => {
     // Generar token JWT
     const token = jwt.sign(
       { id: user.id, role: user.role, deliveryPersonId: deliveryPerson.id },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRATION }
+      process.env.JWT_SECRET || 'tu_clave_secreta_muy_segura_aqui_2024',
+      { expiresIn: process.env.JWT_EXPIRATION || '7d' }
     );
 
     return res.status(200).json({

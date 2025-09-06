@@ -19,13 +19,13 @@ import {
   SimpleGrid
 } from '@chakra-ui/react';
 import { useNavigate } from 'react-router-dom';
-import { FaBox, FaUsers, FaShoppingCart, FaTruck, FaBell, FaCreditCard, FaCashRegister } from 'react-icons/fa';
+import { FaBox, FaUsers, FaShoppingCart, FaTruck, FaBell, FaCreditCard, FaCashRegister, FaChartLine } from 'react-icons/fa';
 import useProductStore from '../stores/productStore';
 import useClientStore from '../stores/clientStore';
-import useSaleStore from '../stores/saleStore';
 import useOrderStore from '../stores/orderStore';
 import useNotificationStore from '../stores/notificationStore';
 import useDeliveryStore from '../stores/deliveryStore';
+import useGuestOrderStore from '../stores/guestOrderStore';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -35,20 +35,28 @@ const Dashboard = () => {
   // Stores
   const { products, fetchProducts } = useProductStore();
   const { clients, fetchClients } = useClientStore();
-  const { getSalesStats } = useSaleStore();
-  const { getOrderStats } = useOrderStore();
+  const { orders: regularOrders, fetchOrders: fetchRegularOrders, getOrderStats } = useOrderStore();
   const { unreadCount, fetchNotifications } = useNotificationStore();
-  const { getDeliveryStats } = useDeliveryStore();
+  const { getDeliveryStats, fetchDeliveryPersons, fetchDeliveryFees } = useDeliveryStore();
+  const { orders: guestOrders, fetchOrders: fetchGuestOrders } = useGuestOrderStore();
 
   useEffect(() => {
     fetchProducts();
     fetchClients();
     fetchNotifications();
-  }, [fetchProducts, fetchClients, fetchNotifications]);
+    fetchDeliveryPersons();
+    fetchDeliveryFees();
+    fetchRegularOrders();
+    fetchGuestOrders();
+  }, [fetchProducts, fetchClients, fetchNotifications, fetchDeliveryPersons, fetchDeliveryFees, fetchRegularOrders, fetchGuestOrders]);
 
-  const salesStats = getSalesStats();
   const orderStats = getOrderStats();
   const deliveryStats = getDeliveryStats();
+  
+  // Calcular estadísticas totales de pedidos
+  const totalOrders = (regularOrders?.length || 0) + (guestOrders?.length || 0);
+  const pendingOrders = (regularOrders?.filter(order => order.status === 'pendiente')?.length || 0) + 
+                       (guestOrders?.filter(order => order.status === 'pendiente')?.length || 0);
 
   const quickActions = [
     {
@@ -66,18 +74,11 @@ const Dashboard = () => {
       count: clients.length
     },
     {
-      title: 'Ventas',
-      icon: FaShoppingCart,
-      color: 'purple',
-      onClick: () => navigate('/dashboard/sales'),
-      count: salesStats.totalSales
-    },
-    {
       title: 'Pedidos',
       icon: FaTruck,
       color: 'orange',
       onClick: () => navigate('/dashboard/orders'),
-      count: orderStats.totalOrders
+      count: totalOrders
     },
     {
       title: 'Notificaciones',
@@ -87,11 +88,11 @@ const Dashboard = () => {
       count: unreadCount
     },
     {
-      title: 'Créditos',
+      title: 'Vales',
       icon: FaCreditCard,
       color: 'teal',
-      onClick: () => navigate('/dashboard/credits'),
-      count: 0
+      onClick: () => navigate('/dashboard/vouchers'),
+      count: '🎫'
     },
     {
       title: 'Caja',
@@ -99,6 +100,34 @@ const Dashboard = () => {
       color: 'yellow',
       onClick: () => navigate('/dashboard/cash-register'),
       count: '💰'
+    },
+    {
+      title: 'Pedidos Invitados',
+      icon: FaBox,
+      color: 'cyan',
+      onClick: () => navigate('/dashboard/guest-orders'),
+      count: guestOrders.length
+    },
+    {
+      title: 'Tarifas Envío',
+      icon: FaTruck,
+      color: 'pink',
+      onClick: () => navigate('/dashboard/delivery-fees'),
+      count: '🚚'
+    },
+    {
+      title: 'Repartidores',
+      icon: FaUsers,
+      color: 'indigo',
+      onClick: () => navigate('/dashboard/delivery-persons'),
+      count: '👨‍💼'
+    },
+    {
+      title: 'Reportes',
+      icon: FaChartLine,
+      color: 'gray',
+      onClick: () => navigate('/dashboard/reports'),
+      count: '📊'
     }
   ];
 
@@ -109,19 +138,7 @@ const Dashboard = () => {
       </Heading>
 
       {/* Estadísticas principales */}
-      <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} spacing={6} mb={8}>
-        <Card bg={cardBg} borderColor={borderColor}>
-          <CardBody>
-            <Stat>
-              <StatLabel>Total Ventas</StatLabel>
-              <StatNumber color="blue.500">{salesStats.totalSales}</StatNumber>
-              <StatHelpText>
-                <StatArrow type="increase" />
-                S/ {salesStats.totalAmount.toFixed(2)}
-              </StatHelpText>
-            </Stat>
-          </CardBody>
-        </Card>
+      <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6} mb={8}>
 
         <Card bg={cardBg} borderColor={borderColor}>
           <CardBody>

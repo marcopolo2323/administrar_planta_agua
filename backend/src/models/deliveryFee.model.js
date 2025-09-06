@@ -7,22 +7,44 @@ const DeliveryFee = sequelize.define('DeliveryFee', {
     primaryKey: true,
     autoIncrement: true
   },
-  district: {
+  name: {
     type: DataTypes.STRING,
-    allowNull: false,
-    unique: true
+    allowNull: false
   },
-  fee: {
+  description: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
+  basePrice: {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: false,
     defaultValue: 0
   },
-  active: {
+  pricePerKm: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: false,
+    defaultValue: 0
+  },
+  minOrderAmount: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: false,
+    defaultValue: 0
+  },
+  maxDistance: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: false,
+    defaultValue: 0
+  },
+  isActive: {
     type: DataTypes.BOOLEAN,
+    allowNull: false,
     defaultValue: true
   }
 }, {
-  timestamps: true
+  tableName: 'delivery_fees',
+  timestamps: true,
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
 });
 
 module.exports = DeliveryFee;

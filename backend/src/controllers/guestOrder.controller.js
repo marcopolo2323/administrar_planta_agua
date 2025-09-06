@@ -1,410 +1,421 @@
-const { Order, OrderDetail, Product, GuestOrder } = require('../models');
-const { sequelize } = require('../models');
+const { GuestOrder, Product, GuestOrderProduct, User, Voucher } = require('../models');
 
-// Crear un pedido para un usuario no registrado
+// Crear un nuevo pedido de invitado o cliente frecuente
 exports.createGuestOrder = async (req, res) => {
-  const t = await sequelize.transaction();
-  
   try {
-    const { guestName, guestPhone, guestEmail, products, shippingAddress, paymentMethod, deliveryDistrict, deliveryFee } = req.body;
+    console.log('Datos recibidos en createGuestOrder:', req.body);
     
-    console.log('Datos recibidos:', {
-      guestName,
-      guestPhone,
-      guestEmail,
-      products: products?.length,
-      shippingAddress,
+    // Manejar tanto el formato antiguo como el nuevo
+    const {
+      // Formato antiguo
+      clientName,
+      clientPhone,
+      clientEmail,
+      deliveryAddress,
       deliveryDistrict,
-      deliveryFee
-    });
-    
-    // Validar datos del cliente invitado
-    if (!guestName || !guestPhone || !guestEmail) {
-      return res.status(400).json({ message: 'Nombre, teléfono y correo son obligatorios' });
-    }
-    
-    // Validar productos
-    if (!products || !Array.isArray(products) || products.length === 0) {
-      return res.status(400).json({ message: 'Debe incluir al menos un producto' });
-    }
-    
-    // Validar dirección de envío y distrito
-    if (!shippingAddress) {
-      return res.status(400).json({ message: 'La dirección de envío es obligatoria' });
+      deliveryReference,
+      deliveryNotes,
+      items,
+      subtotal,
+      deliveryFee,
+      total,
+      status = 'pendiente',
+      // Formato nuevo
+      customerName,
+      customerPhone,
+      customerEmail,
+      products,
+      totalAmount,
+      paymentMethod = 'cash',
+      clientId // ID del cliente frecuente (si existe)
+    } = req.body;
+
+    // Normalizar datos
+    const finalCustomerName = customerName || clientName;
+    const finalCustomerPhone = customerPhone || clientPhone;
+    const finalCustomerEmail = customerEmail || clientEmail;
+    const finalProducts = products || items;
+    const finalTotal = totalAmount || total;
+    const finalDeliveryFee = deliveryFee || 0;
+
+    // Validar datos requeridos
+    if (!finalCustomerName || !finalCustomerPhone || !deliveryAddress || !deliveryDistrict || !finalProducts || !Array.isArray(finalProducts) || finalProducts.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Datos requeridos faltantes'
+      });
     }
 
-    if (!deliveryDistrict) {
-      return res.status(400).json({ message: 'El distrito de entrega es obligatorio' });
-    }
-    
     // Crear el pedido
-    const order = await Order.create({
-      orderDate: new Date(),
-      status: 'pendiente',
-      paymentStatus: 'pendiente',
-      paymentMethod: paymentMethod || 'efectivo',
-      deliveryAddress: shippingAddress,
-      deliveryDistrict: deliveryDistrict,
-      contactPhone: guestPhone, // Usamos el teléfono del invitado
-      total: 0, // Se calculará después
-      deliveryFee: deliveryFee || 0 // Costo de envío según el distrito
-    }, { transaction: t });
+    console.log('Creando pedido con datos:', {
+      customerName: finalCustomerName,
+      customerPhone: finalCustomerPhone,
+      customerEmail: finalCustomerEmail,
+      deliveryAddress,
+      deliveryDistrict,
+      deliveryNotes: deliveryNotes || deliveryReference,
+      totalAmount: parseFloat(finalTotal),
+      deliveryFee: parseFloat(finalDeliveryFee),
+      status: 'pending',
+      paymentMethod: paymentMethod,
+      paymentStatus: paymentMethod === 'voucher' ? 'pending' : 'pending',
+      clientId
+    });
     
-    // Crear el registro de cliente invitado
     const guestOrder = await GuestOrder.create({
-      guestName,
-      guestPhone,
-      guestEmail,
-      orderId: order.id
-    }, { transaction: t });
+      customerName: finalCustomerName,
+      customerPhone: finalCustomerPhone,
+      customerEmail: finalCustomerEmail,
+      deliveryAddress,
+      deliveryDistrict,
+      deliveryNotes: deliveryNotes || deliveryReference,
+      totalAmount: parseFloat(finalTotal),
+      deliveryFee: parseFloat(finalDeliveryFee),
+      status: 'pending',
+      paymentMethod: paymentMethod,
+      paymentStatus: paymentMethod === 'voucher' ? 'pending' : 'pending',
+      clientId: clientId || null
+    });
     
-    // Procesar los productos y calcular el total
-    let orderTotal = 0;
-    
-    for (const item of products) {
-      const product = await Product.findByPk(item.productId, { transaction: t });
+    console.log('Pedido creado con ID:', guestOrder.id);
+
+    // Crear los productos del pedido
+    const orderProducts = await Promise.all(
+      finalProducts.map(async (item) => {
+        return await GuestOrderProduct.create({
+          guestOrderId: guestOrder.id,
+          productId: item.productId,
+          quantity: item.quantity,
+          price: parseFloat(item.price || item.unitPrice),
+          subtotal: parseFloat(item.subtotal || (item.price || item.unitPrice) * item.quantity)
+        });
+      })
+    );
+
+    // Si es un cliente frecuente (clientId existe), crear vales automáticamente
+    if (clientId) {
+      console.log('Creando vales para cliente frecuente:', clientId);
       
-      if (!product) {
-        throw new Error(`Producto con ID ${item.productId} no encontrado`);
-      }
-      
-      if (product.stock < item.quantity) {
-        throw new Error(`Stock insuficiente para el producto ${product.name}`);
-      }
-      
-      // Determinar el precio unitario
-      let unitPrice = product.unitPrice;
-      
-      console.log(`Producto: ${product.name}, Tipo: ${product.type}, Precio original: ${unitPrice}, Cantidad: ${item.quantity}`);
-      
-      // Aplicar descuento para bidones de agua cuando se compran 2 o más
-      if ((product.name.toLowerCase().includes('bidon') || product.type === 'bidon') && item.quantity >= 2) {
-        unitPrice = 5.00; // Precio especial de 5 soles por bidón
-        console.log(`Aplicando precio especial para bidón: ${product.name}, cantidad: ${item.quantity}, precio unitario: ${unitPrice}`);
-      }
-      
-      // Aplicar precio mayorista para paquetes de botellas
-      if (product.name.toLowerCase().includes('botella') || product.name.toLowerCase().includes('agua') || product.type === 'botella') {
-        if (item.quantity >= 50) {
-          unitPrice = 9.00; // Precio especial de 9 soles por paquete cuando compran 50 o más
-          console.log(`Aplicando precio especial para paquete: ${product.name}, cantidad: ${item.quantity}, precio unitario: ${unitPrice}`);
-        } else if (item.quantity >= (product.wholesaleMinQuantity || 10) && product.wholesalePrice) {
-          unitPrice = product.wholesalePrice;
-          console.log(`Aplicando precio mayorista para paquete: ${product.name}, cantidad: ${item.quantity}, precio unitario: ${unitPrice}`);
-        }
-      }
-      
-      // Crear detalle del pedido
-      await OrderDetail.create({
-        orderId: order.id,
-        productId: product.id,
-        quantity: item.quantity,
-        unitPrice: unitPrice,
-        subtotal: unitPrice * item.quantity
-      }, { transaction: t });
-      
-      // Actualizar stock
-      await product.update({
-        stock: product.stock - item.quantity
-      }, { transaction: t });
-      
-      // Sumar al total
-      orderTotal += unitPrice * item.quantity;
+      // Crear un vale por cada producto en el pedido
+      const vouchers = await Promise.all(
+        finalProducts.map(async (item) => {
+          const product = await Product.findByPk(item.productId);
+          if (product) {
+            return await Voucher.create({
+              clientId: clientId,
+              deliveryPersonId: null, // Se asignará cuando se asigne el pedido
+              productId: item.productId,
+              quantity: item.quantity,
+              unitPrice: parseFloat(item.price || item.unitPrice),
+              totalAmount: parseFloat(item.subtotal || (item.price || item.unitPrice) * item.quantity),
+              status: 'pending',
+              notes: `Vale generado automáticamente para pedido #${guestOrder.id}`,
+              guestOrderId: guestOrder.id
+            });
+          }
+          return null;
+        })
+      );
+
+      console.log('Vales creados:', vouchers.filter(v => v !== null).length);
     }
-    
-    // Calcular el deliveryFee si no se proporciona
-    const finalDeliveryFee = deliveryFee || 0;
-    const finalTotal = orderTotal + finalDeliveryFee;
-    
-    console.log('Cálculos:', {
-      orderTotal,
-      deliveryFee: finalDeliveryFee,
-      finalTotal
+
+    // Obtener el pedido completo con productos
+    const completeOrder = await GuestOrder.findByPk(guestOrder.id, {
+      include: [
+        {
+          model: GuestOrderProduct,
+          as: 'products',
+          include: [
+            {
+              model: Product,
+              as: 'product',
+              attributes: ['id', 'name', 'unitPrice']
+            }
+          ]
+        }
+      ]
     });
+
+    console.log('Pedido completo creado:', completeOrder);
     
-    // Actualizar el total del pedido (incluyendo costo de envío)
-    await order.update({ 
-      total: finalTotal,
-      subtotal: orderTotal,
-      deliveryFee: finalDeliveryFee
-    }, { transaction: t });
-    
-    // Actualizar el objeto order para la respuesta
-    order.subtotal = orderTotal;
-    order.total = finalTotal;
-    order.deliveryFee = finalDeliveryFee;
-    
-    await t.commit();
-    
-    return res.status(201).json({
-      message: 'Pedido creado exitosamente',
-      orderId: order.id,
-      trackingInfo: {
-        orderId: order.id,
-        guestName: guestOrder.guestName
-      }
+    res.status(201).json({
+      success: true,
+      data: completeOrder,
+      message: clientId ? 'Pedido creado y vales generados automáticamente' : 'Pedido creado correctamente'
     });
-    
   } catch (error) {
-    await t.rollback();
-    return res.status(500).json({ message: 'Error al crear el pedido', error: error.message });
+    console.error('Error al crear pedido de invitado:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
   }
 };
 
-// Obtener un pedido por ID (para seguimiento)
+// Obtener todos los pedidos de invitados
+exports.getGuestOrders = async (req, res) => {
+  try {
+    const { status, page = 1, limit = 10 } = req.query;
+    
+    const whereClause = {};
+    if (status) {
+      whereClause.status = status;
+    }
+
+    const orders = await GuestOrder.findAndCountAll({
+      where: whereClause,
+      include: [
+        {
+          model: GuestOrderProduct,
+          as: 'products',
+          include: [
+            {
+              model: Product,
+              as: 'product',
+              attributes: ['id', 'name', 'unitPrice']
+            }
+          ]
+        },
+        {
+          model: User,
+          as: 'deliveryPerson',
+          attributes: ['id', 'username', 'email'],
+          required: false
+        }
+      ],
+      order: [['createdAt', 'DESC']],
+      limit: parseInt(limit),
+      offset: (parseInt(page) - 1) * parseInt(limit)
+    });
+
+    res.json({
+      success: true,
+      data: orders.rows,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: orders.count,
+        pages: Math.ceil(orders.count / parseInt(limit))
+      }
+    });
+  } catch (error) {
+    console.error('Error al obtener pedidos de invitados:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+};
+
+// Obtener un pedido específico
 exports.getGuestOrderById = async (req, res) => {
   try {
     const { id } = req.params;
     
-    const order = await Order.findByPk(id, {
+    const order = await GuestOrder.findByPk(id, {
       include: [
         {
-          model: GuestOrder,
-          as: 'guestOrder'
+          model: GuestOrderProduct,
+          as: 'products',
+          include: [
+            {
+              model: Product,
+              as: 'product',
+              attributes: ['id', 'name', 'unitPrice']
+            }
+          ]
         },
         {
-          model: OrderDetail,
-          as: 'orderDetails',
-          include: [{
-            model: Product,
-            as: 'product'
-          }]
-        },
-        {
-          model: sequelize.models.Payment,
-          as: 'payment',
+          model: User,
+          as: 'deliveryPerson',
+          attributes: ['id', 'username', 'email'],
           required: false
         }
       ]
     });
-    
-    if (!order || !order.guestOrder) {
-      return res.status(404).json({ message: 'Pedido no encontrado' });
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Pedido no encontrado'
+      });
     }
-    
-    return res.status(200).json(order);
-    
-  } catch (error) {
-    return res.status(500).json({ message: 'Error al obtener el pedido', error: error.message });
-  }
-};
 
-// Obtener todos los pedidos de invitados (para admin, vendedor y repartidor)
-exports.getAllGuestOrders = async (req, res) => {
-  try {
-    const orders = await Order.findAll({
-      include: [
-        {
-          model: GuestOrder,
-          as: 'guestOrder',
-          required: true // Solo pedidos que tengan un registro en GuestOrder
-        },
-        {
-          model: OrderDetail,
-          as: 'orderDetails',
-          include: [{
-            model: Product,
-            as: 'product'
-          }]
-        }
-      ],
-      order: [['createdAt', 'DESC']]
+    res.json({
+      success: true,
+      data: order
     });
-    
-    return res.status(200).json(orders);
-    
   } catch (error) {
-    return res.status(500).json({ message: 'Error al obtener los pedidos', error: error.message });
+    console.error('Error al obtener pedido:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
   }
 };
 
-// Actualizar el estado de un pedido de invitado
-exports.updateGuestOrderStatus = async (req, res) => {
-  const t = await sequelize.transaction();
-  
+// Actualizar estado de pedido
+exports.updateOrderStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
-    
-    if (!status) {
-      await t.rollback();
-      return res.status(400).json({ message: 'El estado es requerido' });
-    }
-    
-    // Validar que el estado sea válido
-    const validStatuses = ['pendiente', 'en proceso', 'enviado', 'entregado', 'cancelado'];
+
+    const validStatuses = ['pending', 'confirmed', 'preparing', 'ready', 'delivered', 'cancelled'];
     if (!validStatuses.includes(status)) {
-      await t.rollback();
-      return res.status(400).json({ message: 'Estado no válido' });
+      return res.status(400).json({
+        success: false,
+        message: 'Estado inválido'
+      });
     }
-    
-    const order = await Order.findByPk(id, {
-      include: [{
-        model: GuestOrder,
-        as: 'guestOrder'
-      }],
-      transaction: t
-    });
-    
-    if (!order || !order.guestOrder) {
-      await t.rollback();
-      return res.status(404).json({ message: 'Pedido de invitado no encontrado' });
+
+    const order = await GuestOrder.findByPk(id);
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Pedido no encontrado'
+      });
     }
-    
-    // Actualizar estado
-    await order.update({ status }, { transaction: t });
-    
-    await t.commit();
-    
-    // Obtener la orden actualizada para devolverla en la respuesta
-    const updatedOrder = await Order.findByPk(id, {
-      include: [{
-        model: GuestOrder,
-        as: 'guestOrder'
-      }]
+
+    await order.update({ status });
+
+    res.json({
+      success: true,
+      message: 'Estado actualizado correctamente',
+      data: order
     });
-    
-    return res.status(200).json({
-      message: 'Estado del pedido actualizado correctamente',
-      order: updatedOrder
-    });
-    
   } catch (error) {
-    await t.rollback();
-    console.error('Error al actualizar estado del pedido:', error);
-    return res.status(500).json({ message: 'Error al actualizar el estado del pedido', error: error.message });
+    console.error('Error al actualizar estado:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
   }
 };
 
-// Actualizar el estado de pago de un pedido de invitado
-exports.updateGuestOrderPaymentStatus = async (req, res) => {
-  const t = await sequelize.transaction();
-  
+// Eliminar pedido
+exports.deleteGuestOrder = async (req, res) => {
   try {
     const { id } = req.params;
-    const { paymentStatus } = req.body;
     
-    if (!paymentStatus) {
-      await t.rollback();
-      return res.status(400).json({ message: 'El estado de pago es requerido' });
+    const order = await GuestOrder.findByPk(id);
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Pedido no encontrado'
+      });
     }
-    
-    // Validar que el estado de pago sea válido
-    const validPaymentStatuses = ['pendiente', 'pagado', 'rechazado'];
-    if (!validPaymentStatuses.includes(paymentStatus)) {
-      await t.rollback();
-      return res.status(400).json({ message: 'Estado de pago no válido' });
-    }
-    
-    const order = await Order.findByPk(id, {
-      include: [{
-        model: GuestOrder,
-        as: 'guestOrder'
-      }],
-      transaction: t
+
+    await order.destroy();
+
+    res.json({
+      success: true,
+      message: 'Pedido eliminado correctamente'
     });
-    
-    if (!order || !order.guestOrder) {
-      await t.rollback();
-      return res.status(404).json({ message: 'Pedido de invitado no encontrado' });
-    }
-    
-    // Actualizar estado de pago
-    await order.update({ paymentStatus }, { transaction: t });
-    
-    await t.commit();
-    
-    // Obtener la orden actualizada para devolverla en la respuesta
-    const updatedOrder = await Order.findByPk(id, {
-      include: [{
-        model: GuestOrder,
-        as: 'guestOrder'
-      }]
-    });
-    
-    return res.status(200).json({
-      message: 'Estado de pago actualizado correctamente',
-      order: updatedOrder
-    });
-    
   } catch (error) {
-    await t.rollback();
-    console.error('Error al actualizar estado de pago:', error);
-    return res.status(500).json({ message: 'Error al actualizar el estado de pago', error: error.message });
+    console.error('Error al eliminar pedido:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
   }
 };
 
-// Asignar repartidor a un pedido de invitado
+// Asignar repartidor a un pedido
 exports.assignDeliveryPerson = async (req, res) => {
-  const t = await sequelize.transaction();
-  
   try {
     const { id } = req.params;
     const { deliveryPersonId } = req.body;
-    
-    console.log('ID del pedido:', id);
-    console.log('ID del repartidor:', deliveryPersonId);
-    
+
     if (!deliveryPersonId) {
-      await t.rollback();
-      return res.status(400).json({ message: 'El ID del repartidor es obligatorio' });
-    }
-    
-    // Verificar que el pedido existe
-    const order = await Order.findByPk(id, {
-      include: [{
-        model: GuestOrder,
-        as: 'guestOrder'
-      }],
-      transaction: t
-    });
-    
-    if (!order || !order.guestOrder) {
-      await t.rollback();
-      return res.status(404).json({ message: 'Pedido de invitado no encontrado' });
-    }
-    
-    // Verificar que el repartidor existe y tiene el rol correcto
-    const deliveryPerson = await sequelize.models.User.findByPk(deliveryPersonId, { transaction: t });
-    if (!deliveryPerson) {
-      await t.rollback();
-      return res.status(404).json({ message: 'Repartidor no encontrado' });
-    }
-    
-    if (deliveryPerson.role !== 'repartidor') {
-      await t.rollback();
-      return res.status(400).json({ message: 'El usuario asignado debe tener rol de repartidor' });
-    }
-    
-    // Asignar repartidor
-    await order.update({ deliveryPersonId }, { transaction: t });
-    
-    // Crear notificación para el repartidor asignado si existe el servicio
-    try {
-      const createNotificationService = require('../services/notification.service');
-      
-      await createNotificationService({
-        userId: deliveryPersonId,
-        userModel: 'DeliveryPerson',
-        title: 'Nuevo pedido asignado',
-        message: `Se te ha asignado el pedido de invitado #${order.id} para entrega en ${order.deliveryAddress}, ${order.deliveryDistrict}.`,
-        type: 'delivery_assigned',
-        orderId: order.id
+      return res.status(400).json({
+        success: false,
+        message: 'ID del repartidor requerido'
       });
-    } catch (notificationError) {
-      console.error('Error al crear notificaciones de asignación:', notificationError);
-      // No afecta la respuesta principal
     }
-    
-    await t.commit();
-    
-    return res.status(200).json({
+
+    const order = await GuestOrder.findByPk(id);
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Pedido no encontrado'
+      });
+    }
+
+    // Actualizar el pedido con el repartidor asignado
+    await order.update({ 
+      deliveryPersonId,
+      status: 'confirmed' // Cambiar estado a confirmado cuando se asigna repartidor
+    });
+
+    res.json({
+      success: true,
       message: 'Repartidor asignado correctamente',
-      order
+      data: order
+    });
+  } catch (error) {
+    console.error('Error al asignar repartidor:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+};
+
+// Obtener estadísticas de pedidos
+exports.getOrderStats = async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    
+    const whereClause = {};
+    if (startDate && endDate) {
+      whereClause.createdAt = {
+        [Op.between]: [new Date(startDate), new Date(endDate)]
+      };
+    }
+
+    const totalOrders = await GuestOrder.count({ where: whereClause });
+    const pendingOrders = await GuestOrder.count({ 
+      where: { ...whereClause, status: 'pending' } 
+    });
+    const completedOrders = await GuestOrder.count({ 
+      where: { ...whereClause, status: 'delivered' } 
+    });
+    const cancelledOrders = await GuestOrder.count({ 
+      where: { ...whereClause, status: 'cancelled' } 
+    });
+
+    // Calcular total de ventas
+    const orders = await GuestOrder.findAll({
+      where: whereClause,
+      attributes: ['totalAmount']
     });
     
+    const totalSales = orders.reduce((sum, order) => sum + parseFloat(order.totalAmount || 0), 0);
+
+    res.json({
+      success: true,
+      data: {
+        totalOrders,
+        pendingOrders,
+        completedOrders,
+        cancelledOrders,
+        totalSales,
+        averageOrderValue: totalOrders > 0 ? totalSales / totalOrders : 0
+      }
+    });
   } catch (error) {
-    await t.rollback();
-    return res.status(500).json({ message: 'Error al asignar repartidor', error: error.message });
+    console.error('Error al obtener estadísticas:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
   }
 };

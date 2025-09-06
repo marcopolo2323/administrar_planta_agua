@@ -15,12 +15,22 @@ const NotificationCenter = () => {
 
   const fetchNotifications = async () => {
     try {
+      // Deshabilitar temporalmente las notificaciones para evitar errores
+      setNotifications([]);
+      setUnreadCount(0);
+      return;
+      
       // Axios ya tiene configurado el interceptor para agregar el token
       const response = await axios.get('/api/notifications');
       setNotifications(response.data);
       setUnreadCount(response.data.filter(notif => !notif.read).length);
     } catch (error) {
       console.error('Error al obtener notificaciones:', error);
+      // Si es un error 401, no hacer nada ya que el interceptor se encarga
+      if (error.response && error.response.status !== 401) {
+        // Mostrar mensaje de error solo si no es un error de autenticación
+        console.log('No se pudieron cargar las notificaciones');
+      }
     }
   };
 
@@ -32,6 +42,9 @@ const NotificationCenter = () => {
 
   useEffect(() => {
     fetchNotifications();
+    
+    // Deshabilitar temporalmente WebSocket para evitar errores
+    return;
     
     // Conectar al WebSocket si hay un token disponible
     if (token) {

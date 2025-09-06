@@ -1,6 +1,9 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import useAuthStore from '../stores/authStore';
 import NotificationCenter from '../components/NotificationCenter';
+import useAutoRefresh from '../hooks/useAutoRefresh';
+import TokenDebug from '../components/TokenDebug';
+import { useRole } from '../hooks/useRole';
 import {
   Box,
   Flex,
@@ -30,9 +33,13 @@ import { useState } from 'react';
 
 const DashboardLayout = () => {
   const { user, logout } = useAuthStore();
+  const { isAdmin, isSeller, isDeliveryPerson } = useRole();
   const navigate = useNavigate();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  
+  // Hook para renovación automática del JWT
+  useAutoRefresh();
   
   const isMobile = useBreakpointValue({ base: true, lg: false });
   
@@ -47,19 +54,37 @@ const DashboardLayout = () => {
     return user.username.charAt(0).toUpperCase();
   };
 
-  const menuItems = [
+  // Menú para administradores y vendedores
+  const adminMenuItems = [
     { to: '/dashboard', label: 'Dashboard', icon: '🏠' },
     { to: '/dashboard/products', label: 'Productos', icon: '💧' },
     { to: '/dashboard/clients', label: 'Clientes', icon: '👥' },
     { to: '/dashboard/sales', label: 'Ventas', icon: '💰' },
-    { to: '/dashboard/pos', label: 'Punto de Venta', icon: '🛒' },
     { to: '/dashboard/cash-register', label: 'Caja', icon: '💳' },
-    { to: '/dashboard/credits', label: 'Créditos', icon: '📋' },
     { to: '/dashboard/guest-orders', label: 'Pedidos de Invitados', icon: '📦' },
-    { to: '/dashboard/delivery-fees', label: 'Tarifas de Envío', icon: '🚚' },
-    { to: '/dashboard/delivery-persons', label: 'Repartidores', icon: '👨‍💼' },
-    { to: '/dashboard/reports', label: 'Reportes', icon: '📊' }
+    { to: '/dashboard/vouchers', label: 'Vales', icon: '🎫' },
+    { to: '/dashboard/delivery-fees', label: 'Tarifas de Envío', icon: '🚚', adminOnly: true },
+    { to: '/dashboard/delivery-persons', label: 'Repartidores', icon: '👨‍💼', adminOnly: true },
+    { to: '/dashboard/reports', label: 'Reportes', icon: '📊', adminOnly: true }
   ];
+
+  // Menú para repartidores
+  const deliveryMenuItems = [
+    { to: '/delivery-dashboard', label: 'Dashboard', icon: '🏠' },
+    { to: '/delivery-dashboard#orders', label: 'Mis Pedidos', icon: '📦' },
+    { to: '/delivery-dashboard#stats', label: 'Estadísticas', icon: '📊' },
+    { to: '/delivery-dashboard#vouchers', label: 'Vales', icon: '🎫' }
+  ];
+
+  // Determinar qué menú mostrar según el rol
+  const getMenuItems = () => {
+    if (isDeliveryPerson()) {
+      return deliveryMenuItems;
+    }
+    return adminMenuItems.filter(item => !item.adminOnly || isAdmin());
+  };
+
+  const menuItems = getMenuItems();
 
   const SidebarContent = () => (
     <VStack spacing={0} h="full" align="stretch">
@@ -189,7 +214,7 @@ const DashboardLayout = () => {
                 />
               )}
               <Text fontSize="lg" fontWeight="semibold" color="gray.700">
-                Panel de Administración
+                {isDeliveryPerson() ? 'Panel de Repartidor' : 'Panel de Administración'}
               </Text>
             </HStack>
             
@@ -207,6 +232,9 @@ const DashboardLayout = () => {
           <Outlet />
         </Box>
       </Box>
+      
+      {/* Debug component solo en desarrollo */}
+      {import.meta.env.DEV && <TokenDebug />}
     </Flex>
   );
 };

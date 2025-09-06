@@ -23,7 +23,7 @@ import {
 } from '@chakra-ui/react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { FaArrowLeft, FaCheck, FaQrcode, FaCopy, FaMoneyBillWave } from 'react-icons/fa';
-import useOrderStore from '../stores/orderStore';
+import useGuestOrderStore from '../stores/guestOrderStore';
 
 const PaymentProcess = () => {
   const navigate = useNavigate();
@@ -32,7 +32,7 @@ const PaymentProcess = () => {
   const isMobile = useBreakpointValue({ base: true, md: false });
 
   // Store
-  const { createOrder } = useOrderStore();
+  const { createGuestOrder } = useGuestOrderStore();
 
   // Estados locales
   const [orderData, setOrderData] = useState(null);
@@ -68,12 +68,12 @@ const PaymentProcess = () => {
         clientPhone: orderData.client.phone,
         clientEmail: orderData.client.email || null,
         deliveryAddress: orderData.client.address,
-        district: orderData.client.district,
-        reference: orderData.client.reference || null,
-        notes: orderData.client.notes || null,
+        deliveryDistrict: orderData.client.district,
+        deliveryReference: orderData.client.reference || null,
+        deliveryNotes: orderData.client.notes || null,
         paymentMethod: orderData.paymentMethod,
         items: orderData.items.map(item => ({
-          productId: item.id,
+          productId: item.productId,
           quantity: item.quantity,
           unitPrice: item.unitPrice,
           subtotal: item.subtotal
@@ -84,9 +84,13 @@ const PaymentProcess = () => {
         status: 'pendiente'
       };
 
-      const result = await createOrder(orderPayload);
+      console.log('Enviando pedido:', orderPayload);
+      const result = await createGuestOrder(orderPayload);
+      console.log('Respuesta del servidor:', result);
       
       if (result.success) {
+        console.log('Pedido creado exitosamente:', result.data);
+        console.log('ID del pedido:', result.data.id);
         setOrderCreated(true);
         setOrderId(result.data.id);
         

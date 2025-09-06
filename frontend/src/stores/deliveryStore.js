@@ -3,228 +3,191 @@ import axios from '../utils/axios';
 
 const useDeliveryStore = create((set, get) => ({
   // Estado
-  deliveryPersons: [],
   deliveryFees: [],
-  deliveryOrders: [],
+  deliveryPersons: [],
   loading: false,
   error: null,
+
+  // Acciones para tarifas de envío
+  fetchDeliveryFees: async () => {
+    console.log('🔄 fetchDeliveryFees iniciado');
+    set({ loading: true, error: null });
+    try {
+      const response = await axios.get('/api/delivery-fees');
+      console.log('📦 Respuesta del API:', response.data);
+      const data = response.data.success ? response.data.data : response.data;
+      set({ 
+        deliveryFees: data, 
+        loading: false 
+      });
+      console.log('✅ deliveryFees actualizado en store:', data);
+      return { success: true, data: data };
+    } catch (error) {
+      console.error('❌ Error al cargar tarifas de envío:', error);
+      set({ 
+        error: error.response?.data?.message || 'Error al cargar tarifas',
+        loading: false 
+      });
+      return { success: false, error: error.response?.data?.message || 'Error al cargar tarifas' };
+    }
+  },
+
+  createDeliveryFee: async (feeData) => {
+    try {
+      const response = await axios.post('/api/delivery-fees', feeData);
+      set(state => ({
+        deliveryFees: [...(Array.isArray(state.deliveryFees) ? state.deliveryFees : []), response.data]
+      }));
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Error al crear tarifa:', error);
+      set({ error: error.response?.data?.message || 'Error al crear tarifa' });
+      return { success: false, error: error.response?.data?.message || 'Error al crear tarifa' };
+    }
+  },
+
+  updateDeliveryFee: async (feeId, feeData) => {
+    try {
+      const response = await axios.put(`/api/delivery-fees/${feeId}`, feeData);
+      set(state => ({
+        deliveryFees: Array.isArray(state.deliveryFees) ? state.deliveryFees.map(fee => 
+          fee.id === feeId ? response.data : fee
+        ) : []
+      }));
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Error al actualizar tarifa:', error);
+      set({ error: error.response?.data?.message || 'Error al actualizar tarifa' });
+      return { success: false, error: error.response?.data?.message || 'Error al actualizar tarifa' };
+    }
+  },
+
+  deleteDeliveryFee: async (feeId) => {
+    try {
+      await axios.delete(`/api/delivery-fees/${feeId}`);
+      set(state => ({
+        deliveryFees: Array.isArray(state.deliveryFees) ? state.deliveryFees.filter(fee => fee.id !== feeId) : []
+      }));
+      return { success: true };
+    } catch (error) {
+      console.error('Error al eliminar tarifa:', error);
+      set({ error: error.response?.data?.message || 'Error al eliminar tarifa' });
+      return { success: false, error: error.response?.data?.message || 'Error al eliminar tarifa' };
+    }
+  },
 
   // Acciones para repartidores
   fetchDeliveryPersons: async () => {
     set({ loading: true, error: null });
     try {
       const response = await axios.get('/api/delivery-persons');
-      set({ deliveryPersons: response.data, loading: false });
+      const data = response.data.success ? response.data.data : response.data;
+      set({ 
+        deliveryPersons: data, 
+        loading: false 
+      });
+      return { success: true, data: data };
     } catch (error) {
       console.error('Error al cargar repartidores:', error);
-      set({ error: error.message, loading: false });
+      set({ 
+        error: error.response?.data?.message || 'Error al cargar repartidores',
+        loading: false 
+      });
+      return { success: false, error: error.response?.data?.message || 'Error al cargar repartidores' };
     }
   },
 
-  createDeliveryPerson: async (deliveryPersonData) => {
-    set({ loading: true, error: null });
+  createDeliveryPerson: async (personData) => {
     try {
-      const response = await axios.post('/api/delivery-persons', deliveryPersonData);
-      const newDeliveryPerson = response.data;
-      
+      const response = await axios.post('/api/delivery-persons', personData);
       set(state => ({
-        deliveryPersons: [...state.deliveryPersons, newDeliveryPerson],
-        loading: false
+        deliveryPersons: [...(Array.isArray(state.deliveryPersons) ? state.deliveryPersons : []), response.data]
       }));
-      
-      return { success: true, data: newDeliveryPerson };
+      return { success: true, data: response.data };
     } catch (error) {
       console.error('Error al crear repartidor:', error);
-      set({ error: error.message, loading: false });
-      return { success: false, error: error.message };
+      set({ error: error.response?.data?.message || 'Error al crear repartidor' });
+      return { success: false, error: error.response?.data?.message || 'Error al crear repartidor' };
     }
   },
 
-  updateDeliveryPerson: async (deliveryPersonId, deliveryPersonData) => {
-    set({ loading: true, error: null });
+  updateDeliveryPerson: async (personId, personData) => {
     try {
-      const response = await axios.put(`/api/delivery-persons/${deliveryPersonId}`, deliveryPersonData);
-      const updatedDeliveryPerson = response.data;
-      
+      const response = await axios.put(`/api/delivery-persons/${personId}`, personData);
       set(state => ({
-        deliveryPersons: state.deliveryPersons.map(deliveryPerson => 
-          deliveryPerson.id === deliveryPersonId ? updatedDeliveryPerson : deliveryPerson
-        ),
-        loading: false
+        deliveryPersons: Array.isArray(state.deliveryPersons) ? state.deliveryPersons.map(person => 
+          person.id === personId ? response.data : person
+        ) : []
       }));
-      
-      return { success: true, data: updatedDeliveryPerson };
+      return { success: true, data: response.data };
     } catch (error) {
       console.error('Error al actualizar repartidor:', error);
-      set({ error: error.message, loading: false });
-      return { success: false, error: error.message };
+      set({ error: error.response?.data?.message || 'Error al actualizar repartidor' });
+      return { success: false, error: error.response?.data?.message || 'Error al actualizar repartidor' };
     }
   },
 
-  deleteDeliveryPerson: async (deliveryPersonId) => {
-    set({ loading: true, error: null });
+  updateDeliveryPersonStatus: async (personId, status) => {
     try {
-      await axios.delete(`/api/delivery-persons/${deliveryPersonId}`);
-      
+      await axios.put(`/api/delivery-persons/${personId}/status`, { status });
       set(state => ({
-        deliveryPersons: state.deliveryPersons.filter(deliveryPerson => deliveryPerson.id !== deliveryPersonId),
-        loading: false
+        deliveryPersons: Array.isArray(state.deliveryPersons) ? state.deliveryPersons.map(person => 
+          person.id === personId ? { ...person, status } : person
+        ) : []
       }));
-      
+      return { success: true };
+    } catch (error) {
+      console.error('Error al actualizar estado:', error);
+      set({ error: error.response?.data?.message || 'Error al actualizar estado' });
+      return { success: false, error: error.response?.data?.message || 'Error al actualizar estado' };
+    }
+  },
+
+  deleteDeliveryPerson: async (personId) => {
+    try {
+      await axios.delete(`/api/delivery-persons/${personId}`);
+      set(state => ({
+        deliveryPersons: Array.isArray(state.deliveryPersons) ? state.deliveryPersons.filter(person => person.id !== personId) : []
+      }));
       return { success: true };
     } catch (error) {
       console.error('Error al eliminar repartidor:', error);
-      set({ error: error.message, loading: false });
-      return { success: false, error: error.message };
+      set({ error: error.response?.data?.message || 'Error al eliminar repartidor' });
+      return { success: false, error: error.response?.data?.message || 'Error al eliminar repartidor' };
     }
   },
 
-  // Acciones para tarifas de envío
-  fetchDeliveryFees: async () => {
-    set({ loading: true, error: null });
-    try {
-      const response = await axios.get('/api/delivery-fees');
-      set({ deliveryFees: response.data, loading: false });
-    } catch (error) {
-      console.error('Error al cargar tarifas de envío:', error);
-      set({ error: error.message, loading: false });
-    }
-  },
-
-  createDeliveryFee: async (deliveryFeeData) => {
-    set({ loading: true, error: null });
-    try {
-      const response = await axios.post('/api/delivery-fees', deliveryFeeData);
-      const newDeliveryFee = response.data;
-      
-      set(state => ({
-        deliveryFees: [...state.deliveryFees, newDeliveryFee],
-        loading: false
-      }));
-      
-      return { success: true, data: newDeliveryFee };
-    } catch (error) {
-      console.error('Error al crear tarifa de envío:', error);
-      set({ error: error.message, loading: false });
-      return { success: false, error: error.message };
-    }
-  },
-
-  updateDeliveryFee: async (deliveryFeeId, deliveryFeeData) => {
-    set({ loading: true, error: null });
-    try {
-      const response = await axios.put(`/api/delivery-fees/${deliveryFeeId}`, deliveryFeeData);
-      const updatedDeliveryFee = response.data;
-      
-      set(state => ({
-        deliveryFees: state.deliveryFees.map(deliveryFee => 
-          deliveryFee.id === deliveryFeeId ? updatedDeliveryFee : deliveryFee
-        ),
-        loading: false
-      }));
-      
-      return { success: true, data: updatedDeliveryFee };
-    } catch (error) {
-      console.error('Error al actualizar tarifa de envío:', error);
-      set({ error: error.message, loading: false });
-      return { success: false, error: error.message };
-    }
-  },
-
-  deleteDeliveryFee: async (deliveryFeeId) => {
-    set({ loading: true, error: null });
-    try {
-      await axios.delete(`/api/delivery-fees/${deliveryFeeId}`);
-      
-      set(state => ({
-        deliveryFees: state.deliveryFees.filter(deliveryFee => deliveryFee.id !== deliveryFeeId),
-        loading: false
-      }));
-      
-      return { success: true };
-    } catch (error) {
-      console.error('Error al eliminar tarifa de envío:', error);
-      set({ error: error.message, loading: false });
-      return { success: false, error: error.message };
-    }
-  },
-
-  // Acciones para pedidos de reparto
-  fetchDeliveryOrders: async (deliveryPersonId) => {
-    set({ loading: true, error: null });
-    try {
-      const response = await axios.get(`/api/delivery-orders/${deliveryPersonId}`);
-      set({ deliveryOrders: response.data, loading: false });
-    } catch (error) {
-      console.error('Error al cargar pedidos de reparto:', error);
-      set({ error: error.message, loading: false });
-    }
-  },
-
-  updateDeliveryOrder: async (orderId, orderData) => {
-    set({ loading: true, error: null });
-    try {
-      const response = await axios.put(`/api/delivery-orders/${orderId}`, orderData);
-      const updatedOrder = response.data;
-      
-      set(state => ({
-        deliveryOrders: state.deliveryOrders.map(order => 
-          order.id === orderId ? updatedOrder : order
-        ),
-        loading: false
-      }));
-      
-      return { success: true, data: updatedOrder };
-    } catch (error) {
-      console.error('Error al actualizar pedido de reparto:', error);
-      set({ error: error.message, loading: false });
-      return { success: false, error: error.message };
-    }
-  },
-
-  // Filtros y búsqueda
-  getFilteredDeliveryPersons: (searchTerm) => {
+  getAvailableDeliveryPersons: () => {
     const { deliveryPersons } = get();
-    
-    return deliveryPersons.filter(deliveryPerson => {
-      const name = deliveryPerson.name.toLowerCase();
-      const phone = deliveryPerson.phone ? deliveryPerson.phone.toLowerCase() : '';
-      const email = deliveryPerson.email ? deliveryPerson.email.toLowerCase() : '';
-      
-      return name.includes(searchTerm.toLowerCase()) ||
-             phone.includes(searchTerm.toLowerCase()) ||
-             email.includes(searchTerm.toLowerCase());
-    });
+    return Array.isArray(deliveryPersons) ? deliveryPersons.filter(person => person.status === 'available') : [];
   },
 
-  // Obtener tarifa por distrito
-  getDeliveryFeeByDistrict: (district) => {
-    const { deliveryFees } = get();
-    return deliveryFees.find(fee => fee.district === district);
-  },
-
-  // Estadísticas
   getDeliveryStats: () => {
-    const { deliveryPersons, deliveryOrders } = get();
+    const { deliveryPersons, deliveryFees } = get();
+    
+    // Validar que sean arrays antes de usar filter
+    const persons = Array.isArray(deliveryPersons) ? deliveryPersons : [];
+    const fees = Array.isArray(deliveryFees) ? deliveryFees : [];
+    
+    const totalPersons = persons.length;
+    const availablePersons = persons.filter(person => person.status === 'available').length;
+    const busyPersons = persons.filter(person => person.status === 'busy').length;
+    const offlinePersons = persons.filter(person => person.status === 'offline').length;
+    
+    const totalFees = fees.length;
+    const activeFees = fees.filter(fee => fee.isActive).length;
     
     return {
-      totalDeliveryPersons: deliveryPersons.length,
-      activeDeliveryPersons: deliveryPersons.filter(dp => dp.active).length,
-      totalDeliveryOrders: deliveryOrders.length,
-      pendingDeliveryOrders: deliveryOrders.filter(order => order.status === 'en_camino').length,
-      deliveredOrders: deliveryOrders.filter(order => order.status === 'entregado').length
+      totalPersons,
+      availablePersons,
+      busyPersons,
+      offlinePersons,
+      totalFees,
+      activeFees
     };
   },
 
-  // Limpiar estado
-  clearError: () => set({ error: null }),
-  reset: () => set({ 
-    deliveryPersons: [], 
-    deliveryFees: [], 
-    deliveryOrders: [], 
-    loading: false, 
-    error: null 
-  })
+  clearError: () => set({ error: null })
 }));
 
 export default useDeliveryStore;

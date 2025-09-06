@@ -52,6 +52,8 @@ exports.registerClient = async (req, res) => {
         phone,
         email,
         userId: user.id,
+        hasCredit: true, // Habilitar crédito para clientes frecuentes
+        creditLimit: 1000.00, // Límite de crédito inicial
         defaultDeliveryAddress: defaultDeliveryAddress || address,
         defaultContactPhone: defaultContactPhone || phone
       }, { transaction: t });
@@ -62,8 +64,8 @@ exports.registerClient = async (req, res) => {
     // Generar token JWT
     const token = jwt.sign(
       { id: result.user.id, role: result.user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRATION }
+      process.env.JWT_SECRET || 'tu_clave_secreta_muy_segura_aqui_2024',
+      { expiresIn: process.env.JWT_EXPIRATION || '7d' }
     );
 
     return res.status(201).json({
@@ -124,8 +126,8 @@ exports.loginClient = async (req, res) => {
     // Generar token JWT
     const token = jwt.sign(
       { id: user.id, role: user.role, clientId: client.id },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRATION }
+      process.env.JWT_SECRET || 'tu_clave_secreta_muy_segura_aqui_2024',
+      { expiresIn: process.env.JWT_EXPIRATION || '7d' }
     );
 
     return res.status(200).json({
