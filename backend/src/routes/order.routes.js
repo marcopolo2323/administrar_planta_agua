@@ -24,13 +24,25 @@ router.get('/my-orders', authMiddleware, requireRole(['cliente']), async (req, r
       return res.status(404).json({ message: 'Cliente no encontrado' });
     }
     
-    // Obtener pedidos del cliente
+    // Obtener pedidos del cliente con detalles
     const orders = await Order.findAll({
       where: { clientId: client.id },
-      order: [['orderDate', 'DESC']]
+      include: [{
+        model: OrderDetail,
+        as: 'orderDetails',
+        include: [{
+          model: Product,
+          as: 'product',
+          attributes: ['id', 'name', 'unitPrice']
+        }]
+      }],
+      order: [['createdAt', 'DESC']]
     });
     
-    return res.status(200).json(orders);
+    return res.status(200).json({
+      success: true,
+      data: orders
+    });
   } catch (error) {
     console.error('Error al obtener pedidos del cliente:', error);
     return res.status(500).json({ message: 'Error en el servidor' });
@@ -66,6 +78,9 @@ router.get('/', authMiddleware, requireRole(['admin', 'vendedor']), orderControl
 
 // Obtener un pedido por ID
 router.get('/:id', authMiddleware, requireRole(['admin', 'vendedor']), orderController.getOrderById);
+
+// Actualizar un pedido completo
+router.put('/:id', authMiddleware, requireRole(['admin', 'vendedor']), orderController.updateOrder);
 
 // Actualizar estado de un pedido
 router.put('/:id/status', authMiddleware, requireRole(['admin', 'vendedor']), orderController.updateOrderStatus);

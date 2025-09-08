@@ -27,7 +27,14 @@ import {
   Tr,
   Th,
   Td,
-  TableContainer
+  TableContainer,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalCloseButton,
+  useDisclosure
 } from '@chakra-ui/react';
 import {
   FaUser,
@@ -50,6 +57,8 @@ const ClientDashboard = () => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const { isOpen, onOpen, onClose } = useDisclosure();
   const { user } = useRole();
   const toast = useToast();
 
@@ -166,6 +175,17 @@ const ClientDashboard = () => {
     });
   };
 
+  const handleViewOrderDetails = (order) => {
+    setSelectedOrder(order);
+    onOpen();
+  };
+
+  const calculateTotalPending = () => {
+    return vouchers
+      .filter(voucher => voucher.status === 'pending')
+      .reduce((total, voucher) => total + parseFloat(voucher.totalAmount), 0);
+  };
+
   if (loading) {
     return (
       <Center h="400px">
@@ -260,7 +280,7 @@ const ClientDashboard = () => {
 
         {/* Resumen de montos */}
         {stats && (
-          <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4}>
+          <SimpleGrid columns={{ base: 1, md: 4 }} spacing={4}>
             <Card>
               <CardBody>
                 <Stat>
@@ -282,6 +302,17 @@ const ClientDashboard = () => {
                 <Stat>
                   <StatLabel>Total Pagado</StatLabel>
                   <StatNumber color="green.500">S/ {stats.paidAmount.toFixed(2)}</StatNumber>
+                </Stat>
+              </CardBody>
+            </Card>
+            <Card bg="red.50" borderColor="red.200">
+              <CardBody>
+                <Stat>
+                  <StatLabel>Total a Pagar (Fin de Mes)</StatLabel>
+                  <StatNumber color="red.500">S/ {calculateTotalPending().toFixed(2)}</StatNumber>
+                  <StatHelpText color="red.600">
+                    {vouchers.filter(v => v.status === 'pending').length} vales pendientes
+                  </StatHelpText>
                 </Stat>
               </CardBody>
             </Card>
@@ -351,7 +382,7 @@ const ClientDashboard = () => {
                         </Td>
                         <Td>
                           <Text fontWeight="bold" color="blue.600">
-                            S/ {parseFloat(order.total || 0).toFixed(2)}
+                            S/ {(parseFloat(order.subtotal || 0) + parseFloat(order.deliveryFee || 0)).toFixed(2)}
                           </Text>
                         </Td>
                         <Td>
@@ -371,7 +402,11 @@ const ClientDashboard = () => {
                           </Text>
                         </Td>
                         <Td>
-                          <Button size="sm" variant="outline">
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleViewOrderDetails(order)}
+                          >
                             Ver Detalles
                           </Button>
                         </Td>
@@ -404,9 +439,8 @@ const ClientDashboard = () => {
                 <Table variant="simple">
                   <Thead>
                     <Tr>
-                      <Th>Producto</Th>
-                      <Th>Cantidad</Th>
-                      <Th>Precio Unit.</Th>
+                      <Th>Pedido</Th>
+                      <Th>Descripción</Th>
                       <Th>Total</Th>
                       <Th>Estado</Th>
                       <Th>Repartidor</Th>
@@ -418,22 +452,29 @@ const ClientDashboard = () => {
                     {vouchers.map((voucher) => (
                       <Tr key={voucher.id}>
                         <Td>
+                          <Text fontWeight="bold" color="blue.600">
+                            #{voucher.orderId || 'N/A'}
+                          </Text>
+                        </Td>
+                        <Td>
                           <VStack align="start" spacing={1}>
-                            <Text fontWeight="bold">{voucher.product?.name}</Text>
+                            <Text fontWeight="bold">
+                              {voucher.product?.name || 'Pedido Completo'}
+                            </Text>
                             <Text fontSize="sm" color="gray.600">
-                              {voucher.product?.description}
+                              {voucher.notes || 'Vale por pedido completo'}
                             </Text>
                           </VStack>
                         </Td>
-                        <Td>{voucher.quantity}</Td>
-                        <Td>S/ {parseFloat(voucher.unitPrice).toFixed(2)}</Td>
-                        <Td fontWeight="bold">S/ {parseFloat(voucher.totalAmount).toFixed(2)}</Td>
+                        <Td fontWeight="bold" color="green.600">
+                          S/ {parseFloat(voucher.totalAmount).toFixed(2)}
+                        </Td>
                         <Td>
                           <Badge colorScheme={getStatusColor(voucher.status)}>
                             {getStatusText(voucher.status)}
                           </Badge>
                         </Td>
-                        <Td>{voucher.deliveryPerson?.username}</Td>
+                        <Td>{voucher.deliveryPerson?.username || 'Sin asignar'}</Td>
                         <Td fontSize="sm">{formatDate(voucher.createdAt)}</Td>
                         <Td>
                           {voucher.status === 'delivered' && (
@@ -484,6 +525,106 @@ const ClientDashboard = () => {
             </VStack>
           </CardBody>
         </Card>
+
+        {/* Modal de detalles del pedido */}
+        <Modal isOpen={isOpen} onClose={onClose} size="xl">
+          <ModalOverlay />
+          <ModalContent>
+            <ModalHeader>Detalles del Pedido #{selectedOrder?.id}</ModalHeader>
+            <ModalCloseButton />
+            <ModalBody pb={6}>
+              {selectedOrder && (
+                <VStack spacing={4} align="stretch">
+                  <SimpleGrid columns={3} spacing={4}>
+                    <Box>
+                      <Text fontWeight="bold" color="gray.600">Estado:</Text>
+                      <Badge colorScheme={
+                        selectedOrder.status === 'pendiente' ? 'yellow' :
+                        selectedOrder.status === 'entregado' ? 'blue' :
+                        selectedOrder.status === 'pagado' ? 'green' : 'gray'
+                      }>
+                        {selectedOrder.status === 'pendiente' ? 'Pendiente' :
+                         selectedOrder.status === 'entregado' ? 'Entregado' :
+                         selectedOrder.status === 'pagado' ? 'Pagado' : selectedOrder.status}
+                      </Badge>
+                    </Box>
+                    <Box>
+                      <Text fontWeight="bold" color="gray.600">Método de Pago:</Text>
+                      <Text>{selectedOrder.paymentMethod}</Text>
+                    </Box>
+                    <Box>
+                      <Text fontWeight="bold" color="gray.600">Subtotal:</Text>
+                      <Text fontSize="md" fontWeight="bold" color="green.600">
+                        S/ {parseFloat(selectedOrder.subtotal || 0).toFixed(2)}
+                      </Text>
+                    </Box>
+                    <Box>
+                      <Text fontWeight="bold" color="gray.600">Flete:</Text>
+                      <Text fontSize="md" fontWeight="bold" color="orange.600">
+                        S/ {parseFloat(selectedOrder.deliveryFee || 0).toFixed(2)}
+                      </Text>
+                    </Box>
+                    <Box>
+                      <Text fontWeight="bold" color="gray.600">Total:</Text>
+                      <Text fontSize="lg" fontWeight="bold" color="blue.600">
+                        S/ {(parseFloat(selectedOrder.subtotal || 0) + parseFloat(selectedOrder.deliveryFee || 0)).toFixed(2)}
+                      </Text>
+                    </Box>
+                    <Box>
+                      <Text fontWeight="bold" color="gray.600">Fecha:</Text>
+                      <Text>{formatDate(selectedOrder.createdAt)}</Text>
+                    </Box>
+                  </SimpleGrid>
+                  
+                  <Box>
+                    <Text fontWeight="bold" color="gray.600">Dirección de Entrega:</Text>
+                    <Text>{selectedOrder.deliveryAddress}</Text>
+                    {selectedOrder.deliveryDistrict && (
+                      <Text fontSize="sm" color="gray.600">
+                        Distrito: {selectedOrder.deliveryDistrict}
+                      </Text>
+                    )}
+                  </Box>
+
+                  {selectedOrder.notes && (
+                    <Box>
+                      <Text fontWeight="bold" color="gray.600">Notas:</Text>
+                      <Text>{selectedOrder.notes}</Text>
+                    </Box>
+                  )}
+
+                  {selectedOrder.orderDetails && selectedOrder.orderDetails.length > 0 && (
+                    <Box>
+                      <Text fontWeight="bold" color="gray.600" mb={2}>Productos:</Text>
+                      <TableContainer>
+                        <Table size="sm">
+                          <Thead>
+                            <Tr>
+                              <Th>Producto</Th>
+                              <Th>Cantidad</Th>
+                              <Th>Precio Unit.</Th>
+                              <Th>Subtotal</Th>
+                            </Tr>
+                          </Thead>
+                          <Tbody>
+                            {selectedOrder.orderDetails.map((detail, index) => (
+                              <Tr key={index}>
+                                <Td>{detail.product?.name || 'Producto'}</Td>
+                                <Td>{detail.quantity}</Td>
+                                <Td>S/ {parseFloat(detail.unitPrice).toFixed(2)}</Td>
+                                <Td fontWeight="bold">S/ {parseFloat(detail.subtotal).toFixed(2)}</Td>
+                              </Tr>
+                            ))}
+                          </Tbody>
+                        </Table>
+                      </TableContainer>
+                    </Box>
+                  )}
+                </VStack>
+              )}
+            </ModalBody>
+          </ModalContent>
+        </Modal>
       </VStack>
     </Box>
   );

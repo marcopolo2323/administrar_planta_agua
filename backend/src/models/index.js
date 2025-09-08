@@ -74,6 +74,10 @@ CashRegister.belongsTo(User, { foreignKey: 'userId' });
 User.hasMany(CashMovement, { foreignKey: 'userId' });
 CashMovement.belongsTo(User, { foreignKey: 'userId' });
 
+// Relaciones entre User y Client
+User.hasOne(Client, { foreignKey: 'userId', as: 'Client' });
+Client.belongsTo(User, { foreignKey: 'userId', as: 'User' });
+
 CashRegister.hasMany(Sale, { foreignKey: 'cashRegisterId', as: 'sales' });
 Sale.belongsTo(CashRegister, { foreignKey: 'cashRegisterId' });
 
@@ -103,6 +107,10 @@ Order.belongsTo(Client, { foreignKey: 'clientId' });
 
 User.hasMany(Order, { foreignKey: 'userId', as: 'createdOrders' });
 Order.belongsTo(User, { foreignKey: 'userId', as: 'creator' });
+
+// Relación directa entre Order y User para repartidor
+User.hasMany(Order, { foreignKey: 'deliveryPersonId', as: 'assignedOrders' });
+Order.belongsTo(User, { foreignKey: 'deliveryPersonId', as: 'deliveryPerson' });
 
 // Relaciones de repartidores
 DeliveryPerson.belongsTo(User, { foreignKey: 'userId' });
@@ -154,8 +162,8 @@ GuestOrderProduct.belongsTo(Product, {
 });
 
 // Relaciones de vales
-User.hasMany(Voucher, { foreignKey: 'clientId', as: 'clientVouchers' });
-Voucher.belongsTo(User, { foreignKey: 'clientId', as: 'client' });
+Client.hasMany(Voucher, { foreignKey: 'clientId', as: 'Vouchers' });
+Voucher.belongsTo(Client, { foreignKey: 'clientId', as: 'Client' });
 
 User.hasMany(Voucher, { foreignKey: 'deliveryPersonId', as: 'deliveryVouchers' });
 Voucher.belongsTo(User, { foreignKey: 'deliveryPersonId', as: 'deliveryPerson' });
@@ -163,12 +171,16 @@ Voucher.belongsTo(User, { foreignKey: 'deliveryPersonId', as: 'deliveryPerson' }
 Product.hasMany(Voucher, { foreignKey: 'productId', as: 'vouchers' });
 Voucher.belongsTo(Product, { foreignKey: 'productId', as: 'product' });
 
+// Relación entre Voucher y Order
+Order.hasMany(Voucher, { foreignKey: 'orderId', as: 'vouchers' });
+Voucher.belongsTo(Order, { foreignKey: 'orderId', as: 'order' });
+
 // Relaciones de GuestOrder con District y User (deliveryPerson)
 GuestOrder.belongsTo(District, { foreignKey: 'districtId', as: 'district' });
 District.hasMany(GuestOrder, { foreignKey: 'districtId', as: 'guestOrders' });
 
 GuestOrder.belongsTo(User, { foreignKey: 'deliveryPersonId', as: 'deliveryPerson' });
-User.hasMany(GuestOrder, { foreignKey: 'deliveryPersonId', as: 'assignedOrders' });
+User.hasMany(GuestOrder, { foreignKey: 'deliveryPersonId', as: 'assignedGuestOrders' });
 
 
 // Exportar modelos y conexión

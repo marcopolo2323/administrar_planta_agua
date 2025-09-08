@@ -137,22 +137,15 @@ exports.calculateDeliveryFee = async (req, res) => {
     }
 
     // Calcular el flete (puedes agregar lógica adicional aquí)
-    let deliveryFee = parseFloat(district.deliveryFee) || 0;
-    
-    // Lógica adicional: si el pedido es muy grande, reducir flete
-    if (orderAmount >= 100) {
-      deliveryFee = deliveryFee * 0.8; // 20% de descuento
-    } else if (orderAmount >= 50) {
-      deliveryFee = deliveryFee * 0.9; // 10% de descuento
-    }
+    const deliveryFee = parseFloat(district.deliveryFee) || 0;
 
     res.json({
       success: true,
       data: {
         district: district.name,
-        deliveryFee: Math.round(deliveryFee * 100) / 100,
-        originalFee: parseFloat(district.deliveryFee),
-        discount: orderAmount >= 50 ? (orderAmount >= 100 ? 20 : 10) : 0
+        deliveryFee: deliveryFee,
+        originalFee: deliveryFee,
+        discount: 0
       }
     });
   } catch (error) {

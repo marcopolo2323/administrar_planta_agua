@@ -21,6 +21,9 @@ router.get('/delivery/stats', requireRole(['repartidor']), voucherController.get
 router.get('/client', requireRole(['cliente']), voucherController.getClientVouchers);
 router.get('/client/stats', requireRole(['cliente']), voucherController.getVoucherStats);
 
+// Ruta para repartidores - procesar pago de todos los vales de un cliente
+router.put('/client/:clientId/pay-all', requireRole(['repartidor']), voucherController.payAllClientVouchers);
+
 // Rutas con parámetros (deben ir al final)
 router.get('/:id', voucherController.getVoucherById);
 router.put('/:id/status', voucherController.updateVoucherStatus);

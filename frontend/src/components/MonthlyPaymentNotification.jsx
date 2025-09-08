@@ -33,7 +33,8 @@ const MonthlyPaymentNotification = () => {
       const response = await axios.get('/api/vouchers/client');
       if (response.data.success) {
         const vouchers = response.data.data || [];
-        const pendingVouchers = vouchers.filter(v => v.status === 'delivered');
+        // Cambiar a 'pending' ya que ahora los vales se crean con estado 'pending'
+        const pendingVouchers = vouchers.filter(v => v.status === 'pending');
         
         const totalAmount = pendingVouchers.reduce((sum, voucher) => 
           sum + parseFloat(voucher.totalAmount || 0), 0
@@ -64,7 +65,11 @@ const MonthlyPaymentNotification = () => {
     return null;
   }
 
-  const isEndOfMonth = new Date().getDate() >= 25; // Mostrar a partir del día 25
+  // Detectar si estamos cerca del fin de mes (últimos 5 días del mes)
+  const today = new Date();
+  const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+  const daysUntilEndOfMonth = lastDayOfMonth - today.getDate();
+  const isEndOfMonth = daysUntilEndOfMonth <= 5; // Últimos 5 días del mes
 
   return (
     <Alert
@@ -84,8 +89,11 @@ const MonthlyPaymentNotification = () => {
           </Badge>
         </HStack>
         <AlertDescription>
-          Tienes <strong>S/ {pendingAmount.toFixed(2)}</strong> en vales entregados pendientes de pago.
-          {isEndOfMonth && " Es momento de coordinar el pago con tu repartidor (efectivo, Yape o tarjeta)."}
+          Tienes <strong>S/ {pendingAmount.toFixed(2)}</strong> en vales pendientes de pago.
+          {isEndOfMonth 
+            ? ` ¡Es fin de mes! Debes pagar TODOS los vales pendientes (${voucherCount} vales). Contacta con tu repartidor inmediatamente.`
+            : " Recuerda que todos los vales deben pagarse a fin de mes."
+          }
         </AlertDescription>
         <HStack spacing={2}>
           <Button

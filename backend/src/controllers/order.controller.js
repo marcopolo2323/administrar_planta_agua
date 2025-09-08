@@ -1,4 +1,4 @@
-const { Order, OrderDetail, Product, Client, User, sequelize } = require('../models');
+const { Order, OrderDetail, Product, Client, User, Voucher, District, sequelize } = require('../models');
 const { createNotificationService, createMultipleNotificationsService } = require('./notification.controller');
 
 /**
@@ -40,7 +40,20 @@ exports.createOrder = async (req, res) => {
     
     // Calcular el total del pedido
     let total = 0;
-    let deliveryFee = 5.00; // Tarifa base de entrega
+    let deliveryFee = 5.00; // Tarifa base de entrega por defecto
+    
+    // Obtener el flete correcto según el distrito
+    if (deliveryDistrict) {
+      const district = await District.findOne({ 
+        where: { name: deliveryDistrict, isActive: true } 
+      });
+      if (district) {
+        deliveryFee = parseFloat(district.deliveryFee);
+        console.log(`Flete para distrito ${deliveryDistrict}: S/ ${deliveryFee}`);
+      } else {
+        console.log(`Distrito ${deliveryDistrict} no encontrado, usando flete por defecto: S/ ${deliveryFee}`);
+      }
+    }
     
     // Verificar disponibilidad de productos y calcular total
     for (const item of products) {
@@ -177,7 +190,30 @@ exports.createOrder = async (req, res) => {
       // No revertimos la transacción principal, ya que el pedido se creó correctamente
     }
 
+    // Crear vale automáticamente si el pedido es a crédito
+    if (isCredit) {
+      try {
+        // Crear UN vale por pedido completo (no por producto individual)
+        await Voucher.create({
+          clientId: clientId,
+          orderId: order.id,
+          productId: null, // No hay producto específico, es un vale por pedido completo
+          quantity: 1, // Un vale por pedido
+          unitPrice: subtotal, // El subtotal del pedido
+          totalAmount: total, // El total del pedido (subtotal + flete)
+          notes: `Vale por pedido completo #${order.id} - Total: S/ ${total.toFixed(2)} (Subtotal: S/ ${subtotal.toFixed(2)} + Flete: S/ ${deliveryFee.toFixed(2)})`,
+          status: 'pending'
+        });
+        
+        console.log(`Vale creado automáticamente para el pedido #${order.id} - Total: S/ ${total.toFixed(2)}`);
+      } catch (voucherError) {
+        console.error('Error al crear vale automáticamente:', voucherError);
+        // No revertimos la transacción principal, ya que el pedido se creó correctamente
+      }
+    }
+
     return res.status(201).json({
+      success: true,
       message: 'Pedido registrado correctamente',
       order
     });
@@ -201,6 +237,12 @@ exports.getAllOrders = async (req, res) => {
         { 
           model: Client,
           attributes: ['id', 'name', 'phone', 'email']
+        },
+        { 
+          model: User, 
+          as: 'deliveryPerson', 
+          attributes: ['id', 'username', 'phone'],
+          required: false
         }
       ],
       order: [['orderDate', 'DESC']]
@@ -232,6 +274,7 @@ exports.getOrderById = async (req, res) => {
         { model: User, as: 'deliveryPerson', attributes: ['id', 'username'] },
         { 
           model: OrderDetail,
+          as: 'orderDetails',
           include: [{ model: Product }]
         }
       ]
@@ -560,6 +603,7 @@ exports.getOrdersByClient = async (req, res) => {
         { model: User, as: 'deliveryPerson', attributes: ['id', 'username'] },
         { 
           model: OrderDetail,
+          as: 'orderDetails',
           include: [{ model: Product }]
         }
       ],
@@ -598,6 +642,7 @@ exports.getOrdersByDeliveryPerson = async (req, res) => {
         { model: Client },
         { 
           model: OrderDetail,
+          as: 'orderDetails',
           include: [{ model: Product }]
         }
       ],
@@ -608,5 +653,61 @@ exports.getOrdersByDeliveryPerson = async (req, res) => {
   } catch (error) {
     console.error('Error al obtener pedidos del repartidor:', error);
     return res.status(500).json({ message: 'Error en el servidor' });
+  }
+};
+
+/**
+ * Actualizar un pedido completo
+ * @param {Object} req - Objeto de solicitud Express
+ * @param {Object} req.params - Parámetros de la solicitud
+ * @param {number} req.params.id - ID del pedido
+ * @param {Object} req.body - Datos a actualizar
+ * @param {Object} res - Objeto de respuesta Express
+ * @returns {Object} Pedido actualizado
+ */
+exports.updateOrder = async (req, res) => {
+  const transaction = await sequelize.transaction();
+  
+  try {
+    const { id } = req.params;
+    const updateData = req.body;
+    
+    // Buscar el pedido
+    const order = await Order.findByPk(id, { transaction });
+    if (!order) {
+      await transaction.rollback();
+      return res.status(404).json({ message: 'Pedido no encontrado' });
+    }
+    
+    // Actualizar el pedido
+    await order.update(updateData, { transaction });
+    
+    // Obtener el pedido actualizado con sus relaciones
+    const updatedOrder = await Order.findByPk(id, {
+      include: [
+        { model: Client },
+        { 
+          model: OrderDetail,
+          as: 'orderDetails',
+          include: [{ model: Product }]
+        }
+      ],
+      transaction
+    });
+    
+    await transaction.commit();
+    
+    return res.status(200).json({
+      success: true,
+      data: updatedOrder
+    });
+  } catch (error) {
+    await transaction.rollback();
+    console.error('Error al actualizar pedido:', error);
+    return res.status(500).json({ 
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message 
+    });
   }
 };

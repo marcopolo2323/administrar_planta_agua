@@ -27,6 +27,7 @@ import {
   Divider,
   Alert,
   AlertIcon,
+  Input,
   Table,
   Thead,
   Tbody,
@@ -55,12 +56,13 @@ import { generateInvoice, generateInvoiceNumber } from '../utils/invoiceGenerato
 const ClientPayments = () => {
   const [vouchers, setVouchers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedVouchers, setSelectedVouchers] = useState([]);
   const [paymentMethod, setPaymentMethod] = useState('card');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [selectedVoucher, setSelectedVoucher] = useState(null);
   const { user } = useAuthStore();
   const toast = useToast();
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const { isOpen: isViewOpen, onOpen: onViewOpen, onClose: onViewClose } = useDisclosure();
 
   useEffect(() => {
     fetchVouchers();
@@ -79,34 +81,26 @@ const ClientPayments = () => {
     }
   };
 
-  const pendingVouchers = vouchers.filter(v => v.status === 'delivered');
+  const pendingVouchers = vouchers.filter(v => v.status === 'pending');
   const totalPending = pendingVouchers.reduce((sum, v) => sum + parseFloat(v.totalAmount || 0), 0);
 
-  const handleSelectVoucher = (voucherId) => {
-    setSelectedVouchers(prev => 
-      prev.includes(voucherId) 
-        ? prev.filter(id => id !== voucherId)
-        : [...prev, voucherId]
-    );
-  };
+  // Detectar si estamos cerca del fin de mes
+  const today = new Date();
+  const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+  const daysUntilEndOfMonth = lastDayOfMonth - today.getDate();
+  const isEndOfMonth = daysUntilEndOfMonth <= 5;
 
-  const handleSelectAll = () => {
-    if (selectedVouchers.length === pendingVouchers.length) {
-      setSelectedVouchers([]);
-    } else {
-      setSelectedVouchers(pendingVouchers.map(v => v.id));
-    }
+  const handleViewVoucher = (voucher) => {
+    setSelectedVoucher(voucher);
+    onViewOpen();
   };
-
-  const selectedVouchersData = vouchers.filter(v => selectedVouchers.includes(v.id));
-  const selectedTotal = selectedVouchersData.reduce((sum, v) => sum + parseFloat(v.totalAmount || 0), 0);
 
   const handlePayment = async () => {
-    if (selectedVouchers.length === 0) {
+    if (pendingVouchers.length === 0) {
       toast({
-        title: 'Selecciona vales',
-        description: 'Debes seleccionar al menos un vale para pagar',
-        status: 'warning',
+        title: 'No hay vales pendientes',
+        description: 'No tienes vales pendientes para pagar',
+        status: 'info',
         duration: 3000,
         isClosable: true,
       });
@@ -118,17 +112,17 @@ const ClientPayments = () => {
       // Simular procesamiento de pago
       await new Promise(resolve => setTimeout(resolve, 2000));
       
-      // Actualizar vales como pagados
+      // Actualizar TODOS los vales pendientes como pagados
       await Promise.all(
-        selectedVouchers.map(voucherId =>
-          axios.put(`/api/vouchers/${voucherId}/status`, { status: 'paid' })
+        pendingVouchers.map(voucher =>
+          axios.put(`/api/vouchers/${voucher.id}/status`, { status: 'paid' })
         )
       );
 
       // Generar boleta/factura
       const invoiceData = {
-        vouchers: selectedVouchersData,
-        total: selectedTotal,
+        vouchers: pendingVouchers,
+        total: totalPending,
         paymentMethod,
         clientId: user.id,
         clientName: user.username,
@@ -141,15 +135,14 @@ const ClientPayments = () => {
       await generateInvoice(invoiceData);
 
       toast({
-        title: 'Pago procesado',
-        description: `Se procesaron ${selectedVouchers.length} vales por S/ ${selectedTotal.toFixed(2)}`,
+        title: 'Pago procesado exitosamente',
+        description: `Se procesaron TODOS los vales pendientes (${pendingVouchers.length} vales) por S/ ${totalPending.toFixed(2)}`,
         status: 'success',
         duration: 5000,
         isClosable: true,
       });
 
-      // Limpiar selección y actualizar datos
-      setSelectedVouchers([]);
+      // Actualizar datos
       fetchVouchers();
       onClose();
 
@@ -254,14 +247,20 @@ const ClientPayments = () => {
 
         {/* Alerta de fin de mes */}
         {pendingVouchers.length > 0 && (
-          <Alert status="warning">
+          <Alert status={isEndOfMonth ? "error" : "warning"}>
             <AlertIcon />
             <Box>
               <Text fontWeight="bold">
-                ¡Es fin de mes! Tienes {pendingVouchers.length} vales pendientes por S/ {totalPending.toFixed(2)}
+                {isEndOfMonth 
+                  ? `¡ES FIN DE MES! Debes pagar TODOS los vales pendientes: ${pendingVouchers.length} vales por S/ ${totalPending.toFixed(2)}`
+                  : `Tienes ${pendingVouchers.length} vales pendientes por S/ ${totalPending.toFixed(2)}`
+                }
               </Text>
               <Text fontSize="sm">
-                Realiza tu pago ahora para mantener tu cuenta al día.
+                {isEndOfMonth 
+                  ? "Es OBLIGATORIO pagar todos los vales ahora. No puedes elegir cuáles pagar."
+                  : "Recuerda que todos los vales deben pagarse a fin de mes."
+                }
               </Text>
             </Box>
           </Alert>
@@ -274,12 +273,15 @@ const ClientPayments = () => {
               <Heading size="md">Mis Vales</Heading>
               {pendingVouchers.length > 0 && (
                 <Button
-                  colorScheme="blue"
+                  colorScheme={isEndOfMonth ? "red" : "blue"}
                   leftIcon={<FaCreditCard />}
                   onClick={onOpen}
-                  isDisabled={selectedVouchers.length === 0}
+                  size="lg"
                 >
-                  Pagar Seleccionados ({selectedVouchers.length})
+                  {isEndOfMonth 
+                    ? `PAGAR TODOS LOS VALES (${pendingVouchers.length}) - S/ ${totalPending.toFixed(2)}`
+                    : `Pagar Todos los Vales (${pendingVouchers.length}) - S/ ${totalPending.toFixed(2)}`
+                  }
                 </Button>
               )}
             </HStack>
@@ -294,18 +296,9 @@ const ClientPayments = () => {
                 <Table variant="simple">
                   <Thead>
                     <Tr>
-                      {pendingVouchers.length > 0 && (
-                        <Th>
-                          <input
-                            type="checkbox"
-                            checked={selectedVouchers.length === pendingVouchers.length && pendingVouchers.length > 0}
-                            onChange={handleSelectAll}
-                          />
-                        </Th>
-                      )}
                       <Th>Vale #</Th>
-                      <Th>Producto</Th>
-                      <Th>Cantidad</Th>
+                      <Th>Pedido</Th>
+                      <Th>Descripción</Th>
                       <Th>Monto</Th>
                       <Th>Estado</Th>
                       <Th>Fecha</Th>
@@ -315,18 +308,22 @@ const ClientPayments = () => {
                   <Tbody>
                     {vouchers.map((voucher) => (
                       <Tr key={voucher.id}>
-                        {voucher.status === 'delivered' && (
-                          <Td>
-                            <input
-                              type="checkbox"
-                              checked={selectedVouchers.includes(voucher.id)}
-                              onChange={() => handleSelectVoucher(voucher.id)}
-                            />
-                          </Td>
-                        )}
                         <Td fontWeight="bold">#{voucher.id}</Td>
-                        <Td>{voucher.product?.name || 'N/A'}</Td>
-                        <Td>{voucher.quantity}</Td>
+                        <Td>
+                          <Text fontWeight="bold" color="blue.600">
+                            #{voucher.orderId || 'N/A'}
+                          </Text>
+                        </Td>
+                        <Td>
+                          <VStack align="start" spacing={1}>
+                            <Text fontWeight="bold">
+                              {voucher.product?.name || 'Pedido Completo'}
+                            </Text>
+                            <Text fontSize="sm" color="gray.600">
+                              {voucher.notes || 'Vale por pedido completo'}
+                            </Text>
+                          </VStack>
+                        </Td>
                         <Td fontWeight="bold" color="blue.600">
                           S/ {parseFloat(voucher.totalAmount || 0).toFixed(2)}
                         </Td>
@@ -343,7 +340,11 @@ const ClientPayments = () => {
                                 Boleta
                               </Button>
                             )}
-                            <Button size="sm" leftIcon={<FaEye />}>
+                            <Button 
+                              size="sm" 
+                              leftIcon={<FaEye />}
+                              onClick={() => handleViewVoucher(voucher)}
+                            >
                               Ver
                             </Button>
                           </HStack>
@@ -365,14 +366,24 @@ const ClientPayments = () => {
             <ModalCloseButton />
             <ModalBody pb={6}>
               <VStack spacing={4} align="stretch">
-                {/* Resumen de vales seleccionados */}
-                <Box p={4} bg="gray.50" borderRadius="md">
-                  <Text fontWeight="bold" mb={2}>
-                    Vales seleccionados ({selectedVouchers.length}):
+                {/* Resumen de TODOS los vales pendientes */}
+                <Box p={4} bg={isEndOfMonth ? "red.50" : "gray.50"} borderRadius="md" borderColor={isEndOfMonth ? "red.200" : "gray.200"}>
+                  <Text fontWeight="bold" mb={2} color={isEndOfMonth ? "red.600" : "gray.600"}>
+                    {isEndOfMonth 
+                      ? `¡ES FIN DE MES! Se pagarán TODOS los vales pendientes (${pendingVouchers.length}):`
+                      : `Se pagarán todos los vales pendientes (${pendingVouchers.length}):`
+                    }
                   </Text>
-                  {selectedVouchersData.map(voucher => (
+                  {pendingVouchers.map(voucher => (
                     <HStack key={voucher.id} justify="space-between">
-                      <Text fontSize="sm">Vale #{voucher.id} - {voucher.product?.name}</Text>
+                      <VStack align="start" spacing={0}>
+                        <Text fontSize="sm" fontWeight="bold">
+                          Vale #{voucher.id} - Pedido #{voucher.orderId || 'N/A'}
+                        </Text>
+                        <Text fontSize="xs" color="gray.600">
+                          {voucher.notes || 'Pedido completo'}
+                        </Text>
+                      </VStack>
                       <Text fontSize="sm" fontWeight="bold">
                         S/ {parseFloat(voucher.totalAmount || 0).toFixed(2)}
                       </Text>
@@ -380,9 +391,9 @@ const ClientPayments = () => {
                   ))}
                   <Divider my={2} />
                   <HStack justify="space-between" fontWeight="bold">
-                    <Text>Total a pagar:</Text>
-                    <Text color="blue.600" fontSize="lg">
-                      S/ {selectedTotal.toFixed(2)}
+                    <Text color={isEndOfMonth ? "red.600" : "gray.600"}>Total a pagar:</Text>
+                    <Text color={isEndOfMonth ? "red.600" : "blue.600"} fontSize="lg">
+                      S/ {totalPending.toFixed(2)}
                     </Text>
                   </HStack>
                 </Box>
@@ -416,22 +427,182 @@ const ClientPayments = () => {
                   </RadioGroup>
                 </Box>
 
+                {/* Información de pago según método seleccionado */}
+                {paymentMethod === 'yape' && (
+                  <Box p={4} bg="green.50" borderRadius="md" border="1px" borderColor="green.200">
+                    <VStack spacing={3}>
+                      <HStack>
+                        <Icon as={FaMobile} color="green.500" />
+                        <Text fontWeight="bold" color="green.700">Pago con Yape</Text>
+                      </HStack>
+                      <Box textAlign="center">
+                        <Box 
+                          p={4} 
+                          bg="white" 
+                          borderRadius="md" 
+                          border="2px dashed" 
+                          borderColor="green.300"
+                          mb={3}
+                        >
+                          <Text fontSize="sm" color="gray.600" mb={2}>
+                            [QR CODE DE YAPE]
+                          </Text>
+                          <Text fontSize="xs" color="gray.500">
+                            Escanea con tu app Yape
+                          </Text>
+                        </Box>
+                        <VStack spacing={1}>
+                          <Text fontSize="sm" fontWeight="bold">
+                            Número: +51 999 888 777
+                          </Text>
+                          <Text fontSize="sm">
+                            Nombre: Planta de Agua
+                          </Text>
+                          <Text fontSize="sm" fontWeight="bold" color="green.600">
+                            Monto: S/ {totalPending.toFixed(2)}
+                          </Text>
+                        </VStack>
+                      </Box>
+                      <Alert status="info" size="sm">
+                        <AlertIcon />
+                        <Text fontSize="sm">
+                          Después de pagar, envía el comprobante por WhatsApp al +51 999 888 777
+                        </Text>
+                      </Alert>
+                    </VStack>
+                  </Box>
+                )}
+
+                {paymentMethod === 'card' && (
+                  <Box p={4} bg="blue.50" borderRadius="md" border="1px" borderColor="blue.200">
+                    <VStack spacing={3}>
+                      <HStack>
+                        <Icon as={FaCreditCard} color="blue.500" />
+                        <Text fontWeight="bold" color="blue.700">Pago con Tarjeta</Text>
+                      </HStack>
+                      <VStack spacing={2} align="stretch">
+                        <Box>
+                          <Text fontSize="sm" fontWeight="bold" mb={1}>Número de Tarjeta:</Text>
+                          <Input placeholder="1234 5678 9012 3456" />
+                        </Box>
+                        <HStack spacing={2}>
+                          <Box flex={1}>
+                            <Text fontSize="sm" fontWeight="bold" mb={1}>Vencimiento:</Text>
+                            <Input placeholder="MM/AA" />
+                          </Box>
+                          <Box flex={1}>
+                            <Text fontSize="sm" fontWeight="bold" mb={1}>CVV:</Text>
+                            <Input placeholder="123" />
+                          </Box>
+                        </HStack>
+                        <Box>
+                          <Text fontSize="sm" fontWeight="bold" mb={1}>Nombre en la Tarjeta:</Text>
+                          <Input placeholder="Juan Pérez" />
+                        </Box>
+                      </VStack>
+                    </VStack>
+                  </Box>
+                )}
+
+                {paymentMethod === 'cash' && (
+                  <Box p={4} bg="orange.50" borderRadius="md" border="1px" borderColor="orange.200">
+                    <VStack spacing={3}>
+                      <HStack>
+                        <Icon as={FaMoneyBillWave} color="orange.500" />
+                        <Text fontWeight="bold" color="orange.700">Pago en Efectivo</Text>
+                      </HStack>
+                      <Alert status="warning" size="sm">
+                        <AlertIcon />
+                        <Text fontSize="sm">
+                          Coordina el pago en efectivo con tu repartidor al momento de la entrega.
+                          Monto a pagar: S/ {totalPending.toFixed(2)}
+                        </Text>
+                      </Alert>
+                    </VStack>
+                  </Box>
+                )}
+
                 {/* Botones de acción */}
                 <HStack spacing={3} justify="flex-end">
                   <Button onClick={onClose} variant="outline">
                     Cancelar
                   </Button>
                   <Button
-                    colorScheme="blue"
+                    colorScheme={isEndOfMonth ? "red" : "blue"}
                     onClick={handlePayment}
                     isLoading={isProcessing}
                     loadingText="Procesando..."
                     leftIcon={<FaCreditCard />}
+                    size="lg"
                   >
-                    Procesar Pago
+                    {isEndOfMonth 
+                      ? `PAGAR TODOS LOS VALES - S/ ${totalPending.toFixed(2)}`
+                      : `Pagar Todos los Vales - S/ ${totalPending.toFixed(2)}`
+                    }
                   </Button>
                 </HStack>
               </VStack>
+            </ModalBody>
+          </ModalContent>
+        </Modal>
+
+        {/* Modal de detalles del vale */}
+        <Modal isOpen={isViewOpen} onClose={onViewClose} size="lg">
+          <ModalOverlay />
+          <ModalContent>
+            <ModalHeader>Detalles del Vale #{selectedVoucher?.id}</ModalHeader>
+            <ModalCloseButton />
+            <ModalBody pb={6}>
+              {selectedVoucher && (
+                <VStack spacing={4} align="stretch">
+                  <SimpleGrid columns={2} spacing={4}>
+                    <Box>
+                      <Text fontWeight="bold" color="gray.600">Vale #:</Text>
+                      <Text fontWeight="bold" color="blue.600">#{selectedVoucher.id}</Text>
+                    </Box>
+                    <Box>
+                      <Text fontWeight="bold" color="gray.600">Pedido #:</Text>
+                      <Text fontWeight="bold" color="green.600">#{selectedVoucher.orderId || 'N/A'}</Text>
+                    </Box>
+                    <Box>
+                      <Text fontWeight="bold" color="gray.600">Estado:</Text>
+                      <Badge colorScheme={getStatusColor(selectedVoucher.status)}>
+                        {getStatusText(selectedVoucher.status)}
+                      </Badge>
+                    </Box>
+                    <Box>
+                      <Text fontWeight="bold" color="gray.600">Fecha:</Text>
+                      <Text>{new Date(selectedVoucher.createdAt).toLocaleDateString('es-ES')}</Text>
+                    </Box>
+                  </SimpleGrid>
+                  
+                  <Box>
+                    <Text fontWeight="bold" color="gray.600">Descripción:</Text>
+                    <Text>{selectedVoucher.notes || 'Vale por pedido completo'}</Text>
+                  </Box>
+
+                  <Box>
+                    <Text fontWeight="bold" color="gray.600">Monto Total:</Text>
+                    <Text fontSize="2xl" fontWeight="bold" color="blue.600">
+                      S/ {parseFloat(selectedVoucher.totalAmount || 0).toFixed(2)}
+                    </Text>
+                  </Box>
+
+                  {selectedVoucher.deliveryPerson && (
+                    <Box>
+                      <Text fontWeight="bold" color="gray.600">Repartidor:</Text>
+                      <Text>{selectedVoucher.deliveryPerson.username}</Text>
+                    </Box>
+                  )}
+
+                  {selectedVoucher.paidAt && (
+                    <Box>
+                      <Text fontWeight="bold" color="gray.600">Fecha de Pago:</Text>
+                      <Text>{new Date(selectedVoucher.paidAt).toLocaleDateString('es-ES')}</Text>
+                    </Box>
+                  )}
+                </VStack>
+              )}
             </ModalBody>
           </ModalContent>
         </Modal>

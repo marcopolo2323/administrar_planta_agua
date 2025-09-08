@@ -85,6 +85,7 @@ const Orders = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [deliveryFilter, setDeliveryFilter] = useState('all');
   const { isOpen, onOpen, onClose } = useDisclosure();
   const toast = useToast();
 
@@ -294,6 +295,14 @@ const Orders = () => {
         duration: 3000,
         isClosable: true,
       });
+      
+      // Actualizar la lista de pedidos
+      if (selectedOrder.type === 'regular') {
+        fetchOrders();
+      } else {
+        fetchGuestOrders();
+      }
+      
       onAssignClose();
       resetForm();
     } else {
@@ -330,6 +339,14 @@ const Orders = () => {
         duration: 3000,
         isClosable: true,
       });
+      
+      // Actualizar la lista de pedidos
+      if (selectedOrder.type === 'regular') {
+        fetchOrders();
+      } else {
+        fetchGuestOrders();
+      }
+      
       onStatusClose();
       resetForm();
     } else {
@@ -400,6 +417,15 @@ const Orders = () => {
   }).filter(order => {
     if (statusFilter === 'all') return true;
     return order.status === statusFilter;
+  }).filter(order => {
+    if (deliveryFilter === 'all') return true;
+    if (deliveryFilter === 'assigned') return order.deliveryPersonId;
+    if (deliveryFilter === 'unassigned') return !order.deliveryPersonId;
+    if (deliveryFilter === 'specific') {
+      // Aquí podrías agregar lógica para filtrar por un repartidor específico
+      return true;
+    }
+    return true;
   });
   const orderStats = getOrderStats();
   const loading = ordersLoading || guestOrdersLoading || clientsLoading;
@@ -498,6 +524,15 @@ const Orders = () => {
                 <option value="entregado">Entregados</option>
                 <option value="cancelado">Cancelados</option>
               </Select>
+              <Select
+                value={deliveryFilter}
+                onChange={(e) => setDeliveryFilter(e.target.value)}
+                maxW="200px"
+              >
+                <option value="all">Todos los repartidores</option>
+                <option value="assigned">Con repartidor</option>
+                <option value="unassigned">Sin repartidor</option>
+              </Select>
               <InputGroup maxW="300px">
                 <InputLeftElement pointerEvents="none">
                   <SearchIcon color="gray.300" />
@@ -533,6 +568,7 @@ const Orders = () => {
                   <Th>Dirección</Th>
                   <Th>Total</Th>
                   <Th>Estado</Th>
+                  <Th>Repartidor</Th>
                   <Th>Pago</Th>
                   <Th>Fecha</Th>
                   <Th>Acciones</Th>
@@ -607,6 +643,22 @@ const Orders = () => {
                       <Badge colorScheme={getStatusColor(order.status)}>
                         {getStatusText(order.status)}
                       </Badge>
+                    </Td>
+                    <Td>
+                      {order.deliveryPersonId ? (
+                        <VStack align="start" spacing={1}>
+                          <Text fontSize="sm" fontWeight="bold" color="blue.600">
+                            {order.deliveryPerson?.username || `Repartidor #${order.deliveryPersonId}`}
+                          </Text>
+                          <Text fontSize="xs" color="gray.500">
+                            📞 {order.deliveryPerson?.phone || 'N/A'}
+                          </Text>
+                        </VStack>
+                      ) : (
+                        <Badge colorScheme="gray" variant="outline">
+                          Sin asignar
+                        </Badge>
+                      )}
                     </Td>
                     <Td>
                       <Badge colorScheme={getPaymentStatusColor(order.paymentStatus)}>

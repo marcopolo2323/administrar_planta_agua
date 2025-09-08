@@ -1,0 +1,11 @@
+YAPE QR CODE
+============
+Número: +51 999 888 777
+Nombre: Planta de Agua
+Monto: Variable según pedido
+
+Para pagar:
+1. Abre Yape
+2. Escanea este código
+3. Confirma el monto
+4. Envía el comprobante

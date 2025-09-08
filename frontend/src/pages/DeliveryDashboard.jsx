@@ -165,9 +165,13 @@ const DeliveryDashboard = () => {
     }
   };
 
-  const updateOrderStatus = async (orderId, newStatus) => {
+  const updateOrderStatus = async (orderId, newStatus, orderType) => {
     try {
-      await axios.put(`/api/delivery/orders/${orderId}/status`, { status: newStatus });
+      console.log('🔄 Actualizando estado:', { orderId, newStatus, orderType });
+      await axios.put(`/api/delivery/orders/${orderId}/status`, { 
+        status: newStatus,
+        orderType: orderType 
+      });
       toast({
         title: 'Estado actualizado',
         description: 'El estado del pedido se ha actualizado correctamente',
@@ -243,6 +247,44 @@ const DeliveryDashboard = () => {
     }
   };
 
+  const handleCashPayment = async (clientId, totalAmount) => {
+    try {
+      // Confirmar el pago
+      const confirmed = window.confirm(
+        `¿Confirmar pago en efectivo de S/ ${totalAmount.toFixed(2)} para este cliente?`
+      );
+      
+      if (!confirmed) return;
+
+      // Procesar pago de todos los vales pendientes
+      await axios.put(`/api/vouchers/client/${clientId}/pay-all`, {
+        paymentMethod: 'cash',
+        paymentReference: `Pago en efectivo - ${new Date().toLocaleString()}`
+      });
+
+      toast({
+        title: 'Pago procesado',
+        description: `Pago de S/ ${totalAmount.toFixed(2)} procesado correctamente`,
+        status: 'success',
+        duration: 5000,
+        isClosable: true,
+      });
+
+      // Actualizar datos
+      fetchOrders();
+      fetchVouchers();
+    } catch (error) {
+      console.error('Error al procesar pago:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudo procesar el pago',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+  };
+
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleString('es-ES', {
       year: 'numeric',
@@ -256,10 +298,10 @@ const DeliveryDashboard = () => {
   if (loading) {
     return (
       <Center h="400px">
-        <VStack spacing={4}>
+        <VStack key="loading-container" spacing={4}>
           <Spinner size="xl" />
           <Text>Cargando datos del repartidor...</Text>
-          <VStack spacing={2}>
+          <VStack key="loading-info" spacing={2}>
             <Text fontSize="sm" color="gray.500">
               Usuario: {user?.username || 'Cargando...'}
             </Text>
@@ -279,13 +321,13 @@ const DeliveryDashboard = () => {
 
   return (
     <Box p={6}>
-      <VStack spacing={6} align="stretch">
+      <VStack key="main-container" spacing={6} align="stretch">
         {/* Header */}
         <Card>
           <CardBody>
-            <VStack spacing={4} align="stretch">
-              <HStack justify="space-between" align="start">
-                <VStack align="start" spacing={2}>
+            <VStack key="header-content" spacing={4} align="stretch">
+              <HStack key="header-top" justify="space-between" align="start">
+                <VStack key="header-info" align="start" spacing={2}>
                   <Heading size="lg">
                     <Icon as={FaTruck} mr={2} />
                     Panel de Repartidor
@@ -300,13 +342,13 @@ const DeliveryDashboard = () => {
               </HStack>
               
               {/* Información del repartidor */}
-              <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4} w="full">
-                <Box>
+              <SimpleGrid key="info-grid" columns={{ base: 1, md: 3 }} spacing={4} w="full">
+                <Box key="personal-info">
                   <Text fontSize="sm" color="gray.600" fontWeight="bold">
                     <Icon as={FaUser} mr={1} />
                     Información Personal
                   </Text>
-                  <VStack align="start" spacing={1} mt={2}>
+                  <VStack key="personal-details" align="start" spacing={1} mt={2}>
                     <Text fontSize="sm">
                       <strong>Usuario:</strong> {user?.username || 'N/A'}
                     </Text>
@@ -319,12 +361,12 @@ const DeliveryDashboard = () => {
                   </VStack>
                 </Box>
                 
-                <Box>
+                <Box key="location-info">
                   <Text fontSize="sm" color="gray.600" fontWeight="bold">
                     <Icon as={FaMapMarkerAlt} mr={1} />
                     Ubicación
                   </Text>
-                  <VStack align="start" spacing={1} mt={2}>
+                  <VStack key="location-details" align="start" spacing={1} mt={2}>
                     <Text fontSize="sm">
                       <strong>Dirección:</strong> {user?.address || 'No registrada'}
                     </Text>
@@ -337,12 +379,12 @@ const DeliveryDashboard = () => {
                   </VStack>
                 </Box>
                 
-                <Box>
+                <Box key="account-info">
                   <Text fontSize="sm" color="gray.600" fontWeight="bold">
                     <Icon as={FaClock} mr={1} />
                     Estado de Cuenta
                   </Text>
-                  <VStack align="start" spacing={1} mt={2}>
+                  <VStack key="account-details" align="start" spacing={1} mt={2}>
                     <Text fontSize="sm">
                       <strong>Estado:</strong> 
                       <Badge 
@@ -365,23 +407,24 @@ const DeliveryDashboard = () => {
 
         {/* Tabs */}
         <Tabs 
+          key="main-tabs"
           index={activeTab === 'orders' ? 0 : activeTab === 'stats' ? 1 : 2}
           onChange={handleTabChange}
         >
           <TabList>
-            <Tab>📦 Mis Pedidos</Tab>
-            <Tab>📊 Estadísticas</Tab>
-            <Tab>🎫 Vales</Tab>
+            <Tab key="orders-tab">📦 Mis Pedidos</Tab>
+            <Tab key="stats-tab">📊 Estadísticas</Tab>
+            <Tab key="vouchers-tab">🎫 Vales</Tab>
           </TabList>
 
           <TabPanels>
             {/* Tab de Pedidos */}
-            <TabPanel px={0}>
-              <VStack spacing={6} align="stretch">
+            <TabPanel key="orders-panel" px={0}>
+              <VStack key="orders-content" spacing={6} align="stretch">
                 {/* Filtros */}
                 <Card>
                   <CardBody>
-                    <HStack spacing={4}>
+                    <HStack key="filters-row" spacing={4}>
                       <Text fontWeight="bold">Filtrar por estado:</Text>
                       <Select
                         value={statusFilter}
@@ -389,17 +432,18 @@ const DeliveryDashboard = () => {
                         maxW="200px"
                       >
                         <option value="all">Todos</option>
-                        <option value="confirmed">Confirmados</option>
-                        <option value="preparing">Preparando</option>
-                        <option value="ready">Listos</option>
-                        <option value="delivered">Entregados</option>
+                        <option value="pendiente">Pendientes</option>
+                        <option value="confirmado">Confirmados</option>
+                        <option value="en_preparacion">Preparando</option>
+                        <option value="en_camino">En Camino</option>
+                        <option value="entregado">Entregados</option>
                       </Select>
                     </HStack>
                   </CardBody>
                 </Card>
 
                 {/* Lista de pedidos */}
-                <VStack spacing={4} align="stretch">
+                <VStack key="orders-list" spacing={4} align="stretch">
                   {orders.length === 0 ? (
                     <Card>
                       <CardBody textAlign="center" py={10}>
@@ -412,51 +456,86 @@ const DeliveryDashboard = () => {
                     orders.map((order) => (
                       <Card key={order.id}>
                         <CardBody>
-                          <VStack spacing={4} align="stretch">
-                            <Flex justify="space-between" align="start">
-                              <VStack align="start" spacing={2}>
-                                <HStack>
+                          <VStack key={`order-card-${order.id}`} spacing={4} align="stretch">
+                            <Flex key={`order-main-${order.id}`} justify="space-between" align="start">
+                              <VStack key={`order-info-${order.id}`} align="start" spacing={2}>
+                                <HStack key={`order-header-${order.id}`}>
                                   <Text fontWeight="bold" fontSize="lg">
                                     Pedido #{order.id}
                                   </Text>
                                   <Badge
                                     colorScheme={
-                                      order.status === 'delivered' ? 'green' :
-                                      order.status === 'ready' ? 'blue' :
-                                      order.status === 'preparing' ? 'orange' : 'gray'
+                                      order.status === 'entregado' ? 'green' :
+                                      order.status === 'en_camino' ? 'blue' :
+                                      order.status === 'en_preparacion' ? 'orange' : 
+                                      order.status === 'pendiente' ? 'yellow' : 'gray'
                                     }
                                   >
-                                    {order.status === 'delivered' ? 'Entregado' :
-                                     order.status === 'ready' ? 'Listo' :
-                                     order.status === 'preparing' ? 'Preparando' : 'Confirmado'}
+                                    {order.status === 'entregado' ? 'Entregado' :
+                                     order.status === 'en_camino' ? 'En Camino' :
+                                     order.status === 'en_preparacion' ? 'Preparando' : 
+                                     order.status === 'pendiente' ? 'Pendiente' : 'Confirmado'}
                                   </Badge>
                                 </HStack>
-                                <Text color="gray.600">
-                                  Cliente: {order.customerName}
-                                </Text>
-                                <HStack>
+                                <HStack key={`customer-info-${order.id}`}>
+                                  <Text color="gray.600">
+                                    Cliente: {order.customerName}
+                                  </Text>
+                                  {order.type === 'regular' ? (
+                                    <Badge colorScheme="blue" size="sm">
+                                      <Icon as={FaUser} mr={1} />
+                                      Frecuente
+                                    </Badge>
+                                  ) : (
+                                    <Badge colorScheme="gray" size="sm">
+                                      <Icon as={FaGift} mr={1} />
+                                      Visitante
+                                    </Badge>
+                                  )}
+                                </HStack>
+                                <HStack key={`phone-${order.id}`}>
                                   <Icon as={FaPhone} color="gray.500" />
                                   <Text fontSize="sm" color="gray.600">
                                     {order.customerPhone}
                                   </Text>
                                 </HStack>
-                                <HStack>
+                                {order.type === 'regular' && order.Client && (
+                                  <VStack key={`client-info-${order.id}`} align="start" spacing={1} w="full">
+                                    <Text key={`email-${order.id}`} fontSize="xs" color="blue.600" fontWeight="bold">
+                                      📧 {order.Client.email}
+                                    </Text>
+                                    <Text key={`vouchers-${order.id}`} fontSize="xs" color="purple.600" fontWeight="bold">
+                                      💳 Vales pendientes: {order.Client.pendingVouchers || 0}
+                                    </Text>
+                                    {order.Client.totalToPay > 0 && (
+                                      <Text key={`total-pay-${order.id}`} fontSize="xs" color="red.600" fontWeight="bold" bg="red.50" p={1} borderRadius="md">
+                                        💰 Total a pagar: S/ {order.Client.totalToPay.toFixed(2)}
+                                      </Text>
+                                    )}
+                                  </VStack>
+                                )}
+                                <HStack key={`address-${order.id}`}>
                                   <Icon as={FaMapMarkerAlt} color="gray.500" />
-                                  <VStack align="start" spacing={1}>
+                                  <VStack key={`address-details-${order.id}`} align="start" spacing={1}>
                                     <Text fontSize="sm" color="gray.600">
                                       {order.deliveryAddress}
                                     </Text>
                                     {order.deliveryDistrict && (
-                                      <Text fontSize="xs" color="blue.600" fontWeight="bold">
+                                      <Text key={`district-${order.id}`} fontSize="xs" color="blue.600" fontWeight="bold">
                                         Distrito: {order.deliveryDistrict}
+                                      </Text>
+                                    )}
+                                    {order.deliveryReference && (
+                                      <Text key={`reference-${order.id}`} fontSize="xs" color="green.600" fontWeight="bold">
+                                        Ref: {order.deliveryReference}
                                       </Text>
                                     )}
                                   </VStack>
                                 </HStack>
                                 
                                 {/* Información de precios */}
-                                <VStack spacing={1} align="start" w="full">
-                                  <HStack justify="space-between" w="full">
+                                <VStack key={`prices-${order.id}`} spacing={1} align="start" w="full">
+                                  <HStack key={`subtotal-${order.id}`} justify="space-between" w="full">
                                     <Text fontSize="sm" color="gray.600">
                                       Subtotal:
                                     </Text>
@@ -464,7 +543,7 @@ const DeliveryDashboard = () => {
                                       S/ {parseFloat((order.totalAmount || 0) - (order.deliveryFee || 0)).toFixed(2)}
                                     </Text>
                                   </HStack>
-                                  <HStack justify="space-between" w="full">
+                                  <HStack key={`delivery-${order.id}`} justify="space-between" w="full">
                                     <Text fontSize="sm" color="green.600" fontWeight="bold">
                                       Flete:
                                     </Text>
@@ -472,7 +551,7 @@ const DeliveryDashboard = () => {
                                       S/ {parseFloat(order.deliveryFee || 0).toFixed(2)}
                                     </Text>
                                   </HStack>
-                                  <HStack justify="space-between" w="full" borderTop="1px" borderColor="gray.200" pt={1}>
+                                  <HStack key={`total-${order.id}`} justify="space-between" w="full" borderTop="1px" borderColor="gray.200" pt={1}>
                                     <Text fontSize="sm" fontWeight="bold" color="blue.600">
                                       Total:
                                     </Text>
@@ -485,35 +564,56 @@ const DeliveryDashboard = () => {
                                   Creado: {formatDate(order.createdAt)}
                                 </Text>
                               </VStack>
-                              <VStack spacing={2}>
-                                {order.status === 'confirmed' && (
+                              <VStack key={`buttons-${order.id}`} spacing={2}>
+                                {/* Debug: Mostrar estado actual */}
+                                <Text fontSize="xs" color="gray.500">
+                                  Estado: {order.status}
+                                </Text>
+                                
+                                {(order.status === 'confirmado' || order.status === 'pendiente') && (
                                   <Button
+                                    key={`preparing-${order.id}`}
                                     size="sm"
                                     colorScheme="orange"
                                     leftIcon={<FaClock />}
-                                    onClick={() => updateOrderStatus(order.id, 'preparing')}
+                                    onClick={() => updateOrderStatus(order.id, 'en_preparacion', order.type)}
                                   >
                                     Iniciar Preparación
                                   </Button>
                                 )}
-                                {order.status === 'preparing' && (
+                                {order.status === 'en_preparacion' && (
                                   <Button
+                                    key={`ready-${order.id}`}
                                     size="sm"
                                     colorScheme="blue"
                                     leftIcon={<FaBox />}
-                                    onClick={() => updateOrderStatus(order.id, 'ready')}
+                                    onClick={() => updateOrderStatus(order.id, 'en_camino', order.type)}
                                   >
                                     Marcar Listo
                                   </Button>
                                 )}
-                                {order.status === 'ready' && (
+                                {order.status === 'en_camino' && (
                                   <Button
+                                    key={`delivered-${order.id}`}
                                     size="sm"
                                     colorScheme="green"
                                     leftIcon={<FaCheckCircle />}
-                                    onClick={() => updateOrderStatus(order.id, 'delivered')}
+                                    onClick={() => updateOrderStatus(order.id, 'entregado', order.type)}
                                   >
                                     Marcar Entregado
+                                  </Button>
+                                )}
+                                
+                                {/* Botón para procesar pago en efectivo de vales */}
+                                {order.type === 'regular' && order.Client && order.Client.totalToPay > 0 && (
+                                  <Button
+                                    key={`cash-payment-${order.id}`}
+                                    size="sm"
+                                    colorScheme="yellow"
+                                    leftIcon={<FaGift />}
+                                    onClick={() => handleCashPayment(order.Client.id, order.Client.totalToPay)}
+                                  >
+                                    Cobrar Vales (S/ {order.Client.totalToPay.toFixed(2)})
                                   </Button>
                                 )}
                               </VStack>
@@ -528,11 +628,11 @@ const DeliveryDashboard = () => {
             </TabPanel>
 
             {/* Tab de Estadísticas */}
-            <TabPanel px={0}>
-              <VStack spacing={6} align="stretch">
+            <TabPanel key="stats-panel" px={0}>
+              <VStack key="stats-content" spacing={6} align="stretch">
                 {stats && (
-                  <SimpleGrid columns={{ base: 1, md: 4 }} spacing={4}>
-                    <Card>
+                  <SimpleGrid key="stats-grid" columns={{ base: 1, md: 4 }} spacing={4}>
+                    <Card key="total-orders-stat">
                       <CardBody>
                         <Stat>
                           <StatLabel>Total Pedidos</StatLabel>
@@ -540,7 +640,7 @@ const DeliveryDashboard = () => {
                         </Stat>
                       </CardBody>
                     </Card>
-                    <Card>
+                    <Card key="delivered-orders-stat">
                       <CardBody>
                         <Stat>
                           <StatLabel>Entregados</StatLabel>
@@ -548,7 +648,7 @@ const DeliveryDashboard = () => {
                         </Stat>
                       </CardBody>
                     </Card>
-                    <Card>
+                    <Card key="pending-orders-stat">
                       <CardBody>
                         <Stat>
                           <StatLabel>Pendientes</StatLabel>
@@ -556,7 +656,7 @@ const DeliveryDashboard = () => {
                         </Stat>
                       </CardBody>
                     </Card>
-                    <Card>
+                    <Card key="delivery-rate-stat">
                       <CardBody>
                         <Stat>
                           <StatLabel>Tasa de Entrega</StatLabel>
@@ -571,13 +671,13 @@ const DeliveryDashboard = () => {
             </TabPanel>
 
             {/* Tab de Vales */}
-            <TabPanel px={0}>
-              <VStack spacing={6} align="stretch">
+            <TabPanel key="vouchers-panel" px={0}>
+              <VStack key="vouchers-content" spacing={6} align="stretch">
                 {/* Botón para crear vale */}
                 <Card>
                   <CardBody>
-                    <HStack justify="space-between" align="center">
-                      <VStack align="start" spacing={1}>
+                    <HStack key="voucher-header" justify="space-between" align="center">
+                      <VStack key="voucher-info" align="start" spacing={1}>
                         <Text fontWeight="bold" fontSize="lg">
                           Gestión de Vales
                         </Text>
@@ -597,7 +697,7 @@ const DeliveryDashboard = () => {
                 </Card>
 
                 {/* Lista de vales */}
-                <VStack spacing={4} align="stretch">
+                <VStack key="vouchers-list" spacing={4} align="stretch">
                   {vouchers.length === 0 ? (
                     <Card>
                       <CardBody textAlign="center" py={10}>
@@ -613,8 +713,8 @@ const DeliveryDashboard = () => {
                     vouchers.map((voucher) => (
                       <Card key={voucher.id}>
                         <CardBody>
-                          <VStack spacing={3} align="stretch">
-                            <HStack justify="space-between">
+                          <VStack key={`voucher-content-${voucher.id}`} spacing={3} align="stretch">
+                            <HStack key={`voucher-header-${voucher.id}`} justify="space-between">
                               <Text fontWeight="bold">
                                 Vale #{voucher.id}
                               </Text>
@@ -629,7 +729,7 @@ const DeliveryDashboard = () => {
                               </Badge>
                             </HStack>
                             
-                            <HStack justify="space-between">
+                            <HStack key={`voucher-client-${voucher.id}`} justify="space-between">
                               <Text fontSize="sm" color="gray.600">
                                 Cliente: {voucher.client?.username}
                               </Text>
@@ -638,7 +738,7 @@ const DeliveryDashboard = () => {
                               </Text>
                             </HStack>
 
-                            <HStack justify="space-between">
+                            <HStack key={`voucher-product-${voucher.id}`} justify="space-between">
                               <Text fontSize="sm" color="gray.600">
                                 Producto: {voucher.product?.name}
                               </Text>
@@ -647,9 +747,10 @@ const DeliveryDashboard = () => {
                               </Text>
                             </HStack>
 
-                            <HStack spacing={2}>
+                            <HStack key={`voucher-actions-${voucher.id}`} spacing={2}>
                               {voucher.status === 'pending' && (
                                 <Button
+                                  key={`deliver-voucher-${voucher.id}`}
                                   size="sm"
                                   colorScheme="blue"
                                   onClick={() => updateVoucherStatus(voucher.id, 'delivered')}
@@ -698,7 +799,7 @@ const DeliveryDashboard = () => {
               <Heading size="md">Crear Vale</Heading>
             </CardHeader>
             <CardBody>
-              <VStack spacing={4}>
+              <VStack key="voucher-form" spacing={4}>
                 <Select
                   placeholder="Seleccionar cliente"
                   value={voucherForm.clientId}
@@ -730,7 +831,7 @@ const DeliveryDashboard = () => {
                   ))}
                 </Select>
 
-                <HStack w="full">
+                <HStack key="quantity-row" w="full">
                   <Text w="100px">Cantidad:</Text>
                   <input
                     type="number"
@@ -741,7 +842,7 @@ const DeliveryDashboard = () => {
                   />
                 </HStack>
 
-                <HStack w="full">
+                <HStack key="price-row" w="full">
                   <Text w="100px">Precio unitario:</Text>
                   <input
                     type="number"
@@ -752,7 +853,7 @@ const DeliveryDashboard = () => {
                   />
                 </HStack>
 
-                <HStack w="full">
+                <HStack key="total-row" w="full">
                   <Text w="100px">Total:</Text>
                   <Text fontWeight="bold" color="blue.600">
                     S/ {(voucherForm.quantity * voucherForm.unitPrice).toFixed(2)}
@@ -765,7 +866,7 @@ const DeliveryDashboard = () => {
                   onChange={(e) => setVoucherForm({...voucherForm, notes: e.target.value})}
                 />
 
-                <HStack spacing={4} w="full">
+                <HStack key="form-actions" spacing={4} w="full">
                   <Button
                     flex={1}
                     onClick={() => setShowCreateVoucher(false)}

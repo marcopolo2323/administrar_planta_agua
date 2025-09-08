@@ -33,6 +33,7 @@ import ClientDashboard from './pages/ClientDashboard';
 import ClientOrder from './pages/ClientOrder';
 import ClientPayments from './pages/ClientPayments';
 import VouchersManagement from './pages/VouchersManagement';
+import ClientPaymentsAdmin from './pages/ClientPaymentsAdmin';
 
 const App = () => {
   const { token, checkAuth } = useAuthStore();
@@ -93,6 +94,7 @@ const App = () => {
           <Route path="delivery-fees" element={<ProtectedRoute requiredRoles={['admin']}><DeliveryFeesManagement /></ProtectedRoute>} />
           <Route path="delivery-persons" element={<ProtectedRoute requiredRoles={['admin']}><DeliveryPersonsManagement /></ProtectedRoute>} />
           <Route path="vouchers" element={<ProtectedRoute requiredRoles={['admin', 'vendedor']}><VouchersManagement /></ProtectedRoute>} />
+          <Route path="client-payments" element={<ProtectedRoute requiredRoles={['admin']}><ClientPaymentsAdmin /></ProtectedRoute>} />
           <Route path="reports" element={<ProtectedRoute requiredRoles={['admin']}><Reports /></ProtectedRoute>} />
         </Route>
 
