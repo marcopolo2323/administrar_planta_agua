@@ -40,13 +40,18 @@ const GuestOrder = sequelize.define('GuestOrder', {
     allowNull: false,
     defaultValue: 0
   },
+  subtotal: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: true,
+    defaultValue: 0
+  },
   deliveryFee: {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: true,
     defaultValue: 0
   },
   paymentMethod: {
-    type: DataTypes.ENUM('cash', 'card', 'transfer'),
+    type: DataTypes.ENUM('cash', 'card', 'transfer', 'yape', 'plin'),
     defaultValue: 'cash'
   },
   paymentStatus: {
@@ -74,7 +79,7 @@ const GuestOrder = sequelize.define('GuestOrder', {
     allowNull: true
   }
 }, {
-  tableName: 'guest_orders',
+  tableName: 'GuestOrders',
   timestamps: true,
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'

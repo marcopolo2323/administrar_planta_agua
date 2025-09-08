@@ -259,9 +259,19 @@ const DeliveryDashboard = () => {
         <VStack spacing={4}>
           <Spinner size="xl" />
           <Text>Cargando datos del repartidor...</Text>
-          <Text fontSize="sm" color="gray.500">
-            Usuario: {user?.username} | Rol: {user?.role}
-          </Text>
+          <VStack spacing={2}>
+            <Text fontSize="sm" color="gray.500">
+              Usuario: {user?.username || 'Cargando...'}
+            </Text>
+            <Text fontSize="sm" color="gray.500">
+              Rol: {user?.role || 'Cargando...'}
+            </Text>
+            {user?.email && (
+              <Text fontSize="sm" color="gray.500">
+                Email: {user.email}
+              </Text>
+            )}
+          </VStack>
         </VStack>
       </Center>
     );
@@ -271,15 +281,87 @@ const DeliveryDashboard = () => {
     <Box p={6}>
       <VStack spacing={6} align="stretch">
         {/* Header */}
-        <Box>
-          <Heading size="lg" mb={2}>
-            <Icon as={FaTruck} mr={2} />
-            Panel de Repartidor
-          </Heading>
-          <Text color="gray.600">
-            Bienvenido, {user?.username}. Gestiona tus pedidos asignados.
-          </Text>
-        </Box>
+        <Card>
+          <CardBody>
+            <VStack spacing={4} align="stretch">
+              <HStack justify="space-between" align="start">
+                <VStack align="start" spacing={2}>
+                  <Heading size="lg">
+                    <Icon as={FaTruck} mr={2} />
+                    Panel de Repartidor
+                  </Heading>
+                  <Text color="gray.600" fontSize="lg">
+                    Bienvenido, {user?.username}
+                  </Text>
+                </VStack>
+                <Badge colorScheme="blue" fontSize="sm" p={2}>
+                  {user?.role === 'repartidor' ? 'Repartidor' : user?.role}
+                </Badge>
+              </HStack>
+              
+              {/* Información del repartidor */}
+              <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4} w="full">
+                <Box>
+                  <Text fontSize="sm" color="gray.600" fontWeight="bold">
+                    <Icon as={FaUser} mr={1} />
+                    Información Personal
+                  </Text>
+                  <VStack align="start" spacing={1} mt={2}>
+                    <Text fontSize="sm">
+                      <strong>Usuario:</strong> {user?.username || 'N/A'}
+                    </Text>
+                    <Text fontSize="sm">
+                      <strong>Email:</strong> {user?.email || 'N/A'}
+                    </Text>
+                    <Text fontSize="sm">
+                      <strong>Teléfono:</strong> {user?.phone || 'No registrado'}
+                    </Text>
+                  </VStack>
+                </Box>
+                
+                <Box>
+                  <Text fontSize="sm" color="gray.600" fontWeight="bold">
+                    <Icon as={FaMapMarkerAlt} mr={1} />
+                    Ubicación
+                  </Text>
+                  <VStack align="start" spacing={1} mt={2}>
+                    <Text fontSize="sm">
+                      <strong>Dirección:</strong> {user?.address || 'No registrada'}
+                    </Text>
+                    <Text fontSize="sm">
+                      <strong>Distrito:</strong> {user?.district || 'No registrado'}
+                    </Text>
+                    <Text fontSize="sm">
+                      <strong>Referencia:</strong> {user?.reference || 'No registrada'}
+                    </Text>
+                  </VStack>
+                </Box>
+                
+                <Box>
+                  <Text fontSize="sm" color="gray.600" fontWeight="bold">
+                    <Icon as={FaClock} mr={1} />
+                    Estado de Cuenta
+                  </Text>
+                  <VStack align="start" spacing={1} mt={2}>
+                    <Text fontSize="sm">
+                      <strong>Estado:</strong> 
+                      <Badge 
+                        colorScheme={user?.active ? 'green' : 'red'} 
+                        ml={2} 
+                        size="sm"
+                      >
+                        {user?.active ? 'Activo' : 'Inactivo'}
+                      </Badge>
+                    </Text>
+                    <Text fontSize="sm">
+                      <strong>Miembro desde:</strong> {user?.createdAt ? new Date(user.createdAt).toLocaleDateString('es-ES') : 'N/A'}
+                    </Text>
+                  </VStack>
+                </Box>
+              </SimpleGrid>
+            </VStack>
+          </CardBody>
+        </Card>
 
         {/* Tabs */}
         <Tabs 

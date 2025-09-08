@@ -81,6 +81,30 @@ const useGuestOrderStore = create((set, get) => ({
     }
   },
 
+  updateGuestOrder: async (orderId, updateData) => {
+    set({ loading: true, error: null });
+    try {
+      const response = await axios.put(`/api/guest-orders/${orderId}`, updateData);
+      const updatedOrder = response.data;
+      
+      set(state => ({
+        orders: Array.isArray(state.orders) ? state.orders.map(order => 
+          order.id === orderId ? { ...order, ...updatedOrder } : order
+        ) : [],
+        loading: false
+      }));
+      
+      return { success: true, data: updatedOrder };
+    } catch (error) {
+      console.error('Error al actualizar pedido de invitado:', error);
+      set({ 
+        error: error.response?.data?.message || 'Error al actualizar pedido',
+        loading: false 
+      });
+      return { success: false, error: error.response?.data?.message || 'Error al actualizar pedido' };
+    }
+  },
+
   getOrderById: (orderId) => {
     const { orders } = get();
     return Array.isArray(orders) ? orders.find(order => order.id === orderId) : null;

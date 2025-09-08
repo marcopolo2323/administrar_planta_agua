@@ -45,6 +45,7 @@ import {
   FaMoneyBillWave
 } from 'react-icons/fa';
 import useDeliveryStore from '../stores/deliveryStore';
+import useDistrictStore from '../stores/districtStore';
 
 const DeliveryFeesManagement = () => {
   const [editingFee, setEditingFee] = useState(null);
@@ -71,24 +72,33 @@ const DeliveryFeesManagement = () => {
     clearError
   } = useDeliveryStore();
 
+  const {
+    districts,
+    loading: districtsLoading,
+    error: districtsError,
+    fetchDistricts,
+    updateDistrict,
+    createDistrict,
+    clearError: clearDistrictsError
+  } = useDistrictStore();
+
   // Form state
   const [formData, setFormData] = useState({
     name: '',
-    description: '',
-    basePrice: 0,
-    pricePerKm: 0,
-    minOrderAmount: 0,
-    maxDistance: 0,
-    isActive: true
+    price: 0
   });
 
   useEffect(() => {
-    console.log('🔄 Cargando tarifas de envío...');
+    console.log('🔄 Cargando tarifas de envío y distritos...');
     fetchDeliveryFees().then(result => {
       console.log('📦 Resultado de fetchDeliveryFees:', result);
       console.log('📦 deliveryFees en estado:', deliveryFees);
     });
-  }, [fetchDeliveryFees]);
+    fetchDistricts().then(result => {
+      console.log('📦 Resultado de fetchDistricts:', result);
+      console.log('📦 districts en estado:', districts);
+    });
+  }, [fetchDeliveryFees, fetchDistricts]);
 
   // Mostrar errores del store
   useEffect(() => {
@@ -106,14 +116,19 @@ const DeliveryFeesManagement = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log('🔄 Enviando formulario con datos:', formData);
+    console.log('🔄 Editando distrito:', editingFee);
+    
     const result = editingFee 
-      ? await updateDeliveryFee(editingFee.id, formData)
-      : await createDeliveryFee(formData);
+      ? await updateDistrict(editingFee.id, { name: formData.name, deliveryFee: formData.price })
+      : await createDistrict({ name: formData.name, deliveryFee: formData.price });
+    
+    console.log('📦 Resultado de la operación:', result);
     
     if (result.success) {
       toast({
-        title: editingFee ? 'Tarifa actualizada' : 'Tarifa creada',
-        description: `La tarifa de envío ha sido ${editingFee ? 'actualizada' : 'creada'}`,
+        title: editingFee ? 'Distrito actualizado' : 'Distrito creado',
+        description: `El distrito ha sido ${editingFee ? 'actualizado' : 'creado'}`,
         status: 'success',
         duration: 2000,
         isClosable: true,
@@ -123,44 +138,32 @@ const DeliveryFeesManagement = () => {
     }
   };
 
-  const handleEdit = (fee) => {
-    setEditingFee(fee);
+  const handleEdit = (district) => {
+    setEditingFee(district);
     setFormData({
-      name: fee.name,
-      description: fee.description,
-      basePrice: fee.basePrice,
-      pricePerKm: fee.pricePerKm,
-      minOrderAmount: fee.minOrderAmount,
-      maxDistance: fee.maxDistance,
-      isActive: fee.isActive
+      name: district.name,
+      price: district.deliveryFee || 0
     });
     onOpen();
   };
 
-  const handleDelete = async (feeId) => {
-    if (window.confirm('¿Estás seguro de que quieres eliminar esta tarifa?')) {
-      const result = await deleteDeliveryFee(feeId);
-      if (result.success) {
-        toast({
-          title: 'Tarifa eliminada',
-          description: 'La tarifa de envío ha sido eliminada',
-          status: 'success',
-          duration: 2000,
-          isClosable: true,
-        });
-      }
+  const handleDelete = async (districtId) => {
+    if (window.confirm('¿Estás seguro de que quieres eliminar este distrito?')) {
+      // Por ahora solo mostramos un mensaje, ya que no tenemos función de eliminar distritos
+      toast({
+        title: 'Función no disponible',
+        description: 'La eliminación de distritos no está disponible por el momento',
+        status: 'warning',
+        duration: 2000,
+        isClosable: true,
+      });
     }
   };
 
   const resetForm = () => {
     setFormData({
       name: '',
-      description: '',
-      basePrice: 0,
-      pricePerKm: 0,
-      minOrderAmount: 0,
-      maxDistance: 0,
-      isActive: true
+      price: 0
     });
     setEditingFee(null);
   };
@@ -182,80 +185,56 @@ const DeliveryFeesManagement = () => {
     <Box p={6}>
       <Flex justify="space-between" align="center" mb={6}>
         <Heading size="lg" color="gray.700">
-          Gestión de Tarifas de Envío
+          Gestión de Distritos y Fletes
         </Heading>
         <Button
           colorScheme="blue"
           leftIcon={<AddIcon />}
           onClick={openModal}
         >
-          Nueva Tarifa
+          Nuevo Distrito
         </Button>
       </Flex>
 
-      {/* Lista de tarifas */}
-      {deliveryFees.length === 0 ? (
+      {/* Lista de distritos */}
+      {districts.length === 0 ? (
         <Alert status="info">
           <AlertIcon />
-          No hay tarifas de envío configuradas.
+          No hay distritos configurados.
         </Alert>
       ) : (
         <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
-          {Array.isArray(deliveryFees) ? deliveryFees.map((fee) => {
-            console.log('📦 Fee data:', fee);
-            return (
-            <Card key={fee.id} variant="outline">
+          {Array.isArray(districts) ? districts.map((district, index) => (
+            <Card key={district.id || `district-${index}`} variant="outline">
               <CardHeader>
                 <Flex justify="space-between" align="center">
-                  <Heading size="md">{fee.name || 'Sin nombre'}</Heading>
-                  <Badge colorScheme={fee.isActive ? 'green' : 'red'}>
-                    {fee.isActive ? 'Activa' : 'Inactiva'}
+                  <Heading size="md">{district.name || 'Sin nombre'}</Heading>
+                  <Badge colorScheme="green">
+                    Activo
                   </Badge>
                 </Flex>
               </CardHeader>
               <CardBody>
                 <VStack spacing={3} align="start">
-                  <Text fontSize="sm" color="gray.600">
-                    {fee.description || 'Sin descripción'}
-                  </Text>
-                  
                   <HStack>
                     <FaMoneyBillWave color="gray.500" />
-                    <Text fontSize="sm">
-                      Precio base: S/ {formatNumber(fee.basePrice)}
+                    <Text fontSize="lg" fontWeight="bold" color="blue.600">
+                      S/ {formatNumber(district.deliveryFee || 0)}
                     </Text>
                   </HStack>
-                  
-                  <HStack>
-                    <FaTruck color="gray.500" />
-                    <Text fontSize="sm">
-                      Por km: S/ {formatNumber(fee.pricePerKm)}
-                    </Text>
-                  </HStack>
-                  
-                  <HStack>
-                    <FaMapMarkerAlt color="gray.500" />
-                    <Text fontSize="sm">
-                      Distancia máxima: {formatNumber(fee.maxDistance, 0)} km
-                    </Text>
-                  </HStack>
-                  
-                  <Text fontSize="sm" color="gray.600">
-                    Pedido mínimo: S/ {formatNumber(fee.minOrderAmount)}
-                  </Text>
 
                   <HStack spacing={2} w="full" justify="end">
                     <IconButton
                       size="sm"
                       icon={<EditIcon />}
-                      onClick={() => handleEdit(fee)}
+                      onClick={() => handleEdit(district)}
                       colorScheme="blue"
                       variant="outline"
                     />
                     <IconButton
                       size="sm"
                       icon={<DeleteIcon />}
-                      onClick={() => handleDelete(fee.id)}
+                      onClick={() => handleDelete(district.id)}
                       colorScheme="red"
                       variant="outline"
                     />
@@ -263,8 +242,7 @@ const DeliveryFeesManagement = () => {
                 </VStack>
               </CardBody>
             </Card>
-            );
-          }) : null}
+          )) : null}
         </SimpleGrid>
       )}
 
@@ -274,91 +252,30 @@ const DeliveryFeesManagement = () => {
         <ModalContent>
           <form onSubmit={handleSubmit}>
             <ModalHeader>
-              {editingFee ? 'Editar Tarifa de Envío' : 'Nueva Tarifa de Envío'}
+              {editingFee ? 'Editar Distrito' : 'Nuevo Distrito'}
             </ModalHeader>
             <ModalCloseButton />
             <ModalBody>
               <VStack spacing={4}>
                 <FormControl isRequired>
-                  <FormLabel>Nombre de la tarifa</FormLabel>
+                  <FormLabel>Nombre del Distrito/Ciudad</FormLabel>
                   <Input
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="Ej: Envío local, Envío express"
+                    placeholder="Ej: San Isidro, Miraflores, Lima Centro"
                   />
                 </FormControl>
 
-                <FormControl>
-                  <FormLabel>Descripción</FormLabel>
-                  <Textarea
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    placeholder="Descripción de la tarifa"
-                  />
-                </FormControl>
-
-                <SimpleGrid columns={2} spacing={4} w="full">
-                  <FormControl isRequired>
-                    <FormLabel>Precio base (S/)</FormLabel>
-                    <NumberInput
-                      value={formData.basePrice}
-                      onChange={(value) => setFormData({ ...formData, basePrice: parseFloat(value) || 0 })}
-                      min={0}
-                      precision={2}
-                    >
-                      <NumberInputField />
-                    </NumberInput>
-                  </FormControl>
-
-                  <FormControl isRequired>
-                    <FormLabel>Precio por km (S/)</FormLabel>
-                    <NumberInput
-                      value={formData.pricePerKm}
-                      onChange={(value) => setFormData({ ...formData, pricePerKm: parseFloat(value) || 0 })}
-                      min={0}
-                      precision={2}
-                    >
-                      <NumberInputField />
-                    </NumberInput>
-                  </FormControl>
-
-                  <FormControl isRequired>
-                    <FormLabel>Pedido mínimo (S/)</FormLabel>
-                    <NumberInput
-                      value={formData.minOrderAmount}
-                      onChange={(value) => setFormData({ ...formData, minOrderAmount: parseFloat(value) || 0 })}
-                      min={0}
-                      precision={2}
-                    >
-                      <NumberInputField />
-                    </NumberInput>
-                  </FormControl>
-
-                  <FormControl isRequired>
-                    <FormLabel>Distancia máxima (km)</FormLabel>
-                    <NumberInput
-                      value={formData.maxDistance}
-                      onChange={(value) => setFormData({ ...formData, maxDistance: parseFloat(value) || 0 })}
-                      min={0}
-                      precision={1}
-                    >
-                      <NumberInputField />
-                    </NumberInput>
-                  </FormControl>
-                </SimpleGrid>
-
-                <FormControl>
-                  <HStack>
-                    <input
-                      type="checkbox"
-                      id="isActive"
-                      checked={formData.isActive}
-                      onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                    />
-                    <FormLabel htmlFor="isActive" mb={0}>
-                      Tarifa activa
-                    </FormLabel>
-                  </HStack>
+                <FormControl isRequired>
+                  <FormLabel>Precio de Flete por Distrito (S/)</FormLabel>
+                  <NumberInput
+                    value={formData.price}
+                    onChange={(value) => setFormData({ ...formData, price: parseFloat(value) || 0 })}
+                    min={0}
+                    precision={2}
+                  >
+                    <NumberInputField />
+                  </NumberInput>
                 </FormControl>
               </VStack>
             </ModalBody>

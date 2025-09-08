@@ -112,33 +112,20 @@ async function seedDatabase() {
         name: 'Bidón de Agua 20L',
         description: 'Bidón de agua purificada de 20 litros',
         type: 'bidon',
-        unitPrice: 8.00,
+        unitPrice: 7.00,
         wholesalePrice: 5.00,
         wholesaleMinQuantity: 2,
         stock: 100,
-        minStock: 10,
         active: true
       },
       {
-        name: 'Botella de Agua 500ml',
-        description: 'Botella de agua purificada de 500ml',
+        name: 'Paquete de Botellas de Agua',
+        description: 'Paquete de 20 botellas de agua purificada',
         type: 'botella',
-        unitPrice: 1.50,
-        wholesalePrice: 1.20,
-        wholesaleMinQuantity: 10,
-        stock: 500,
-        minStock: 50,
-        active: true
-      },
-      {
-        name: 'Botella de Agua 1L',
-        description: 'Botella de agua purificada de 1 litro',
-        type: 'botella',
-        unitPrice: 2.50,
-        wholesalePrice: 2.00,
-        wholesaleMinQuantity: 10,
-        stock: 300,
-        minStock: 30,
+        unitPrice: 10.00,
+        wholesalePrice: 9.00,
+        wholesaleMinQuantity: 60,
+        stock: 200,
         active: true
       }
     ]);
@@ -150,6 +137,7 @@ async function seedDatabase() {
     
     const repartidores = await DeliveryPerson.bulkCreate([
       {
+        userId: repartidor.id,
         name: 'Carlos Mendoza',
         phone: '922222222',
         email: 'carlos.mendoza@aguapura.com',
@@ -218,16 +206,16 @@ async function seedDatabase() {
       status: 'delivered',
       paymentStatus: 'paid',
       deliveryFee: 4.00,
-      total: 6.50
+      total: 14.00
     });
 
     await GuestOrderProduct.bulkCreate([
       {
         guestOrderId: pedidoInvitado1.id,
         productId: productos[1].id,
-        quantity: 2,
-        price: 1.50,
-        subtotal: 3.00
+        quantity: 1,
+        price: 10.00,
+        subtotal: 10.00
       }
     ]);
 

@@ -29,7 +29,7 @@ const GuestOrderProduct = sequelize.define('GuestOrderProduct', {
     allowNull: false
   }
 }, {
-  tableName: 'guest_order_products',
+  tableName: 'GuestOrderProducts',
   timestamps: false
 });
 

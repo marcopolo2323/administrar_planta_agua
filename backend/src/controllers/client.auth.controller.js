@@ -69,6 +69,7 @@ exports.registerClient = async (req, res) => {
     );
 
     return res.status(201).json({
+      success: true,
       message: 'Cliente registrado correctamente',
       user: {
         id: result.user.id,
@@ -131,6 +132,7 @@ exports.loginClient = async (req, res) => {
     );
 
     return res.status(200).json({
+      success: true,
       message: 'Inicio de sesión exitoso',
       user: {
         id: user.id,

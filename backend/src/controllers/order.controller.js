@@ -97,10 +97,14 @@ exports.createOrder = async (req, res) => {
       console.log(`Cliente ${client.name} (ID: ${clientId}) realizando pedido a crédito con vales`);
     }
     
+    // Calcular subtotal (total sin deliveryFee)
+    const subtotal = total - deliveryFee;
+
     // Crear el pedido
     const order = await Order.create({
       clientId,
       userId,
+      subtotal,
       total,
       deliveryAddress,
       deliveryDistrict,
@@ -194,9 +198,10 @@ exports.getAllOrders = async (req, res) => {
   try {
     const orders = await Order.findAll({
       include: [
-        { model: Client },
-        { model: User, as: 'createdBy', attributes: ['id', 'username'] },
-        { model: User, as: 'deliveryPerson', attributes: ['id', 'username'] }
+        { 
+          model: Client,
+          attributes: ['id', 'name', 'phone', 'email']
+        }
       ],
       order: [['orderDate', 'DESC']]
     });

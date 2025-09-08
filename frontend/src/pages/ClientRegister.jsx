@@ -146,16 +146,49 @@ const ClientRegister = () => {
         
         toast({
           title: '¡Cuenta Creada Exitosamente! 🎉',
-          description: 'Tu cuenta de cliente frecuente ha sido creada. Serás redirigido al login...',
+          description: 'Tu cuenta de cliente frecuente ha sido creada. Iniciando sesión automáticamente...',
           status: 'success',
           duration: 4000,
           isClosable: true,
         });
         
-        // Mostrar mensaje de confirmación por 3 segundos antes de redirigir
-        setTimeout(() => {
-          navigate('/client-login');
-        }, 3000);
+        // Iniciar sesión automáticamente
+        try {
+          const loginResponse = await axios.post('/api/auth/login', {
+            username: formData.username,
+            password: formData.password
+          });
+          
+          if (loginResponse.data.success) {
+            // Guardar token y datos del usuario
+            localStorage.setItem('token', loginResponse.data.token);
+            localStorage.setItem('user', JSON.stringify(loginResponse.data.user));
+            
+            toast({
+              title: '¡Sesión Iniciada! 🚀',
+              description: 'Has sido logueado automáticamente. Redirigiendo al dashboard...',
+              status: 'success',
+              duration: 2000,
+              isClosable: true,
+            });
+            
+            // Redirigir al dashboard del cliente
+            setTimeout(() => {
+              navigate('/client-dashboard');
+            }, 2000);
+          } else {
+            // Si falla el login automático, redirigir al login
+            setTimeout(() => {
+              navigate('/client-login');
+            }, 3000);
+          }
+        } catch (loginError) {
+          console.error('Error en login automático:', loginError);
+          // Si falla el login automático, redirigir al login
+          setTimeout(() => {
+            navigate('/client-login');
+          }, 3000);
+        }
       }
     } catch (error) {
       console.error('Error en registro:', error);

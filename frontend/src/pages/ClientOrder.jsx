@@ -32,10 +32,10 @@ import {
 } from 'react-icons/fa';
 import axios from '../utils/axios';
 import useAuthStore from '../stores/authStore';
+import useDistrictStore from '../stores/districtStore';
 
 const ClientOrder = () => {
   const [products, setProducts] = useState([]);
-  const [districts, setDistricts] = useState([]);
   const [cart, setCart] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -47,59 +47,54 @@ const ClientOrder = () => {
   const [clientProfile, setClientProfile] = useState(null);
   const [loadingProfile, setLoadingProfile] = useState(false);
   const { user } = useAuthStore();
+  const { districts: storeDistricts, fetchDistricts } = useDistrictStore();
   const toast = useToast();
 
   useEffect(() => {
     fetchData();
     fetchClientProfile();
-  }, [user]);
+    fetchDistricts();
+  }, [user, fetchDistricts]);
 
   useEffect(() => {
     // Cargar datos del perfil del cliente cuando esté disponible
-    if (clientProfile && districts.length > 0) {
+    if (clientProfile && storeDistricts.length > 0) {
       if (clientProfile.address) {
         setDeliveryAddress(clientProfile.address);
       }
       if (clientProfile.district) {
         // Buscar el ID del distrito por nombre
-        const district = districts.find(d => d.name === clientProfile.district);
+        const district = storeDistricts.find(d => d.name === clientProfile.district);
         if (district) {
           setSelectedDistrict(district.id.toString());
         }
       }
     }
-  }, [clientProfile, districts]);
+  }, [clientProfile, storeDistricts]);
 
   // Efecto para calcular flete automáticamente cuando cambie el distrito o el carrito
   useEffect(() => {
-    if (selectedDistrict && districts.length > 0) {
-      const district = districts.find(d => d.id.toString() === selectedDistrict);
+    if (selectedDistrict && storeDistricts.length > 0) {
+      const district = storeDistricts.find(d => d.id.toString() === selectedDistrict);
       if (district) {
         const orderAmount = cart.reduce((total, item) => total + (item.price * item.quantity), 0);
         calculateDeliveryFeeAsync(district.name, orderAmount);
       }
     }
-  }, [selectedDistrict, cart, districts]);
+  }, [selectedDistrict, cart, storeDistricts]);
 
   const fetchData = async () => {
     try {
       console.log('Cargando datos...');
-      const [productsRes, districtsRes] = await Promise.all([
-        axios.get('/api/products'),
-        axios.get('/api/districts')
-      ]);
+      const productsRes = await axios.get('/api/products');
       
       console.log('Respuesta productos:', productsRes.data);
-      console.log('Respuesta distritos:', districtsRes.data);
       
       const products = productsRes.data.data || productsRes.data || [];
-      const districts = districtsRes.data.data || [];
       
       console.log('Productos procesados:', products);
-      console.log('Distritos procesados:', districts);
       
       setProducts(products);
-      setDistricts(districts);
     } catch (error) {
       console.error('Error al cargar datos:', error);
     } finally {
@@ -124,7 +119,7 @@ const ClientOrder = () => {
       // Si no se puede cargar el perfil, usar datos básicos del usuario
       if (user.address) setDeliveryAddress(user.address);
       if (user.district) {
-        const district = districts.find(d => d.name === user.district);
+        const district = storeDistricts.find(d => d.name === user.district);
         if (district) setSelectedDistrict(district.id.toString());
       }
     } finally {
@@ -249,15 +244,15 @@ const ClientOrder = () => {
     setSubmitting(true);
     try {
       const orderData = {
-        clientId: user.id, // ID del cliente frecuente
+        clientId: clientProfile?.id || user.id, // ID del cliente frecuente
         products: cart.map(item => ({
           productId: item.productId,
           quantity: item.quantity,
           price: item.price
         })),
         deliveryAddress,
-        deliveryDistrict: districts.find(d => d.id === parseInt(selectedDistrict))?.name,
-        contactPhone: user.phone || 'No especificado',
+        deliveryDistrict: storeDistricts.find(d => d.id === parseInt(selectedDistrict))?.name,
+        contactPhone: clientProfile?.phone || user.phone || 'No especificado',
         paymentMethod: 'credito', // Cliente frecuente paga a crédito (vales)
         notes: deliveryNotes
       };
@@ -465,7 +460,7 @@ const ClientOrder = () => {
                       value={selectedDistrict}
                       onChange={(e) => setSelectedDistrict(e.target.value)}
                     >
-                      {districts.map(district => (
+                      {storeDistricts.map(district => (
                         <option key={district.id} value={district.id}>
                           {district.name} - Flete base: S/ {parseFloat(district.deliveryFee || 0).toFixed(2)}
                         </option>

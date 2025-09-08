@@ -68,6 +68,17 @@ const deliveryAssignedRoutes = require('./routes/delivery.assigned.routes');
 const voucherRoutes = require('./routes/voucher.routes');
 const userRoutes = require('./routes/user.routes');
 
+// Rutas públicas (deben ir antes de las protegidas)
+app.get('/api/delivery-fees', async (req, res) => {
+  try {
+    const deliveryFees = await DeliveryFee.findAll();
+    res.json(deliveryFees);
+  } catch (error) {
+    console.error('Error al obtener tarifas de envío:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
 // Usar las rutas
 app.use('/api/auth', authRoutes);
 app.use('/api/client', clientAuthRoutes);
@@ -115,16 +126,6 @@ app.get('/api/districts', async (req, res) => {
   }
 });
 
-// Rutas de tarifas de envío (mantener compatibilidad)
-app.get('/api/delivery-fees', async (req, res) => {
-  try {
-    const deliveryFees = await DeliveryFee.findAll();
-    res.json(deliveryFees);
-  } catch (error) {
-    console.error('Error al obtener tarifas de envío:', error);
-    res.status(500).json({ error: 'Error interno del servidor' });
-  }
-});
 
 // Rutas de pedidos de invitados (mantener compatibilidad)
 app.post('/api/guest-orders', async (req, res) => {

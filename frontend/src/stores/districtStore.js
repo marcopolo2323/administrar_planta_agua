@@ -38,6 +38,43 @@ const useDistrictStore = create((set, get) => ({
     return Array.isArray(districts) ? districts.filter(district => district.deliveryFee <= maxFee) : [];
   },
 
+  updateDistrict: async (districtId, districtData) => {
+    try {
+      const response = await axios.put(`/api/districts/${districtId}`, districtData);
+      const updatedDistrict = response.data.data || response.data;
+      set(state => ({
+        districts: Array.isArray(state.districts) ? state.districts.map(district => 
+          district.id === districtId ? updatedDistrict : district
+        ) : []
+      }));
+      return { success: true, data: updatedDistrict };
+    } catch (error) {
+      console.error('Error al actualizar distrito:', error);
+      set({ error: error.response?.data?.message || 'Error al actualizar distrito' });
+      return { success: false, error: error.response?.data?.message || 'Error al actualizar distrito' };
+    }
+  },
+
+  createDistrict: async (districtData) => {
+    try {
+      console.log('🔄 Creando distrito con datos:', districtData);
+      const response = await axios.post('/api/districts', districtData);
+      console.log('📦 Respuesta del backend:', response.data);
+      const newDistrict = response.data.data || response.data;
+      console.log('📦 Distrito procesado:', newDistrict);
+      set(state => {
+        const updatedDistricts = [...(Array.isArray(state.districts) ? state.districts : []), newDistrict];
+        console.log('📦 Distritos actualizados en store:', updatedDistricts);
+        return { districts: updatedDistricts };
+      });
+      return { success: true, data: newDistrict };
+    } catch (error) {
+      console.error('❌ Error al crear distrito:', error);
+      set({ error: error.response?.data?.message || 'Error al crear distrito' });
+      return { success: false, error: error.response?.data?.message || 'Error al crear distrito' };
+    }
+  },
+
   clearError: () => set({ error: null })
 }));
 

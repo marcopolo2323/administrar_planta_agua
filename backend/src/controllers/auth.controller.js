@@ -108,7 +108,14 @@ exports.login = async (req, res) => {
         id: user.id,
         username: user.username,
         email: user.email,
-        role: user.role
+        role: user.role,
+        phone: user.phone,
+        address: user.address,
+        district: user.district,
+        reference: user.reference,
+        active: user.active,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt
       },
       token
     });
@@ -124,7 +131,7 @@ exports.getProfile = async (req, res) => {
     const userId = req.userId;
 
     const user = await User.findByPk(userId, {
-      attributes: ['id', 'username', 'email', 'role']
+      attributes: ['id', 'username', 'email', 'role', 'phone', 'address', 'district', 'reference', 'active', 'createdAt', 'updatedAt']
     });
 
     if (!user) {
@@ -144,7 +151,7 @@ exports.refreshToken = async (req, res) => {
     const userId = req.userId;
 
     const user = await User.findByPk(userId, {
-      attributes: ['id', 'username', 'email', 'role']
+      attributes: ['id', 'username', 'email', 'role', 'phone', 'address', 'district', 'reference', 'active', 'createdAt', 'updatedAt']
     });
 
     if (!user) {
@@ -163,7 +170,8 @@ exports.refreshToken = async (req, res) => {
 
     return res.status(200).json({
       message: 'Token renovado exitosamente',
-      token
+      token,
+      user
     });
   } catch (error) {
     console.error('Error al renovar token:', error);

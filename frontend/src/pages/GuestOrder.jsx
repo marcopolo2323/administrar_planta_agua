@@ -106,8 +106,8 @@ const GuestOrder = () => {
             const newPricing = newResult.data;
             console.log('Nuevo precio calculado:', newPricing);
             updatedCart[existingItemIndex].quantity = newQuantity;
-            updatedCart[existingItemIndex].unitPrice = newPricing.unitPrice;
-            updatedCart[existingItemIndex].subtotal = newPricing.unitPrice * newQuantity;
+            updatedCart[existingItemIndex].unitPrice = parseFloat(newPricing.unitPrice);
+            updatedCart[existingItemIndex].subtotal = parseFloat(newPricing.unitPrice) * newQuantity;
             updatedCart[existingItemIndex].pricing = newPricing;
             setCart(updatedCart);
             console.log('Carrito actualizado:', updatedCart);
@@ -119,9 +119,9 @@ const GuestOrder = () => {
             productId: product.id, // ID del producto original
             name: product.name,
             type: product.type,
-            unitPrice: pricing.unitPrice,
+            unitPrice: parseFloat(pricing.unitPrice),
             quantity: 1,
-            subtotal: pricing.unitPrice,
+            subtotal: parseFloat(pricing.unitPrice),
             pricing: pricing
           };
           console.log('Agregando nuevo item:', cartItem);
@@ -166,8 +166,8 @@ const GuestOrder = () => {
             ? { 
                 ...item, 
                 quantity: newQuantity, 
-                unitPrice: pricing.unitPrice,
-                subtotal: pricing.unitPrice * newQuantity,
+                unitPrice: parseFloat(pricing.unitPrice),
+                subtotal: parseFloat(pricing.unitPrice) * newQuantity,
                 pricing: pricing
               }
             : item

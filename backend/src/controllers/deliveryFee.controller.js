@@ -62,37 +62,32 @@ exports.createDeliveryFee = async (req, res) => {
   try {
     const {
       name,
-      description,
-      basePrice,
-      pricePerKm,
-      minOrderAmount,
-      maxDistance,
-      isActive = true
+      price
     } = req.body;
 
     // Validaciones
-    if (!name || basePrice === undefined || pricePerKm === undefined) {
+    if (!name || price === undefined) {
       return res.status(400).json({
         success: false,
-        message: 'Nombre, precio base y precio por km son requeridos'
+        message: 'Nombre y precio son requeridos'
       });
     }
 
-    if (basePrice < 0 || pricePerKm < 0) {
+    if (price < 0) {
       return res.status(400).json({
         success: false,
-        message: 'Los precios no pueden ser negativos'
+        message: 'El precio no puede ser negativo'
       });
     }
 
     const deliveryFee = await DeliveryFee.create({
       name,
-      description,
-      basePrice,
-      pricePerKm,
-      minOrderAmount: minOrderAmount || 0,
-      maxDistance: maxDistance || 0,
-      isActive
+      description: `Flete para ${name}`,
+      basePrice: price,
+      pricePerKm: 0,
+      minOrderAmount: 0,
+      maxDistance: 0,
+      isActive: true
     });
 
     res.status(201).json({
@@ -114,7 +109,7 @@ exports.createDeliveryFee = async (req, res) => {
 exports.updateDeliveryFee = async (req, res) => {
   try {
     const { id } = req.params;
-    const updateData = req.body;
+    const { name, price } = req.body;
 
     const deliveryFee = await DeliveryFee.findByPk(id);
     if (!deliveryFee) {
@@ -125,19 +120,18 @@ exports.updateDeliveryFee = async (req, res) => {
     }
 
     // Validaciones
-    if (updateData.basePrice !== undefined && updateData.basePrice < 0) {
+    if (price !== undefined && price < 0) {
       return res.status(400).json({
         success: false,
-        message: 'El precio base no puede ser negativo'
+        message: 'El precio no puede ser negativo'
       });
     }
 
-    if (updateData.pricePerKm !== undefined && updateData.pricePerKm < 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'El precio por km no puede ser negativo'
-      });
-    }
+    const updateData = {
+      name: name || deliveryFee.name,
+      basePrice: price !== undefined ? price : deliveryFee.basePrice,
+      description: `Flete para ${name || deliveryFee.name}`
+    };
 
     await deliveryFee.update(updateData);
 

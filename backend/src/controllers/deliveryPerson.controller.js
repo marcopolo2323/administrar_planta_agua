@@ -74,6 +74,7 @@ exports.getDeliveryPersonById = async (req, res) => {
 exports.createDeliveryPerson = async (req, res) => {
   try {
     const {
+      userId,
       name,
       phone,
       email,
@@ -105,7 +106,22 @@ exports.createDeliveryPerson = async (req, res) => {
       });
     }
 
+    // Verificar si ya existe un repartidor para este usuario
+    if (userId) {
+      const existingUserPerson = await DeliveryPerson.findOne({
+        where: { userId }
+      });
+
+      if (existingUserPerson) {
+        return res.status(400).json({
+          success: false,
+          message: 'Ya existe un repartidor para este usuario'
+        });
+      }
+    }
+
     const deliveryPerson = await DeliveryPerson.create({
+      userId,
       name,
       phone,
       email,
@@ -117,10 +133,20 @@ exports.createDeliveryPerson = async (req, res) => {
       notes
     });
 
+    // Incluir información del usuario si existe
+    const deliveryPersonWithUser = await DeliveryPerson.findByPk(deliveryPerson.id, {
+      include: [
+        {
+          model: User,
+          attributes: ['id', 'username', 'email']
+        }
+      ]
+    });
+
     res.status(201).json({
       success: true,
       message: 'Repartidor creado correctamente',
-      data: deliveryPerson
+      data: deliveryPersonWithUser
     });
   } catch (error) {
     console.error('Error al crear repartidor:', error);

@@ -48,6 +48,7 @@ import {
   FaCar
 } from 'react-icons/fa';
 import useDeliveryStore from '../stores/deliveryStore';
+import axios from '../utils/axios';
 
 const DeliveryPersonsManagement = () => {
   const [editingPerson, setEditingPerson] = useState(null);
@@ -73,10 +74,13 @@ const DeliveryPersonsManagement = () => {
     name: '',
     phone: '',
     email: '',
+    username: '',
+    password: '',
     vehicleType: 'motorcycle',
     vehiclePlate: '',
     licenseNumber: '',
     address: '',
+    district: '',
     status: 'available',
     notes: ''
   });
@@ -103,25 +107,73 @@ const DeliveryPersonsManagement = () => {
     e.preventDefault();
     try {
       if (editingPerson) {
-        await axios.put(`/api/delivery-persons/${editingPerson.id}`, formData);
-        setDeliveryPersons(Array.isArray(deliveryPersons) ? deliveryPersons.map(person => 
-          person.id === editingPerson.id ? { ...person, ...formData } : person
-        ) : []);
+        // Actualizar repartidor existente
+        const updateData = { ...formData };
+        
+        // Si se proporcionó una nueva contraseña (no es la enmascarada)
+        if (formData.password && formData.password !== '••••••••') {
+          // Actualizar credenciales del usuario
+          const userUpdateData = {
+            username: formData.username,
+            email: formData.email,
+            phone: formData.phone,
+            address: formData.address,
+            district: formData.district,
+            password: formData.password
+          };
+          
+          await axios.put(`/api/users/${editingPerson.User?.id}`, userUpdateData);
+        }
+        
+        // Remover campos de usuario del updateData
+        delete updateData.username;
+        delete updateData.password;
+        delete updateData.district;
+        
+        await updateDeliveryPerson(editingPerson.id, updateData);
         toast({
           title: 'Repartidor actualizado',
-          description: 'El repartidor ha sido actualizado',
+          description: 'El repartidor y sus credenciales han sido actualizados',
           status: 'success',
           duration: 2000,
           isClosable: true,
         });
       } else {
-        const response = await axios.post('/api/delivery-persons', formData);
-        setDeliveryPersons([...deliveryPersons, response.data]);
+        // Crear nuevo repartidor
+        const userData = {
+          username: formData.username,
+          email: formData.email,
+          password: formData.password,
+          role: 'repartidor',
+          phone: formData.phone,
+          address: formData.address,
+          district: formData.district
+        };
+
+        // Crear usuario en el sistema
+        const userResponse = await axios.post('/api/auth/register', userData);
+        
+        // Crear perfil de repartidor
+        const deliveryPersonData = {
+          userId: userResponse.data.user.id,
+          name: formData.name,
+          phone: formData.phone,
+          email: formData.email,
+          vehicleType: formData.vehicleType,
+          vehiclePlate: formData.vehiclePlate,
+          licenseNumber: formData.licenseNumber,
+          address: formData.address,
+          status: formData.status,
+          notes: formData.notes
+        };
+
+        await createDeliveryPerson(deliveryPersonData);
+        
         toast({
           title: 'Repartidor creado',
-          description: 'El repartidor ha sido creado',
+          description: `Usuario creado con username: ${formData.username}`,
           status: 'success',
-          duration: 2000,
+          duration: 5000,
           isClosable: true,
         });
       }
@@ -131,7 +183,7 @@ const DeliveryPersonsManagement = () => {
       console.error('Error al guardar repartidor:', error);
       toast({
         title: 'Error',
-        description: 'No se pudo guardar el repartidor',
+        description: error.response?.data?.message || 'No se pudo guardar el repartidor',
         status: 'error',
         duration: 3000,
         isClosable: true,
@@ -142,15 +194,18 @@ const DeliveryPersonsManagement = () => {
   const handleEdit = (person) => {
     setEditingPerson(person);
     setFormData({
-      name: person.name,
-      phone: person.phone,
-      email: person.email,
-      vehicleType: person.vehicleType,
-      vehiclePlate: person.vehiclePlate,
-      licenseNumber: person.licenseNumber,
-      address: person.address,
-      status: person.status,
-      notes: person.notes
+      name: person.name || '',
+      phone: person.phone || '',
+      email: person.email || '',
+      username: person.User?.username || '',
+      password: '••••••••', // Mostrar contraseña enmascarada
+      vehicleType: person.vehicleType || 'motorcycle',
+      vehiclePlate: person.vehiclePlate || '',
+      licenseNumber: person.licenseNumber || '',
+      address: person.address || '',
+      district: person.User?.district || '',
+      status: person.status || 'available',
+      notes: person.notes || ''
     });
     onOpen();
   };
@@ -210,10 +265,13 @@ const DeliveryPersonsManagement = () => {
       name: '',
       phone: '',
       email: '',
+      username: '',
+      password: '',
       vehicleType: 'motorcycle',
       vehiclePlate: '',
       licenseNumber: '',
       address: '',
+      district: '',
       status: 'available',
       notes: ''
     });
@@ -283,8 +341,8 @@ const DeliveryPersonsManagement = () => {
         </Alert>
       ) : (
         <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
-          {Array.isArray(deliveryPersons) ? deliveryPersons.map((person) => (
-            <Card key={person.id} variant="outline">
+          {Array.isArray(deliveryPersons) ? deliveryPersons.map((person, index) => (
+            <Card key={person.id || `delivery-person-${index}`} variant="outline">
               <CardHeader>
                 <Flex justify="space-between" align="center">
                   <HStack>
@@ -372,11 +430,46 @@ const DeliveryPersonsManagement = () => {
             <ModalCloseButton />
             <ModalBody>
               <VStack spacing={4}>
+                {/* Información de Usuario */}
+                <Box w="full" p={4} bg="blue.50" borderRadius="md">
+                  <Text fontWeight="bold" mb={3} color="blue.700">
+                    🔐 Credenciales de Acceso
+                  </Text>
+                  <SimpleGrid columns={2} spacing={4} w="full">
+                    <FormControl isRequired>
+                      <FormLabel>Username</FormLabel>
+                      <Input
+                        value={formData.username || ''}
+                        onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                        placeholder="Nombre de usuario"
+                        readOnly={editingPerson}
+                        bg={editingPerson ? "gray.100" : "white"}
+                      />
+                    </FormControl>
+
+                    <FormControl isRequired>
+                      <FormLabel>Contraseña</FormLabel>
+                      <Input
+                        type="password"
+                        value={formData.password || ''}
+                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        placeholder={editingPerson ? "Dejar vacío para mantener la actual" : "Contraseña temporal"}
+                        autoComplete="new-password"
+                      />
+                    </FormControl>
+                  </SimpleGrid>
+                </Box>
+
+                {/* Información Personal */}
+                <Box w="full" p={4} bg="green.50" borderRadius="md">
+                  <Text fontWeight="bold" mb={3} color="green.700">
+                    👤 Información Personal
+                  </Text>
                 <SimpleGrid columns={2} spacing={4} w="full">
                   <FormControl isRequired>
                     <FormLabel>Nombre completo</FormLabel>
                     <Input
-                      value={formData.name}
+                        value={formData.name || ''}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                       placeholder="Nombre del repartidor"
                     />
@@ -385,26 +478,44 @@ const DeliveryPersonsManagement = () => {
                   <FormControl isRequired>
                     <FormLabel>Teléfono</FormLabel>
                     <Input
-                      value={formData.phone}
+                        value={formData.phone || ''}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                       placeholder="Número de teléfono"
                     />
                   </FormControl>
 
-                  <FormControl>
+                    <FormControl isRequired>
                     <FormLabel>Email</FormLabel>
                     <Input
                       type="email"
-                      value={formData.email}
+                        value={formData.email || ''}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                       placeholder="Email del repartidor"
                     />
                   </FormControl>
 
+                    <FormControl>
+                      <FormLabel>Distrito</FormLabel>
+                      <Input
+                        value={formData.district || ''}
+                        onChange={(e) => setFormData({ ...formData, district: e.target.value })}
+                        placeholder="Distrito de residencia"
+                      />
+                    </FormControl>
+                  </SimpleGrid>
+                </Box>
+
+                {/* Información del Vehículo */}
+                <Box w="full" p={4} bg="orange.50" borderRadius="md">
+                  <Text fontWeight="bold" mb={3} color="orange.700">
+                    🚗 Información del Vehículo
+                  </Text>
+                  <SimpleGrid columns={2} spacing={4} w="full">
+
                   <FormControl isRequired>
                     <FormLabel>Tipo de vehículo</FormLabel>
                     <Select
-                      value={formData.vehicleType}
+                        value={formData.vehicleType || 'motorcycle'}
                       onChange={(e) => setFormData({ ...formData, vehicleType: e.target.value })}
                     >
                       <option value="motorcycle">Motocicleta</option>
@@ -416,7 +527,7 @@ const DeliveryPersonsManagement = () => {
                   <FormControl isRequired>
                     <FormLabel>Placa del vehículo</FormLabel>
                     <Input
-                      value={formData.vehiclePlate}
+                        value={formData.vehiclePlate || ''}
                       onChange={(e) => setFormData({ ...formData, vehiclePlate: e.target.value })}
                       placeholder="ABC-123"
                     />
@@ -425,17 +536,24 @@ const DeliveryPersonsManagement = () => {
                   <FormControl>
                     <FormLabel>Número de licencia</FormLabel>
                     <Input
-                      value={formData.licenseNumber}
+                        value={formData.licenseNumber || ''}
                       onChange={(e) => setFormData({ ...formData, licenseNumber: e.target.value })}
                       placeholder="Número de licencia"
                     />
                   </FormControl>
                 </SimpleGrid>
+                </Box>
 
+                {/* Información Adicional */}
+                <Box w="full" p={4} bg="gray.50" borderRadius="md">
+                  <Text fontWeight="bold" mb={3} color="gray.700">
+                    📝 Información Adicional
+                  </Text>
+                  <VStack spacing={4} w="full">
                 <FormControl>
                   <FormLabel>Dirección</FormLabel>
                   <Textarea
-                    value={formData.address}
+                        value={formData.address || ''}
                     onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                     placeholder="Dirección del repartidor"
                   />
@@ -444,7 +562,7 @@ const DeliveryPersonsManagement = () => {
                 <FormControl>
                   <FormLabel>Estado inicial</FormLabel>
                   <Select
-                    value={formData.status}
+                        value={formData.status || 'available'}
                     onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                   >
                     <option value="available">Disponible</option>
@@ -456,11 +574,13 @@ const DeliveryPersonsManagement = () => {
                 <FormControl>
                   <FormLabel>Notas</FormLabel>
                   <Textarea
-                    value={formData.notes}
+                        value={formData.notes || ''}
                     onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                     placeholder="Notas adicionales"
                   />
                 </FormControl>
+                  </VStack>
+                </Box>
               </VStack>
             </ModalBody>
             <ModalFooter>

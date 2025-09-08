@@ -46,6 +46,11 @@ exports.createGuestOrder = async (req, res) => {
       });
     }
 
+    // Calcular subtotal
+    const calculatedTotalAmount = parseFloat(finalTotal);
+    const calculatedDeliveryFee = parseFloat(finalDeliveryFee);
+    const calculatedSubtotal = calculatedTotalAmount - calculatedDeliveryFee;
+    
     // Crear el pedido
     console.log('Creando pedido con datos:', {
       customerName: finalCustomerName,
@@ -54,8 +59,9 @@ exports.createGuestOrder = async (req, res) => {
       deliveryAddress,
       deliveryDistrict,
       deliveryNotes: deliveryNotes || deliveryReference,
-      totalAmount: parseFloat(finalTotal),
-      deliveryFee: parseFloat(finalDeliveryFee),
+      totalAmount: calculatedTotalAmount,
+      subtotal: calculatedSubtotal,
+      deliveryFee: calculatedDeliveryFee,
       status: 'pending',
       paymentMethod: paymentMethod,
       paymentStatus: paymentMethod === 'voucher' ? 'pending' : 'pending',
@@ -69,8 +75,9 @@ exports.createGuestOrder = async (req, res) => {
       deliveryAddress,
       deliveryDistrict,
       deliveryNotes: deliveryNotes || deliveryReference,
-      totalAmount: parseFloat(finalTotal),
-      deliveryFee: parseFloat(finalDeliveryFee),
+      totalAmount: calculatedTotalAmount,
+      subtotal: calculatedSubtotal,
+      deliveryFee: calculatedDeliveryFee,
       status: 'pending',
       paymentMethod: paymentMethod,
       paymentStatus: paymentMethod === 'voucher' ? 'pending' : 'pending',
@@ -412,6 +419,59 @@ exports.getOrderStats = async (req, res) => {
     });
   } catch (error) {
     console.error('Error al obtener estadísticas:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+};
+
+// Actualizar un pedido de invitado
+exports.updateGuestOrder = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateData = req.body;
+
+    console.log('Actualizando pedido de invitado:', id, updateData);
+
+    // Buscar el pedido
+    const guestOrder = await GuestOrder.findByPk(id);
+    if (!guestOrder) {
+      return res.status(404).json({
+        success: false,
+        message: 'Pedido de invitado no encontrado'
+      });
+    }
+
+    // Actualizar el pedido
+    await guestOrder.update(updateData);
+
+    // Obtener el pedido actualizado con sus relaciones
+    const updatedOrder = await GuestOrder.findByPk(id, {
+      include: [
+        {
+          model: GuestOrderProduct,
+          as: 'products',
+          include: [{
+            model: Product,
+            as: 'product'
+          }]
+        },
+        {
+          model: User,
+          as: 'DeliveryPerson',
+          attributes: ['id', 'username', 'email']
+        }
+      ]
+    });
+
+    res.json({
+      success: true,
+      data: updatedOrder
+    });
+  } catch (error) {
+    console.error('Error al actualizar pedido de invitado:', error);
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor',

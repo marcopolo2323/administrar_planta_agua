@@ -138,6 +138,16 @@ GuestOrderProduct.belongsTo(GuestOrder, {
   foreignKey: 'guestOrderId', 
   as: 'guestOrder' 
 });
+
+// Relación con repartidor para pedidos de invitados
+GuestOrder.belongsTo(User, { 
+  foreignKey: 'deliveryPersonId', 
+  as: 'DeliveryPerson' 
+});
+User.hasMany(GuestOrder, { 
+  foreignKey: 'deliveryPersonId', 
+  as: 'GuestOrders' 
+});
 GuestOrderProduct.belongsTo(Product, { 
   foreignKey: 'productId', 
   as: 'product' 

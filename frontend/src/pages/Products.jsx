@@ -288,7 +288,7 @@ const Products = () => {
                         </Text>
                       </HStack>
                       
-                      {(product.wholesalePrice || product.wholesalePrice2) && (
+                      {(product.wholesalePrice || product.wholesalePrice2 || product.wholesalePrice3) && (
                         <Box bg="gray.50" p={2} borderRadius="md" w="full">
                           <VStack spacing={1} align="start">
                             {product.wholesalePrice && (
@@ -301,6 +301,12 @@ const Products = () => {
                               <Text fontSize="sm" color="purple.600" fontWeight="medium">
                                 <strong>Mayoreo 2:</strong> S/ {parseFloat(product.wholesalePrice2).toFixed(2)} 
                                 (min. {product.wholesaleMinQuantity2})
+                              </Text>
+                            )}
+                            {product.wholesalePrice3 && (
+                              <Text fontSize="sm" color="green.600" fontWeight="medium">
+                                <strong>Mayoreo 3:</strong> S/ {parseFloat(product.wholesalePrice3).toFixed(2)} 
+                                (min. {product.wholesaleMinQuantity3})
                               </Text>
                             )}
                           </VStack>
@@ -375,7 +381,12 @@ const Products = () => {
                             S/ {parseFloat(product.wholesalePrice2).toFixed(2)} (min. {product.wholesaleMinQuantity2})
                           </Text>
                         )}
-                        {!product.wholesalePrice && !product.wholesalePrice2 && (
+                        {product.wholesalePrice3 && (
+                          <Text fontWeight="semibold" color="green.500" fontSize="sm">
+                            S/ {parseFloat(product.wholesalePrice3).toFixed(2)} (min. {product.wholesaleMinQuantity3})
+                          </Text>
+                        )}
+                        {!product.wholesalePrice && !product.wholesalePrice2 && !product.wholesalePrice3 && (
                           <Text color="gray.400">-</Text>
                         )}
                       </VStack>
@@ -519,6 +530,37 @@ const Products = () => {
                 <NumberInput
                   value={formData.wholesaleMinQuantity2}
                   onChange={(value) => setFormData({ ...formData, wholesaleMinQuantity2: value })}
+                  min={0}
+                >
+                  <NumberInputField />
+                  <NumberInputStepper>
+                    <NumberIncrementStepper />
+                    <NumberDecrementStepper />
+                  </NumberInputStepper>
+                </NumberInput>
+              </FormControl>
+
+              <FormControl>
+                <FormLabel>Precio de Mayoreo 3</FormLabel>
+                <NumberInput
+                  value={formData.wholesalePrice3}
+                  onChange={(value) => setFormData({ ...formData, wholesalePrice3: value })}
+                  min={0}
+                  precision={2}
+                >
+                  <NumberInputField />
+                  <NumberInputStepper>
+                    <NumberIncrementStepper />
+                    <NumberDecrementStepper />
+                  </NumberInputStepper>
+                </NumberInput>
+              </FormControl>
+
+              <FormControl>
+                <FormLabel>Cantidad Mínima Mayoreo 3</FormLabel>
+                <NumberInput
+                  value={formData.wholesaleMinQuantity3}
+                  onChange={(value) => setFormData({ ...formData, wholesaleMinQuantity3: value })}
                   min={0}
                 >
                   <NumberInputField />

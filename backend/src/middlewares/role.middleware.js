@@ -34,31 +34,19 @@ exports.checkRole = (roles) => {
 };
 
 // Middleware para verificar si el usuario es administrador
-exports.isAdmin = (req, res, next) => {
-  return exports.checkRole(['admin'])(req, res, next);
-};
+exports.isAdmin = exports.checkRole(['admin']);
 
 // Middleware para verificar si el usuario es vendedor
-exports.isSeller = (req, res, next) => {
-  return exports.checkRole(['admin', 'vendedor'])(req, res, next);
-};
+exports.isSeller = exports.checkRole(['admin', 'vendedor']);
 
 // Middleware para verificar si el usuario es cliente
-exports.isClient = (req, res, next) => {
-  return exports.checkRole(['cliente'])(req, res, next);
-};
+exports.isClient = exports.checkRole(['cliente']);
 
 // Middleware para verificar si el usuario es repartidor
-exports.isDeliveryPerson = (req, res, next) => {
-  return exports.checkRole(['repartidor'])(req, res, next);
-};
+exports.isDeliveryPerson = exports.checkRole(['repartidor']);
 
 // Middleware para verificar si el usuario es cliente o administrador
-exports.isClientOrAdmin = (req, res, next) => {
-  return exports.checkRole(['cliente', 'admin'])(req, res, next);
-};
+exports.isClientOrAdmin = exports.checkRole(['cliente', 'admin']);
 
 // Middleware para verificar si el usuario es repartidor o administrador
-exports.isDeliveryPersonOrAdmin = (req, res, next) => {
-  return exports.checkRole(['repartidor', 'admin'])(req, res, next);
-};
+exports.isDeliveryPersonOrAdmin = exports.checkRole(['repartidor', 'admin']);

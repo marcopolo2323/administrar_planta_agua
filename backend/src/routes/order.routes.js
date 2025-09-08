@@ -2,16 +2,39 @@ const express = require('express');
 const router = express.Router();
 const orderController = require('../controllers/order.controller');
 const { authMiddleware, requireRole } = require('../middlewares/auth.middleware');
+const { Client, Order, User, OrderDetail, Product, DeliveryPerson } = require('../models');
 
 // Rutas públicas (para clientes registrados)
 // Crear un nuevo pedido
 router.post('/', authMiddleware, requireRole(['cliente']), orderController.createOrder);
 
+// Rutas para administradores
+// Crear pedido (admin)
+router.post('/admin', authMiddleware, requireRole(['admin', 'vendedor']), orderController.createOrder);
+
 // Obtener pedidos del cliente autenticado
 router.get('/my-orders', authMiddleware, requireRole(['cliente']), async (req, res) => {
-  // Redirigir a la función que obtiene pedidos por cliente usando el ID del usuario autenticado
-  req.params.clientId = req.userId;
-  return orderController.getOrdersByClient(req, res);
+  try {
+    // Buscar el cliente asociado al usuario autenticado
+    const client = await Client.findOne({
+      where: { userId: req.userId }
+    });
+    
+    if (!client) {
+      return res.status(404).json({ message: 'Cliente no encontrado' });
+    }
+    
+    // Obtener pedidos del cliente
+    const orders = await Order.findAll({
+      where: { clientId: client.id },
+      order: [['orderDate', 'DESC']]
+    });
+    
+    return res.status(200).json(orders);
+  } catch (error) {
+    console.error('Error al obtener pedidos del cliente:', error);
+    return res.status(500).json({ message: 'Error en el servidor' });
+  }
 });
 
 // Obtener un pedido específico del cliente autenticado

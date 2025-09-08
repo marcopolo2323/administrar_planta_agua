@@ -7,6 +7,14 @@ const DeliveryPerson = sequelize.define('DeliveryPerson', {
     primaryKey: true,
     autoIncrement: true
   },
+  userId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'Users',
+      key: 'id'
+    }
+  },
   name: {
     type: DataTypes.STRING,
     allowNull: false
@@ -46,7 +54,7 @@ const DeliveryPerson = sequelize.define('DeliveryPerson', {
     allowNull: true
   }
 }, {
-  tableName: 'delivery_persons',
+  tableName: 'DeliveryPersons',
   timestamps: true,
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'

@@ -98,6 +98,17 @@ const useClientStore = create((set, get) => ({
     return clients.find(client => client.id === clientId);
   },
 
+  // Obtener cliente por ID desde la API
+  fetchClientById: async (clientId) => {
+    try {
+      const response = await axios.get(`/api/clients/${clientId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error al obtener cliente:', error);
+      return null;
+    }
+  },
+
   // Limpiar estado
   clearError: () => set({ error: null }),
   reset: () => set({ clients: [], loading: false, error: null })

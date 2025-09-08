@@ -36,7 +36,19 @@ exports.getProductById = async (req, res) => {
 // Crear un nuevo producto
 exports.createProduct = async (req, res) => {
   try {
-    const { name, description, type, unitPrice, wholesalePrice, wholesaleMinQuantity, stock } = req.body;
+    const { 
+      name, 
+      description, 
+      type, 
+      unitPrice, 
+      wholesalePrice, 
+      wholesaleMinQuantity,
+      wholesalePrice2,
+      wholesaleMinQuantity2,
+      wholesalePrice3,
+      wholesaleMinQuantity3,
+      stock 
+    } = req.body;
 
     const product = await Product.create({
       name,
@@ -45,6 +57,10 @@ exports.createProduct = async (req, res) => {
       unitPrice,
       wholesalePrice,
       wholesaleMinQuantity,
+      wholesalePrice2,
+      wholesaleMinQuantity2,
+      wholesalePrice3,
+      wholesaleMinQuantity3,
       stock
     });
 
@@ -62,7 +78,20 @@ exports.createProduct = async (req, res) => {
 exports.updateProduct = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, description, type, unitPrice, wholesalePrice, wholesaleMinQuantity, stock, active } = req.body;
+    const { 
+      name, 
+      description, 
+      type, 
+      unitPrice, 
+      wholesalePrice, 
+      wholesaleMinQuantity,
+      wholesalePrice2,
+      wholesaleMinQuantity2,
+      wholesalePrice3,
+      wholesaleMinQuantity3,
+      stock, 
+      active 
+    } = req.body;
 
     const product = await Product.findByPk(id);
     if (!product) {
@@ -76,6 +105,10 @@ exports.updateProduct = async (req, res) => {
       unitPrice,
       wholesalePrice,
       wholesaleMinQuantity,
+      wholesalePrice2,
+      wholesaleMinQuantity2,
+      wholesalePrice3,
+      wholesaleMinQuantity3,
       stock,
       active
     });

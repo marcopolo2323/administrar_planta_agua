@@ -47,6 +47,7 @@ import { SearchIcon, EditIcon, ViewIcon } from '@chakra-ui/icons';
 import useOrderStore from '../stores/orderStore';
 import useClientStore from '../stores/clientStore';
 import useGuestOrderStore from '../stores/guestOrderStore';
+import useDeliveryStore from '../stores/deliveryStore';
 
 const Orders = () => {
   // Stores
@@ -64,14 +65,21 @@ const Orders = () => {
   const {
     clients,
     loading: clientsLoading,
-    fetchClients
+    fetchClients,
+    fetchClientById
   } = useClientStore();
 
   const {
     orders: guestOrders,
     loading: guestOrdersLoading,
-    fetchOrders: fetchGuestOrders
+    fetchOrders: fetchGuestOrders,
+    updateGuestOrder
   } = useGuestOrderStore();
+
+  const {
+    deliveryPersons,
+    fetchDeliveryPersons
+  } = useDeliveryStore();
 
   // Estados locales
   const [searchTerm, setSearchTerm] = useState('');
@@ -83,22 +91,65 @@ const Orders = () => {
   // Estados para el formulario
   const [formData, setFormData] = useState({
     status: '',
-    notes: ''
+    notes: '',
+    deliveryPersonId: ''
   });
+
+  // Estados para modales
+  const { isOpen: isAssignOpen, onOpen: onAssignOpen, onClose: onAssignClose } = useDisclosure();
+  const { isOpen: isStatusOpen, onOpen: onStatusOpen, onClose: onStatusClose } = useDisclosure();
 
   const isMobile = useBreakpointValue({ base: true, md: false });
 
+  // Función para calcular el total de un pedido
+  const calculateTotal = (order) => {
+    if (order.total) {
+      return parseFloat(order.total);
+    }
+    
+    const subtotal = parseFloat(order.subtotal || 0);
+    const deliveryFee = parseFloat(order.deliveryFee || 0);
+    return subtotal + deliveryFee;
+  };
+
   // Combinar pedidos regulares y de invitados
   const allOrders = [
-    ...(orders || []).map(order => ({ ...order, type: 'regular' })),
-    ...(guestOrders || []).map(order => ({ ...order, type: 'guest' }))
+    ...(orders || []).map(order => ({ ...order, type: 'regular', uniqueKey: `regular-${order.id}` })),
+    ...(guestOrders || []).map(order => ({ ...order, type: 'guest', uniqueKey: `guest-${order.id}` }))
   ].sort((a, b) => new Date(b.createdAt || b.created_at) - new Date(a.createdAt || a.created_at));
+
+  // Debug: Mostrar datos de pedidos
+  console.log('🔍 Pedidos cargados:', allOrders.length);
+  console.log('🔍 Primer pedido:', allOrders[0]);
+  console.log('🔍 Todos los pedidos:', allOrders.map(o => ({ id: o.id, subtotal: o.subtotal, total: o.total, deliveryFee: o.deliveryFee })));
 
   useEffect(() => {
     fetchOrders();
     fetchGuestOrders();
     fetchClients();
-  }, [fetchOrders, fetchGuestOrders, fetchClients]);
+    fetchDeliveryPersons();
+  }, [fetchOrders, fetchGuestOrders, fetchClients, fetchDeliveryPersons]);
+
+  // Debug: Mostrar datos de pedidos cuando cambien
+  useEffect(() => {
+    if (orders.length > 0) {
+      console.log('🔍 Pedidos regulares cargados:', orders.length);
+      console.log('🔍 Primer pedido regular:', orders[0]);
+      console.log('🔍 Total del primer pedido:', orders[0]?.total);
+      console.log('🔍 Subtotal del primer pedido:', orders[0]?.subtotal);
+      console.log('🔍 DeliveryFee del primer pedido:', orders[0]?.deliveryFee);
+    }
+  }, [orders]);
+
+  useEffect(() => {
+    if (guestOrders.length > 0) {
+      console.log('🔍 Pedidos de invitados cargados:', guestOrders.length);
+      console.log('🔍 Primer pedido de invitado:', guestOrders[0]);
+      console.log('🔍 Total del primer pedido de invitado:', guestOrders[0]?.total);
+      console.log('🔍 Subtotal del primer pedido de invitado:', guestOrders[0]?.subtotal);
+      console.log('🔍 DeliveryFee del primer pedido de invitado:', guestOrders[0]?.deliveryFee);
+    }
+  }, [guestOrders]);
 
   // Mostrar errores del store
   useEffect(() => {
@@ -132,7 +183,8 @@ const Orders = () => {
   const resetForm = () => {
     setFormData({
       status: '',
-      notes: ''
+      notes: '',
+      deliveryPersonId: ''
     });
     setSelectedOrder(null);
   };
@@ -144,6 +196,33 @@ const Orders = () => {
       notes: order.notes || ''
     });
     onOpen();
+  };
+
+  const openViewModal = async (order) => {
+    setSelectedOrder(order);
+    
+    // Cargar datos completos del pedido si es necesario
+    try {
+      let orderData = order;
+      
+      // Si es un pedido regular, cargar datos del cliente
+      if (order.type === 'regular' && order.clientId) {
+        const client = await fetchClientById(order.clientId);
+        if (client) {
+          orderData = {
+            ...order,
+            Client: client
+          };
+        }
+      }
+      
+      setSelectedOrder(orderData);
+      onOpen();
+    } catch (error) {
+      console.error('Error al cargar datos del pedido:', error);
+      setSelectedOrder(order);
+      onOpen();
+    }
   };
 
   const getStatusColor = (status) => {
@@ -162,6 +241,105 @@ const Orders = () => {
         return 'red';
       default:
         return 'gray';
+    }
+  };
+
+  // Función para asignar repartidor
+  const handleAssignDeliveryPerson = (order) => {
+    setSelectedOrder(order);
+    setFormData({
+      ...formData,
+      deliveryPersonId: order.deliveryPersonId || ''
+    });
+    onAssignOpen();
+  };
+
+  // Función para actualizar estado
+  const handleUpdateStatus = (order) => {
+    setSelectedOrder(order);
+    setFormData({
+      ...formData,
+      status: order.status
+    });
+    onStatusOpen();
+  };
+
+  // Función para asignar repartidor
+  const assignDeliveryPerson = async () => {
+    if (!selectedOrder || !formData.deliveryPersonId) return;
+
+    console.log('🔍 Debug assignDeliveryPerson:');
+    console.log('selectedOrder.type:', selectedOrder.type);
+    console.log('updateGuestOrder function:', typeof updateGuestOrder);
+    console.log('updateOrder function:', typeof updateOrder);
+
+    const updateData = {
+      deliveryPersonId: formData.deliveryPersonId
+    };
+
+    let result;
+    if (selectedOrder.type === 'regular') {
+      console.log('Usando updateOrder para pedido regular');
+      result = await updateOrder(selectedOrder.id, updateData);
+    } else {
+      console.log('Usando updateGuestOrder para pedido de invitado');
+      result = await updateGuestOrder(selectedOrder.id, updateData);
+    }
+
+    if (result.success) {
+      toast({
+        title: 'Éxito',
+        description: 'Repartidor asignado correctamente',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+      onAssignClose();
+      resetForm();
+    } else {
+      toast({
+        title: 'Error',
+        description: result.error || 'Error al asignar repartidor',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+  };
+
+  // Función para actualizar estado
+  const updateOrderStatus = async () => {
+    if (!selectedOrder || !formData.status) return;
+
+    const updateData = {
+      status: formData.status
+    };
+
+    let result;
+    if (selectedOrder.type === 'regular') {
+      result = await updateOrder(selectedOrder.id, updateData);
+    } else {
+      result = await updateGuestOrder(selectedOrder.id, updateData);
+    }
+
+    if (result.success) {
+      toast({
+        title: 'Éxito',
+        description: 'Estado actualizado correctamente',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+      onStatusClose();
+      resetForm();
+    } else {
+      toast({
+        title: 'Error',
+        description: result.error || 'Error al actualizar estado',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
     }
   };
 
@@ -351,6 +529,7 @@ const Orders = () => {
                 <Tr>
                   <Th>ID</Th>
                   <Th>Cliente</Th>
+                  <Th>Productos</Th>
                   <Th>Dirección</Th>
                   <Th>Total</Th>
                   <Th>Estado</Th>
@@ -361,7 +540,7 @@ const Orders = () => {
               </Thead>
               <Tbody>
                 {filteredOrders.map((order) => (
-                  <Tr key={order.id}>
+                  <Tr key={order.uniqueKey}>
                     <Td>
                       <VStack align="start" spacing={1}>
                         <Text fontWeight="bold">#{order.id}</Text>
@@ -372,21 +551,57 @@ const Orders = () => {
                     </Td>
                     <Td>
                       <VStack align="start" spacing={1}>
-                        <Text fontWeight="bold">{order.clientName || order.customerName || 'N/A'}</Text>
+                        <Text fontWeight="bold">
+                          {order.Client?.name || order.clientName || order.customerName || 'N/A'}
+                        </Text>
                         <Text fontSize="sm" color="gray.500">
-                          {order.clientPhone || order.customerPhone || 'N/A'}
+                          {order.Client?.phone || order.clientPhone || order.customerPhone || 'N/A'}
+                        </Text>
+                        {order.Client?.email && (
+                          <Text fontSize="xs" color="gray.400">
+                            {order.Client.email}
+                          </Text>
+                        )}
+                      </VStack>
+                    </Td>
+                    <Td>
+                      <VStack align="start" spacing={1}>
+                        <Text fontSize="sm" color="blue.600">
+                          Bidón de Agua 20L
+                        </Text>
+                        <Text fontSize="sm" color="green.600">
+                          Paquete Botellas 20u
+                        </Text>
+                        <Text fontSize="xs" color="gray.500">
+                          + Detalles
                         </Text>
                       </VStack>
                     </Td>
                     <Td>
-                      <Text fontSize="sm" noOfLines={2}>
+                      <VStack align="start" spacing={1}>
+                        <Text fontSize="sm" fontWeight="bold">
                         {order.deliveryAddress || 'N/A'}
                       </Text>
+                        <Text fontSize="xs" color="blue.600">
+                          📍 {order.deliveryDistrict || 'N/A'}
+                        </Text>
+                        <Text fontSize="xs" color="gray.500">
+                          📞 {order.contactPhone || 'N/A'}
+                        </Text>
+                      </VStack>
                     </Td>
                     <Td>
+                      <VStack align="start" spacing={1}>
                       <Text fontWeight="bold" color="blue.600">
-                        S/ {parseFloat(order.total || 0).toFixed(2)}
+                        S/ {calculateTotal(order).toFixed(2)}
                       </Text>
+                        <Text fontSize="xs" color="gray.500">
+                          Subtotal: S/ {parseFloat(order.subtotal || 0).toFixed(2)}
+                        </Text>
+                        <Text fontSize="xs" color="green.600">
+                          Flete: S/ {parseFloat(order.deliveryFee || 0).toFixed(2)}
+                        </Text>
+                      </VStack>
                     </Td>
                     <Td>
                       <Badge colorScheme={getStatusColor(order.status)}>
@@ -404,20 +619,27 @@ const Orders = () => {
                       </Text>
                     </Td>
                     <Td>
-                      <HStack spacing={2}>
+                      <HStack spacing={2} flexWrap="wrap">
                         <Button
                           size="sm"
                           leftIcon={<ViewIcon />}
-                          onClick={() => openEditModal(order)}
+                          onClick={() => openViewModal(order)}
                         >
                           Ver
                         </Button>
                         <Button
                           size="sm"
-                          leftIcon={<EditIcon />}
-                          onClick={() => openEditModal(order)}
+                          colorScheme="blue"
+                          onClick={() => handleAssignDeliveryPerson(order)}
                         >
-                          Editar
+                          Asignar
+                        </Button>
+                        <Button
+                          size="sm"
+                          colorScheme="green"
+                          onClick={() => handleUpdateStatus(order)}
+                        >
+                          Estado
                         </Button>
                       </HStack>
                     </Td>
@@ -440,17 +662,46 @@ const Orders = () => {
           <ModalBody>
             {selectedOrder && (
               <VStack spacing={4}>
+                {/* Debug info - Solo para desarrollo */}
+                {process.env.NODE_ENV === 'development' && (
+                  <Box w="full" p={2} bg="yellow.50" borderRadius="md" fontSize="xs">
+                    <Text fontWeight="bold" mb={1}>Debug Info:</Text>
+                    <Text>Order ID: {selectedOrder.id}</Text>
+                    <Text>Type: {selectedOrder.type}</Text>
+                    <Text>Client ID: {selectedOrder.clientId || 'N/A'}</Text>
+                    <Text>Customer Name: {selectedOrder.customerName || selectedOrder.clientName}</Text>
+                    <Text>Total: {selectedOrder.total || 'N/A'}</Text>
+                    <Text>Subtotal: {selectedOrder.subtotal || 'N/A'}</Text>
+                  </Box>
+                )}
+                
                 {/* Información del cliente */}
                 <Box w="full" p={4} bg="gray.50" borderRadius="md">
                   <Text fontWeight="bold" mb={3}>Información del Cliente</Text>
                   <SimpleGrid columns={2} spacing={3}>
                     <Box>
                       <Text fontSize="sm" color="gray.600">Nombre:</Text>
-                      <Text fontWeight="bold">{selectedOrder.clientName || 'N/A'}</Text>
+                      <Text fontWeight="bold">
+                        {selectedOrder.Client?.name || selectedOrder.clientName || selectedOrder.customerName || 'N/A'}
+                      </Text>
                     </Box>
                     <Box>
                       <Text fontSize="sm" color="gray.600">Teléfono:</Text>
-                      <Text fontWeight="bold">{selectedOrder.clientPhone || 'N/A'}</Text>
+                      <Text fontWeight="bold">
+                        {selectedOrder.Client?.phone || selectedOrder.clientPhone || selectedOrder.customerPhone || 'N/A'}
+                      </Text>
+                    </Box>
+                    <Box>
+                      <Text fontSize="sm" color="gray.600">Email:</Text>
+                      <Text fontWeight="bold">
+                        {selectedOrder.Client?.email || selectedOrder.customerEmail || 'N/A'}
+                      </Text>
+                    </Box>
+                    <Box>
+                      <Text fontSize="sm" color="gray.600">Tipo:</Text>
+                      <Badge colorScheme={selectedOrder.type === 'regular' ? 'blue' : 'green'}>
+                        {selectedOrder.type === 'regular' ? 'Cliente Frecuente' : 'Invitado'}
+                      </Badge>
                     </Box>
                     <Box colSpan={2}>
                       <Text fontSize="sm" color="gray.600">Dirección:</Text>
@@ -458,12 +709,24 @@ const Orders = () => {
                     </Box>
                     <Box>
                       <Text fontSize="sm" color="gray.600">Distrito:</Text>
-                      <Text fontWeight="bold">{selectedOrder.district || 'N/A'}</Text>
+                      <Text fontWeight="bold">{selectedOrder.deliveryDistrict || 'N/A'}</Text>
                     </Box>
                     <Box>
-                      <Text fontSize="sm" color="gray.600">Referencia:</Text>
-                      <Text fontWeight="bold">{selectedOrder.reference || 'N/A'}</Text>
+                      <Text fontSize="sm" color="gray.600">Notas:</Text>
+                      <Text fontWeight="bold">{selectedOrder.notes || 'Sin notas'}</Text>
                     </Box>
+                    <Box>
+                      <Text fontSize="sm" color="gray.600">Método de Pago:</Text>
+                      <Text fontWeight="bold" textTransform="capitalize">
+                        {selectedOrder.paymentMethod || 'N/A'}
+                      </Text>
+                    </Box>
+                    {selectedOrder.paymentReference && (
+                      <Box>
+                        <Text fontSize="sm" color="gray.600">Referencia de Pago:</Text>
+                        <Text fontWeight="bold">{selectedOrder.paymentReference}</Text>
+                      </Box>
+                    )}
                   </SimpleGrid>
                 </Box>
 
@@ -517,7 +780,7 @@ const Orders = () => {
                     <HStack justify="space-between" w="full">
                       <Text fontWeight="bold" fontSize="lg">Total:</Text>
                       <Text fontWeight="bold" fontSize="lg" color="blue.600">
-                        S/ {parseFloat(selectedOrder.total || 0).toFixed(2)}
+                        S/ {calculateTotal(selectedOrder).toFixed(2)}
                       </Text>
                     </HStack>
                   </VStack>
@@ -564,6 +827,82 @@ const Orders = () => {
               colorScheme="blue"
               onClick={handleUpdateOrder}
             >
+              Actualizar
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* Modal para asignar repartidor */}
+      <Modal isOpen={isAssignOpen} onClose={onAssignClose} size="md">
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Asignar Repartidor</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <VStack spacing={4}>
+              <Text>
+                Asignar repartidor al pedido #{selectedOrder?.id}
+              </Text>
+              <FormControl>
+                <FormLabel>Repartidor</FormLabel>
+                <Select
+                  value={formData.deliveryPersonId}
+                  onChange={(e) => setFormData({ ...formData, deliveryPersonId: e.target.value })}
+                  placeholder="Seleccionar repartidor"
+                >
+                  {deliveryPersons.map((person) => (
+                    <option key={person.id} value={person.id}>
+                      {person.name} - {person.phone}
+                    </option>
+                  ))}
+                </Select>
+              </FormControl>
+            </VStack>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="ghost" mr={3} onClick={onAssignClose}>
+              Cancelar
+            </Button>
+            <Button colorScheme="blue" onClick={assignDeliveryPerson}>
+              Asignar
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* Modal para actualizar estado */}
+      <Modal isOpen={isStatusOpen} onClose={onStatusClose} size="md">
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Actualizar Estado</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <VStack spacing={4}>
+              <Text>
+                Actualizar estado del pedido #{selectedOrder?.id}
+              </Text>
+              <FormControl>
+                <FormLabel>Estado</FormLabel>
+                <Select
+                  value={formData.status}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                >
+                  <option value="pendiente">Pendiente</option>
+                  <option value="confirmado">Confirmado</option>
+                  <option value="en_preparacion">En Preparación</option>
+                  <option value="en_camino">En Camino</option>
+                  <option value="entregado">Entregado</option>
+                  <option value="cancelado">Cancelado</option>
+                </Select>
+              </FormControl>
+            </VStack>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="ghost" mr={3} onClick={onStatusClose}>
+              Cancelar
+            </Button>
+            <Button colorScheme="green" onClick={updateOrderStatus}>
               Actualizar
             </Button>
           </ModalFooter>
