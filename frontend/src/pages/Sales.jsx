@@ -44,7 +44,12 @@ import {
   Spinner,
   Center,
   SimpleGrid,
-  useBreakpointValue
+  useBreakpointValue,
+  Tabs,
+  TabList,
+  TabPanels,
+  Tab,
+  TabPanel
 } from '@chakra-ui/react';
 import { SearchIcon, AddIcon, EditIcon, ViewIcon } from '@chakra-ui/icons';
 import useSaleStore from '../stores/saleStore';
@@ -57,6 +62,7 @@ const Sales = () => {
     sales,
     loading: salesLoading,
     error: salesError,
+    timeFilter,
     fetchSales,
     createSale,
     updateSale,
@@ -104,10 +110,10 @@ const Sales = () => {
   const isMobile = useBreakpointValue({ base: true, md: false });
 
   useEffect(() => {
-    fetchSales();
+    fetchSales(timeFilter);
     fetchClients();
     fetchProducts();
-  }, [fetchSales, fetchClients, fetchProducts]);
+  }, [fetchSales, fetchClients, fetchProducts, timeFilter]);
 
   // Mostrar errores del store
   useEffect(() => {
@@ -177,6 +183,10 @@ const Sales = () => {
         });
       }
     }
+  };
+
+  const handleTimeFilterChange = (newFilter) => {
+    fetchSales(newFilter);
   };
 
   const addItem = () => {
@@ -304,49 +314,86 @@ const Sales = () => {
   return (
     <Box p={6}>
       <Flex justify="space-between" align="center" mb={6}>
-        <Heading size="lg" color="gray.700">
-          Gestión de Ventas
-        </Heading>
+        <VStack align="start" spacing={1}>
+          <Heading size="lg" color="gray.700">
+            {timeFilter === 'today' ? 'Pedidos del Día' : 
+             timeFilter === 'weekly' ? 'Pedidos de la Semana' : 'Pedidos del Mes'}
+          </Heading>
+          <Text color="gray.600" fontSize="sm">
+            {timeFilter === 'today' ? new Date().toLocaleDateString('es-ES', { 
+              weekday: 'long', 
+              year: 'numeric', 
+              month: 'long', 
+              day: 'numeric' 
+            }) : 
+            timeFilter === 'weekly' ? 'Semana actual' : 'Mes actual'}
+          </Text>
+        </VStack>
         <Button
           leftIcon={<AddIcon />}
           colorScheme="blue"
           onClick={openCreateModal}
         >
-          Nueva Venta
+          Nuevo Pedido
         </Button>
       </Flex>
 
+      {/* Filtros de tiempo */}
+      <Tabs value={timeFilter} onChange={handleTimeFilterChange} mb={6}>
+        <TabList>
+          <Tab value="today">Hoy</Tab>
+          <Tab value="weekly">Semana</Tab>
+          <Tab value="monthly">Mes</Tab>
+        </TabList>
+      </Tabs>
+
       {/* Estadísticas */}
-      <SimpleGrid columns={{ base: 1, md: 4 }} spacing={4} mb={6}>
+      <SimpleGrid columns={{ base: 1, md: 6 }} spacing={4} mb={6}>
         <Card>
           <CardBody>
-            <Text fontSize="sm" color="gray.600">Total Ventas</Text>
+            <Text fontSize="sm" color="gray.600">Total Pedidos</Text>
             <Text fontSize="2xl" fontWeight="bold" color="blue.600">
-              {salesStats.totalSales}
+              {salesStats.totalOrders}
             </Text>
           </CardBody>
         </Card>
         <Card>
           <CardBody>
-            <Text fontSize="sm" color="gray.600">Monto Total</Text>
+            <Text fontSize="sm" color="gray.600">Entregados</Text>
             <Text fontSize="2xl" fontWeight="bold" color="green.600">
-              S/ {salesStats.totalAmount.toFixed(2)}
+              S/ {salesStats.deliveredAmount.toFixed(2)}
             </Text>
           </CardBody>
         </Card>
         <Card>
           <CardBody>
-            <Text fontSize="sm" color="gray.600">Ventas Hoy</Text>
-            <Text fontSize="2xl" fontWeight="bold" color="purple.600">
-              {salesStats.todaySales}
-            </Text>
-          </CardBody>
-        </Card>
-        <Card>
-          <CardBody>
-            <Text fontSize="sm" color="gray.600">Monto Hoy</Text>
+            <Text fontSize="sm" color="gray.600">Pendientes</Text>
             <Text fontSize="2xl" fontWeight="bold" color="orange.600">
-              S/ {salesStats.todayAmount.toFixed(2)}
+              S/ {salesStats.pendingAmount.toFixed(2)}
+            </Text>
+          </CardBody>
+        </Card>
+        <Card>
+          <CardBody>
+            <Text fontSize="sm" color="gray.600">Bidones</Text>
+            <Text fontSize="2xl" fontWeight="bold" color="purple.600">
+              {salesStats.totalBidones}
+            </Text>
+          </CardBody>
+        </Card>
+        <Card>
+          <CardBody>
+            <Text fontSize="sm" color="gray.600">Paquetes</Text>
+            <Text fontSize="2xl" fontWeight="bold" color="cyan.600">
+              {salesStats.totalPaquetes}
+            </Text>
+          </CardBody>
+        </Card>
+        <Card>
+          <CardBody>
+            <Text fontSize="sm" color="gray.600">Total del Día</Text>
+            <Text fontSize="2xl" fontWeight="bold" color="red.600">
+              S/ {salesStats.totalAmount.toFixed(2)}
             </Text>
           </CardBody>
         </Card>
@@ -355,13 +402,16 @@ const Sales = () => {
       <Card>
         <CardHeader>
           <Flex justify="space-between" align="center">
-            <Heading size="md">Lista de Ventas</Heading>
+            <Heading size="md">
+              {timeFilter === 'today' ? 'Pedidos del Día' : 
+               timeFilter === 'weekly' ? 'Pedidos de la Semana' : 'Pedidos del Mes'}
+            </Heading>
             <InputGroup maxW="300px">
               <InputLeftElement pointerEvents="none">
                 <SearchIcon color="gray.300" />
               </InputLeftElement>
               <Input
-                placeholder="Buscar ventas..."
+                placeholder="Buscar por cliente o dirección..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -372,64 +422,106 @@ const Sales = () => {
           {filteredSales.length === 0 ? (
             <Alert status="info">
               <AlertIcon />
-              <AlertTitle>No hay ventas!</AlertTitle>
+              <AlertTitle>
+                {timeFilter === 'today' ? 'No hay pedidos del día' : 
+                 timeFilter === 'weekly' ? 'No hay pedidos de la semana' : 'No hay pedidos del mes'}
+              </AlertTitle>
               <AlertDescription>
-                {searchTerm ? 'No se encontraron ventas con el término de búsqueda.' : 'No hay ventas registradas.'}
+                {searchTerm ? 'No se encontraron pedidos con el término de búsqueda.' : 
+                 'No se han registrado pedidos en este período. Los pedidos aparecerán aquí cuando se creen.'}
               </AlertDescription>
             </Alert>
           ) : (
             <Table variant="simple">
               <Thead>
                 <Tr>
-                  <Th>N° Factura</Th>
+                  <Th>Hora</Th>
                   <Th>Cliente</Th>
-                  <Th>Total</Th>
-                  <Th>Fecha</Th>
+                  <Th>Productos</Th>
                   <Th>Estado</Th>
+                  <Th>Dirección</Th>
+                  <Th>Total</Th>
+                  <Th>Repartidor</Th>
                   <Th>Acciones</Th>
                 </Tr>
               </Thead>
               <Tbody>
-                {filteredSales.map((sale) => {
-                  const client = clients.find(c => c.id === sale.clientId);
+                {filteredSales.map((delivery) => {
+                  const productCount = delivery.products ? delivery.products.length : 0;
+                  const productNames = delivery.products ? 
+                    delivery.products.map(product => `${product.name} (${product.quantity})`).join(', ') : 
+                    'Sin productos';
+                  
                   return (
-                    <Tr key={sale.id}>
+                    <Tr key={`${delivery.type}-${delivery.id}`}>
                       <Td>
-                        <Text fontWeight="bold">{sale.invoiceNumber || `#${sale.id}`}</Text>
-                      </Td>
-                      <Td>
-                        <Text>{client ? client.name : 'Cliente no encontrado'}</Text>
-                      </Td>
-                      <Td>
-                        <Text fontWeight="bold" color="blue.600">
-                          S/ {parseFloat(sale.total).toFixed(2)}
+                        <Text fontSize="sm" fontWeight="bold">
+                          {new Date(delivery.deliveredAt).toLocaleTimeString('es-ES', { 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                          })}
                         </Text>
                       </Td>
                       <Td>
-                        <Text fontSize="sm">
-                          {new Date(sale.date).toLocaleDateString()}
-                        </Text>
+                        <VStack align="start" spacing={0}>
+                          <Text fontWeight="bold">{delivery.clientName}</Text>
+                          <Text fontSize="xs" color="gray.500">
+                            {delivery.type === 'regular' ? 'Cliente frecuente' : 'Cliente visitante'}
+                          </Text>
+                        </VStack>
                       </Td>
                       <Td>
-                        <Badge colorScheme={getStatusColor(sale.status)}>
-                          {getStatusText(sale.status)}
+                        <VStack align="start" spacing={0}>
+                          <Text fontSize="sm">{productCount} producto(s)</Text>
+                          <Text fontSize="xs" color="gray.500" maxW="200px" isTruncated>
+                            {productNames}
+                          </Text>
+                        </VStack>
+                      </Td>
+                      <Td>
+                        <Badge 
+                          colorScheme={
+                            delivery.status === 'entregado' || delivery.status === 'delivered' ? 'green' : 
+                            delivery.status === 'pendiente' || delivery.status === 'confirmed' ? 'yellow' : 'gray'
+                          }
+                        >
+                          {delivery.status === 'entregado' ? 'Entregado' : 
+                           delivery.status === 'delivered' ? 'Entregado' :
+                           delivery.status === 'pendiente' ? 'Pendiente' :
+                           delivery.status === 'confirmed' ? 'Confirmado' : delivery.status}
                         </Badge>
+                      </Td>
+                      <Td>
+                        <VStack align="start" spacing={0}>
+                          <Text fontSize="sm" fontWeight="bold">{delivery.address}</Text>
+                          <Text fontSize="xs" color="gray.500">{delivery.district}</Text>
+                        </VStack>
+                      </Td>
+                      <Td>
+                        <VStack align="start" spacing={0}>
+                          <Text fontWeight="bold" color="green.600" fontSize="lg">
+                            S/ {parseFloat(delivery.total).toFixed(2)}
+                          </Text>
+                          <Text fontSize="xs" color="gray.500">
+                            Flete: S/ {parseFloat(delivery.deliveryFee || 0).toFixed(2)}
+                          </Text>
+                        </VStack>
+                      </Td>
+                      <Td>
+                        <Text fontSize="sm" color="gray.600">
+                          {delivery.deliveryPerson}
+                        </Text>
                       </Td>
                       <Td>
                         <HStack spacing={2}>
                           <Button
                             size="sm"
                             leftIcon={<ViewIcon />}
-                            onClick={() => openEditModal(sale)}
+                            onClick={() => openEditModal(delivery)}
+                            colorScheme="blue"
+                            variant="outline"
                           >
                             Ver
-                          </Button>
-                          <Button
-                            size="sm"
-                            leftIcon={<EditIcon />}
-                            onClick={() => openEditModal(sale)}
-                          >
-                            Editar
                           </Button>
                         </HStack>
                       </Td>

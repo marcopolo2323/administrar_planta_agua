@@ -16,7 +16,6 @@ import Clients from './pages/Clients';
 import Sales from './pages/Sales';
 import Orders from './pages/Orders';
 import Notifications from './pages/Notifications';
-import CashRegister from './pages/CashRegister';
 import GuestOrder from './pages/GuestOrder';
 import DeliveryFeesManagement from './pages/DeliveryFeesManagement';
 import DeliveryPersonsManagement from './pages/DeliveryPersonsManagement';
@@ -89,7 +88,6 @@ const App = () => {
           <Route path="sales" element={<ProtectedRoute requiredRoles={['admin', 'vendedor']}><Sales /></ProtectedRoute>} />
           <Route path="orders" element={<ProtectedRoute requiredRoles={['admin', 'vendedor']}><Orders /></ProtectedRoute>} />
           <Route path="notifications" element={<ProtectedRoute requiredRoles={['admin', 'vendedor']}><Notifications /></ProtectedRoute>} />
-          <Route path="cash-register" element={<ProtectedRoute requiredRoles={['admin', 'vendedor']}><CashRegister /></ProtectedRoute>} />
           <Route path="guest-orders" element={<ProtectedRoute requiredRoles={['admin', 'vendedor']}><Orders /></ProtectedRoute>} />
           <Route path="delivery-fees" element={<ProtectedRoute requiredRoles={['admin']}><DeliveryFeesManagement /></ProtectedRoute>} />
           <Route path="delivery-persons" element={<ProtectedRoute requiredRoles={['admin']}><DeliveryPersonsManagement /></ProtectedRoute>} />

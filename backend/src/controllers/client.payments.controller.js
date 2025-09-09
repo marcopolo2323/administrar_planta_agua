@@ -17,11 +17,13 @@ exports.getClientPaymentStats = async (req, res) => {
       include: [
         {
           model: Voucher,
+          as: 'Vouchers',
           where: { status: 'pending' },
           required: true,
           include: [
             {
               model: Order,
+              as: 'order',
               attributes: ['id', 'orderDate', 'total']
             }
           ]
@@ -122,11 +124,13 @@ exports.getClientVoucherDetails = async (req, res) => {
       include: [
         {
           model: Voucher,
+          as: 'Vouchers',
           where: { status: 'pending' },
           required: false,
           include: [
             {
               model: Order,
+              as: 'order',
               attributes: ['id', 'orderDate', 'total', 'deliveryAddress', 'deliveryDistrict']
             }
           ],

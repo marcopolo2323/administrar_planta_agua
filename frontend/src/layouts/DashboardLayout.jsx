@@ -61,7 +61,6 @@ const DashboardLayout = () => {
     { to: '/dashboard/clients', label: 'Clientes', icon: '👥' },
     { to: '/dashboard/orders', label: 'Pedidos', icon: '📦' },
     { to: '/dashboard/sales', label: 'Ventas', icon: '💰' },
-    { to: '/dashboard/cash-register', label: 'Caja', icon: '💳' },
     { to: '/dashboard/vouchers', label: 'Vales', icon: '🎫' },
     { to: '/dashboard/client-payments', label: 'Pagos Clientes', icon: '💳', adminOnly: true },
     { to: '/dashboard/delivery-fees', label: 'Tarifas de Envío', icon: '🚚', adminOnly: true },

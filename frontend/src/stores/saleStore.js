@@ -6,13 +6,61 @@ const useSaleStore = create((set, get) => ({
   sales: [],
   loading: false,
   error: null,
+  timeFilter: 'today', // 'today', 'weekly', 'monthly'
+  todayStats: {
+    totalOrders: 0,
+    totalAmount: 0,
+    deliveredAmount: 0,
+    pendingAmount: 0,
+    totalBidones: 0,
+    totalPaquetes: 0,
+    productStats: {}
+  },
+  weeklyStats: {
+    totalOrders: 0,
+    totalAmount: 0,
+    deliveredAmount: 0,
+    pendingAmount: 0,
+    totalBidones: 0,
+    totalPaquetes: 0,
+    productStats: {},
+    dailyStats: []
+  },
+  monthlyStats: {
+    totalOrders: 0,
+    totalAmount: 0,
+    deliveredAmount: 0,
+    pendingAmount: 0,
+    totalBidones: 0,
+    totalPaquetes: 0,
+    productStats: {},
+    weeklyStats: []
+  },
 
   // Acciones
-  fetchSales: async () => {
-    set({ loading: true, error: null });
+  fetchSales: async (timeFilter = 'today') => {
+    set({ loading: true, error: null, timeFilter });
     try {
-      const response = await axios.get('/api/sales');
-      set({ sales: response.data, loading: false });
+      let endpoint = '/api/sales/today';
+      if (timeFilter === 'weekly') {
+        endpoint = '/api/sales/weekly';
+      } else if (timeFilter === 'monthly') {
+        endpoint = '/api/sales/monthly';
+      }
+      
+      const response = await axios.get(endpoint);
+      if (response.data.success) {
+        const statsKey = timeFilter === 'today' ? 'todayStats' : 
+                        timeFilter === 'weekly' ? 'weeklyStats' : 'monthlyStats';
+        
+        set({ 
+          sales: response.data.data, 
+          loading: false,
+          [statsKey]: response.data.stats
+        });
+      } else {
+        set({ sales: [], loading: false });
+      }
     } catch (error) {
       console.error('Error al cargar ventas:', error);
       set({ error: error.message, loading: false });
@@ -98,22 +146,21 @@ const useSaleStore = create((set, get) => ({
 
   // Estadísticas
   getSalesStats: () => {
-    const { sales } = get();
+    const { timeFilter, todayStats, weeklyStats, monthlyStats } = get();
     
-    const salesArray = Array.isArray(sales) ? sales : [];
-    const totalSales = salesArray.length;
-    const totalAmount = salesArray.reduce((sum, sale) => sum + parseFloat(sale.total || 0), 0);
-    const todaySales = salesArray.filter(sale => {
-      const saleDate = new Date(sale.date);
-      const today = new Date();
-      return saleDate.toDateString() === today.toDateString();
-    });
+    const currentStats = timeFilter === 'today' ? todayStats : 
+                        timeFilter === 'weekly' ? weeklyStats : monthlyStats;
     
     return {
-      totalSales,
-      totalAmount,
-      todaySales: todaySales.length,
-      todayAmount: todaySales.reduce((sum, sale) => sum + parseFloat(sale.total || 0), 0)
+      totalOrders: currentStats.totalOrders,
+      totalAmount: currentStats.totalAmount,
+      deliveredAmount: currentStats.deliveredAmount,
+      pendingAmount: currentStats.pendingAmount,
+      totalBidones: currentStats.totalBidones,
+      totalPaquetes: currentStats.totalPaquetes,
+      productStats: currentStats.productStats,
+      dailyStats: currentStats.dailyStats || [],
+      weeklyStats: currentStats.weeklyStats || []
     };
   },
 
