@@ -6,7 +6,7 @@ const useSaleStore = create((set, get) => ({
   sales: [],
   loading: false,
   error: null,
-  timeFilter: 'today', // 'today', 'weekly', 'monthly'
+  timeFilter: 'today', // 'today', 'yesterday', 'weekly', 'lastWeek', 'monthly', 'lastMonth'
   todayStats: {
     totalOrders: 0,
     totalAmount: 0,
@@ -42,16 +42,25 @@ const useSaleStore = create((set, get) => ({
     set({ loading: true, error: null, timeFilter });
     try {
       let endpoint = '/api/sales/today';
-      if (timeFilter === 'weekly') {
+      if (timeFilter === 'yesterday') {
+        endpoint = '/api/sales/yesterday';
+      } else if (timeFilter === 'weekly') {
         endpoint = '/api/sales/weekly';
+      } else if (timeFilter === 'lastWeek') {
+        endpoint = '/api/sales/last-week';
       } else if (timeFilter === 'monthly') {
         endpoint = '/api/sales/monthly';
+      } else if (timeFilter === 'lastMonth') {
+        endpoint = '/api/sales/last-month';
       }
       
       const response = await axios.get(endpoint);
       if (response.data.success) {
         const statsKey = timeFilter === 'today' ? 'todayStats' : 
-                        timeFilter === 'weekly' ? 'weeklyStats' : 'monthlyStats';
+                        timeFilter === 'yesterday' ? 'todayStats' : // Usar todayStats para ayer también
+                        timeFilter === 'weekly' ? 'weeklyStats' : 
+                        timeFilter === 'lastWeek' ? 'weeklyStats' : // Usar weeklyStats para semana pasada
+                        timeFilter === 'monthly' ? 'monthlyStats' : 'monthlyStats'; // Usar monthlyStats para mes pasado
         
         set({ 
           sales: response.data.data, 

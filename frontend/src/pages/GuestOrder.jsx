@@ -35,6 +35,8 @@ import { FaShoppingCart, FaTruck, FaMapMarkerAlt, FaPhone, FaUser } from 'react-
 import useProductStore from '../stores/productStore';
 import useDeliveryStore from '../stores/deliveryStore';
 import useDistrictStore from '../stores/districtStore';
+import bidonImage from '../assets/images/img_buyon.jpeg';
+import paqueteImage from '../assets/images/img_paquete_botellas.jpeg';
 
 const GuestOrder = () => {
   const navigate = useNavigate();
@@ -45,6 +47,17 @@ const GuestOrder = () => {
   const { products, fetchProducts, calculatePrice } = useProductStore();
   const { deliveryFees, fetchDeliveryFees } = useDeliveryStore();
   const { districts, fetchDistricts } = useDistrictStore();
+
+  // Función para obtener la imagen del producto
+  const getProductImage = (productName) => {
+    const name = productName.toLowerCase();
+    if (name.includes('bidón') || name.includes('bidon') || name.includes('garrafa')) {
+      return bidonImage;
+    } else if (name.includes('paquete') || name.includes('pack') || name.includes('botellas')) {
+      return paqueteImage;
+    }
+    return bidonImage; // Imagen por defecto
+  };
 
   // Estados locales
   const [cart, setCart] = useState([]);
@@ -258,7 +271,7 @@ const GuestOrder = () => {
     switch (type) {
       case 'bidon':
         return 'Bidón';
-      case 'botella':
+      case 'botella':7
         return 'Botella';
       default:
         return type;
@@ -301,18 +314,38 @@ const GuestOrder = () => {
                     <Card key={product.id} variant="outline" w="full">
                       <CardBody>
                         <VStack align="start" spacing={3}>
-                          <HStack justify="space-between" w="full">
-                            <VStack align="start" spacing={1}>
-                              <Text fontWeight="bold" fontSize="lg">
-                                {product.name}
-                              </Text>
-                              <Text color="gray.600" fontSize="sm">
-                                {product.description}
-                              </Text>
+                          <HStack spacing={4} align="start" w="full">
+                            {/* Imagen del producto */}
+                            <Box flexShrink={0}>
+                              <img
+                                src={getProductImage(product.name)}
+                                alt={product.name}
+                                style={{
+                                  width: '80px',
+                                  height: '80px',
+                                  objectFit: 'cover',
+                                  borderRadius: '8px',
+                                  border: '2px solid #e2e8f0'
+                                }}
+                              />
+                            </Box>
+                            
+                            {/* Información del producto */}
+                            <VStack align="start" spacing={1} flex={1}>
+                              <HStack justify="space-between" w="full">
+                                <VStack align="start" spacing={1}>
+                                  <Text fontWeight="bold" fontSize="lg">
+                                    {product.name}
+                                  </Text>
+                                  <Text color="gray.600" fontSize="sm">
+                                    {product.description}
+                                  </Text>
+                                </VStack>
+                                <Badge colorScheme={getTypeColor(product.type)}>
+                                  {getTypeText(product.type)}
+                                </Badge>
+                              </HStack>
                             </VStack>
-                            <Badge colorScheme={getTypeColor(product.type)}>
-                              {getTypeText(product.type)}
-                            </Badge>
                           </HStack>
 
                           <HStack spacing={4}>
@@ -472,13 +505,30 @@ const GuestOrder = () => {
                     <VStack spacing={4}>
                       {cart.map((item) => (
                         <Box key={item.id} w="full" p={3} border="1px" borderColor="gray.200" borderRadius="md">
-                          <VStack spacing={2}>
-                            <HStack justify="space-between" w="full">
-                              <Text fontWeight="bold">{item.name}</Text>
-                              <Badge colorScheme={getTypeColor(item.type)}>
-                                {getTypeText(item.type)}
-                              </Badge>
-                            </HStack>
+                          <HStack spacing={3} align="start">
+                            {/* Imagen del producto en el carrito */}
+                            <Box flexShrink={0}>
+                              <img
+                                src={getProductImage(item.name)}
+                                alt={item.name}
+                                style={{
+                                  width: '50px',
+                                  height: '50px',
+                                  objectFit: 'cover',
+                                  borderRadius: '6px',
+                                  border: '1px solid #e2e8f0'
+                                }}
+                              />
+                            </Box>
+                            
+                            {/* Información del producto */}
+                            <VStack spacing={2} flex={1}>
+                              <HStack justify="space-between" w="full">
+                                <Text fontWeight="bold">{item.name}</Text>
+                                <Badge colorScheme={getTypeColor(item.type)}>
+                                  {getTypeText(item.type)}
+                                </Badge>
+                              </HStack>
                             
                             <HStack justify="space-between" w="full">
                               <Text color="gray.600" fontSize="sm">
@@ -505,12 +555,13 @@ const GuestOrder = () => {
                               </HStack>
                             </HStack>
                             
-                            <HStack justify="space-between" w="full">
-                              <Text fontWeight="bold" color="blue.600">
-                                Subtotal: S/ {parseFloat(item.subtotal).toFixed(2)}
-                              </Text>
-                            </HStack>
-                          </VStack>
+                              <HStack justify="space-between" w="full">
+                                <Text fontWeight="bold" color="blue.600">
+                                  Subtotal: S/ {parseFloat(item.subtotal).toFixed(2)}
+                                </Text>
+                              </HStack>
+                            </VStack>
+                          </HStack>
                         </Box>
                       ))}
 

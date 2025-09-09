@@ -33,6 +33,8 @@ import ClientOrder from './pages/ClientOrder';
 import ClientPayments from './pages/ClientPayments';
 import VouchersManagement from './pages/VouchersManagement';
 import ClientPaymentsAdmin from './pages/ClientPaymentsAdmin';
+import Subscriptions from './pages/Subscriptions';
+import SubscriptionOrder from './pages/SubscriptionOrder';
 
 const App = () => {
   const { token, checkAuth } = useAuthStore();
@@ -116,6 +118,8 @@ const App = () => {
           <Route index element={<ProtectedRoute requiredRoles={['cliente']}><ClientDashboard /></ProtectedRoute>} />
           <Route path="order" element={<ProtectedRoute requiredRoles={['cliente']}><ClientOrder /></ProtectedRoute>} />
           <Route path="payments" element={<ProtectedRoute requiredRoles={['cliente']}><ClientPayments /></ProtectedRoute>} />
+          <Route path="subscriptions" element={<ProtectedRoute requiredRoles={['cliente']}><Subscriptions /></ProtectedRoute>} />
+          <Route path="subscription-order" element={<ProtectedRoute requiredRoles={['cliente']}><SubscriptionOrder /></ProtectedRoute>} />
         </Route>
 
         {/* Ruta para cualquier otra dirección */}

@@ -1,0 +1,43 @@
+CREDENCIALES DE ACCESO - CLIENTES FRECUENTES AQUAYARA
+============================================================
+
+Fecha de generación: 9/9/2025, 10:57:26 a. m.
+Total de clientes: 4
+
+1. Juan Pérez
+   Documento: DNI 12345678
+   Usuario: cliente1
+   Email: cliente1@example.com
+   Teléfono: 966666666
+   Estado: nuevo
+   Dirección: Av. Los Pinos 123
+   Distrito: San Isidro
+
+2. homero aguilar
+   Documento: DNI 73579002
+   Usuario: homero
+   Email: homeroaguilar@gmail.com
+   Teléfono: 987654321
+   Estado: nuevo
+   Dirección: av. las flores
+   Distrito: campo verde
+
+3. María López
+   Documento: DNI 87654321
+   Usuario: maralpez
+   Email: maria.lopez@example.com
+   Teléfono: 955555555
+   Estado: nuevo
+   Dirección: Jr. Las Flores 456
+   Distrito: Miraflores
+
+4. Corporación YASHIMITSU sac
+   Documento: RUC 20606719596
+   Usuario: corporacinyashi
+   Email: yashichirusbel@gmail.com
+   Teléfono: 942658541
+   Estado: activo
+   Dirección: Jr 2 de mayo 1150
+   Distrito: YARINACOCHA
+   Recomendación: MEJORAR EL SERVICIO DE DELIVERY MUY TARDE
+

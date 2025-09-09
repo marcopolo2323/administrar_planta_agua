@@ -14,10 +14,12 @@ import {
   Alert,
   AlertIcon,
   Spinner,
-  Center
+  Center,
+  Image
 } from '@chakra-ui/react';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../stores/authStore';
+import AquaYaraLogo from '../components/AquaYaraLogo';
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -68,10 +70,14 @@ const Login = () => {
           <CardBody>
             <VStack spacing={6}>
               <Box textAlign="center">
-                <Heading size="lg" color="blue.600" mb={2}>
-                  Planta de Agua
-                </Heading>
-                <Text color="gray.600">
+                <AquaYaraLogo 
+                  size="xl" 
+                  variant="vertical" 
+                  color="blue.500" 
+                  textColor="blue.600" 
+                  taglineColor="teal.500"
+                />
+                <Text color="gray.600" mt={2}>
                   Sistema de Gestión
                 </Text>
               </Box>

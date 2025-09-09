@@ -52,11 +52,12 @@ import {
 import axios from '../utils/axios';
 import useAuthStore from '../stores/authStore';
 import { generateInvoice, generateInvoiceNumber } from '../utils/invoiceGenerator';
+import plinQR from '../assets/images/plin_qr.jpeg';
 
 const ClientPayments = () => {
   const [vouchers, setVouchers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [paymentMethod, setPaymentMethod] = useState('card');
+  const [paymentMethod, setPaymentMethod] = useState('cash');
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedVoucher, setSelectedVoucher] = useState(null);
   const { user } = useAuthStore();
@@ -405,22 +406,16 @@ const ClientPayments = () => {
                   </Text>
                   <RadioGroup value={paymentMethod} onChange={setPaymentMethod}>
                     <Stack spacing={3}>
-                      <Radio value="card">
-                        <HStack>
-                          <Icon as={FaCreditCard} />
-                          <Text>Tarjeta de Crédito/Débito</Text>
-                        </HStack>
-                      </Radio>
-                      <Radio value="yape">
-                        <HStack>
-                          <Icon as={FaMobile} />
-                          <Text>Yape</Text>
-                        </HStack>
-                      </Radio>
                       <Radio value="cash">
                         <HStack>
                           <Icon as={FaMoneyBillWave} />
                           <Text>Efectivo (con repartidor)</Text>
+                        </HStack>
+                      </Radio>
+                      <Radio value="plin">
+                        <HStack>
+                          <Icon as={FaMobile} />
+                          <Text>Plin</Text>
                         </HStack>
                       </Radio>
                     </Stack>
@@ -428,37 +423,40 @@ const ClientPayments = () => {
                 </Box>
 
                 {/* Información de pago según método seleccionado */}
-                {paymentMethod === 'yape' && (
-                  <Box p={4} bg="green.50" borderRadius="md" border="1px" borderColor="green.200">
+                {paymentMethod === 'plin' && (
+                  <Box p={4} bg="purple.50" borderRadius="md" border="1px" borderColor="purple.200">
                     <VStack spacing={3}>
                       <HStack>
-                        <Icon as={FaMobile} color="green.500" />
-                        <Text fontWeight="bold" color="green.700">Pago con Yape</Text>
+                        <Icon as={FaMobile} color="purple.500" />
+                        <Text fontWeight="bold" color="purple.700">Pago con Plin</Text>
                       </HStack>
                       <Box textAlign="center">
                         <Box 
-                          p={4} 
+                          w="200px" 
+                          h="200px" 
                           bg="white" 
                           borderRadius="md" 
-                          border="2px dashed" 
-                          borderColor="green.300"
+                          p={2} 
+                          mx="auto"
+                          border="2px solid"
+                          borderColor="purple.200"
+                          overflow="hidden"
                           mb={3}
                         >
-                          <Text fontSize="sm" color="gray.600" mb={2}>
-                            [QR CODE DE YAPE]
-                          </Text>
-                          <Text fontSize="xs" color="gray.500">
-                            Escanea con tu app Yape
-                          </Text>
+                          <img 
+                            src={plinQR} 
+                            alt="QR de Plin" 
+                            style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                          />
                         </Box>
                         <VStack spacing={1}>
                           <Text fontSize="sm" fontWeight="bold">
-                            Número: +51 999 888 777
+                            Número: +51 961 606 183
                           </Text>
                           <Text fontSize="sm">
-                            Nombre: Planta de Agua
+                            Nombre: AquaYara
                           </Text>
-                          <Text fontSize="sm" fontWeight="bold" color="green.600">
+                          <Text fontSize="sm" fontWeight="bold" color="purple.600">
                             Monto: S/ {totalPending.toFixed(2)}
                           </Text>
                         </VStack>
@@ -466,43 +464,13 @@ const ClientPayments = () => {
                       <Alert status="info" size="sm">
                         <AlertIcon />
                         <Text fontSize="sm">
-                          Después de pagar, envía el comprobante por WhatsApp al +51 999 888 777
+                          Después de pagar, envía el comprobante por WhatsApp al +51 961 606 183
                         </Text>
                       </Alert>
                     </VStack>
                   </Box>
                 )}
 
-                {paymentMethod === 'card' && (
-                  <Box p={4} bg="blue.50" borderRadius="md" border="1px" borderColor="blue.200">
-                    <VStack spacing={3}>
-                      <HStack>
-                        <Icon as={FaCreditCard} color="blue.500" />
-                        <Text fontWeight="bold" color="blue.700">Pago con Tarjeta</Text>
-                      </HStack>
-                      <VStack spacing={2} align="stretch">
-                        <Box>
-                          <Text fontSize="sm" fontWeight="bold" mb={1}>Número de Tarjeta:</Text>
-                          <Input placeholder="1234 5678 9012 3456" />
-                        </Box>
-                        <HStack spacing={2}>
-                          <Box flex={1}>
-                            <Text fontSize="sm" fontWeight="bold" mb={1}>Vencimiento:</Text>
-                            <Input placeholder="MM/AA" />
-                          </Box>
-                          <Box flex={1}>
-                            <Text fontSize="sm" fontWeight="bold" mb={1}>CVV:</Text>
-                            <Input placeholder="123" />
-                          </Box>
-                        </HStack>
-                        <Box>
-                          <Text fontSize="sm" fontWeight="bold" mb={1}>Nombre en la Tarjeta:</Text>
-                          <Input placeholder="Juan Pérez" />
-                        </Box>
-                      </VStack>
-                    </VStack>
-                  </Box>
-                )}
 
                 {paymentMethod === 'cash' && (
                   <Box p={4} bg="orange.50" borderRadius="md" border="1px" borderColor="orange.200">

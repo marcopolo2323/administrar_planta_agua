@@ -32,7 +32,9 @@ import {
   FaMoneyBillWave,
   FaGift,
   FaSignOutAlt,
-  FaHome
+  FaHome,
+  FaCalendarAlt,
+  FaTint
 } from 'react-icons/fa';
 
 const ClientLayout = () => {
@@ -69,6 +71,16 @@ const ClientLayout = () => {
       name: 'Mis Vales',
       path: '/client-dashboard/vouchers',
       icon: FaGift
+    },
+    {
+      name: 'Suscripciones',
+      path: '/client-dashboard/subscriptions',
+      icon: FaCalendarAlt
+    },
+    {
+      name: 'Pedido Suscripción',
+      path: '/client-dashboard/subscription-order',
+      icon: FaTint
     }
   ];
 

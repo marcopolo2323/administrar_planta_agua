@@ -1,12 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const reportController = require('../controllers/report.controller');
-const { authMiddleware, requireRole } = require('../middlewares/auth.middleware');
+const { authMiddleware } = require('../middlewares/auth.middleware');
+const { checkRole } = require('../middlewares/role.middleware');
 
-// Aplicar middleware de autenticación a todas las rutas
+// Todas las rutas requieren autenticación y rol de admin
 router.use(authMiddleware);
+router.use(checkRole(['admin']));
 
-// Rutas de reportes (solo administradores)
-router.get('/', requireRole(['admin']), reportController.generateReport);
+// Generar reporte
+router.get('/', reportController.generateReport);
 
 module.exports = router;

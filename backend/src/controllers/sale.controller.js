@@ -692,6 +692,571 @@ exports.getWeeklySales = async (req, res) => {
   }
 };
 
+// Obtener ventas de ayer
+exports.getYesterdaySales = async (req, res) => {
+  try {
+    console.log('📅 Obteniendo ventas de ayer...');
+    
+    const { Op } = require('sequelize');
+    const { Order, OrderDetail, GuestOrder, GuestOrderProduct, Product, Client, User } = require('../models');
+    
+    // Calcular inicio y fin de ayer
+    const now = new Date();
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    yesterday.setHours(0, 0, 0, 0);
+    
+    const endOfYesterday = new Date(yesterday);
+    endOfYesterday.setHours(23, 59, 59, 999);
+    
+    console.log(`📅 Ayer: ${yesterday.toLocaleDateString()}`);
+    
+    // Obtener pedidos regulares de ayer
+    const regularOrders = await Order.findAll({
+      where: {
+        createdAt: {
+          [Op.between]: [yesterday, endOfYesterday]
+        }
+      },
+      include: [
+        { model: Client, attributes: ['id', 'name', 'email'] },
+        { model: User, as: 'deliveryPerson', attributes: ['id', 'username'] },
+        { 
+          model: OrderDetail,
+          as: 'orderDetails',
+          include: [{ model: Product, attributes: ['id', 'name', 'unitPrice'] }]
+        }
+      ],
+      order: [['createdAt', 'DESC']]
+    });
+
+    // Obtener pedidos de visitantes de ayer
+    const guestOrders = await GuestOrder.findAll({
+      where: {
+        createdAt: {
+          [Op.between]: [yesterday, endOfYesterday]
+        }
+      },
+      include: [
+        { model: User, as: 'deliveryPerson', attributes: ['id', 'username'] },
+        { 
+          model: GuestOrderProduct,
+          as: 'products',
+          include: [{ model: Product, as: 'product', attributes: ['id', 'name', 'unitPrice'] }]
+        }
+      ],
+      order: [['createdAt', 'DESC']]
+    });
+
+    // Formatear datos
+    const formattedRegularOrders = regularOrders.map(order => ({
+      id: order.id,
+      type: 'regular',
+      clientName: order.Client?.name || 'N/A',
+      clientEmail: order.Client?.email || 'N/A',
+      address: order.deliveryAddress,
+      district: order.deliveryDistrict,
+      total: parseFloat(order.total || 0),
+      deliveryFee: parseFloat(order.deliveryFee || 0),
+      status: order.status,
+      createdAt: order.createdAt,
+      deliveredAt: order.status === 'entregado' ? order.updatedAt : null,
+      deliveryPerson: order.deliveryPerson?.username || 'N/A',
+      products: order.orderDetails?.map(detail => ({
+        id: detail.Product?.id,
+        name: detail.Product?.name,
+        quantity: detail.quantity,
+        unitPrice: detail.unitPrice,
+        subtotal: detail.subtotal
+      })) || []
+    }));
+
+    const formattedGuestOrders = guestOrders.map(order => ({
+      id: order.id,
+      type: 'guest',
+      clientName: order.clientName || 'Cliente Visitante',
+      clientEmail: order.clientEmail || 'N/A',
+      address: order.deliveryAddress,
+      district: order.deliveryDistrict,
+      total: parseFloat(order.total || 0),
+      deliveryFee: parseFloat(order.deliveryFee || 0),
+      status: order.status,
+      createdAt: order.createdAt,
+      deliveredAt: order.status === 'delivered' ? order.updatedAt : null,
+      deliveryPerson: order.deliveryPerson?.username || 'N/A',
+      products: order.products?.map(detail => ({
+        id: detail.product?.id,
+        name: detail.product?.name,
+        quantity: detail.quantity,
+        unitPrice: detail.unitPrice,
+        subtotal: detail.subtotal
+      })) || []
+    }));
+
+    // Combinar y ordenar
+    const allOrders = [
+      ...formattedRegularOrders.map(order => ({ ...order, deliveredAt: order.deliveredAt || order.createdAt })),
+      ...formattedGuestOrders.map(order => ({ ...order, deliveredAt: order.deliveredAt || order.createdAt }))
+    ].sort((a, b) => new Date(b.deliveredAt) - new Date(a.deliveredAt));
+
+    // Calcular estadísticas
+    const productStats = {};
+    let totalBidones = 0;
+    let totalPaquetes = 0;
+    let totalAmount = 0;
+    let deliveredAmount = 0;
+    let pendingAmount = 0;
+
+    allOrders.forEach(order => {
+      const amount = parseFloat(order.total || 0);
+      totalAmount += amount;
+      
+      if (order.status === 'entregado' || order.status === 'delivered') {
+        deliveredAmount += amount;
+      } else {
+        pendingAmount += amount;
+      }
+      
+      order.products.forEach(product => {
+        if (!productStats[product.name]) {
+          productStats[product.name] = 0;
+        }
+        productStats[product.name] += product.quantity;
+        
+        if (product.name.toLowerCase().includes('bidón')) {
+          totalBidones += product.quantity;
+        }
+        if (product.name.toLowerCase().includes('paquete')) {
+          totalPaquetes += product.quantity;
+        }
+      });
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: allOrders,
+      stats: {
+        totalOrders: allOrders.length,
+        totalAmount,
+        deliveredAmount,
+        pendingAmount,
+        totalBidones,
+        totalPaquetes,
+        productStats
+      },
+      period: {
+        start: yesterday,
+        end: endOfYesterday,
+        type: 'yesterday'
+      }
+    });
+
+  } catch (error) {
+    console.error('Error al obtener ventas de ayer:', error);
+    return res.status(500).json({ 
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+};
+
+// Obtener ventas de la semana pasada
+exports.getLastWeekSales = async (req, res) => {
+  try {
+    console.log('📅 Obteniendo ventas de la semana pasada...');
+    
+    const { Op } = require('sequelize');
+    const { Order, OrderDetail, GuestOrder, GuestOrderProduct, Product, Client, User } = require('../models');
+    
+    // Calcular inicio y fin de la semana pasada
+    const now = new Date();
+    const lastWeekStart = new Date(now);
+    lastWeekStart.setDate(now.getDate() - now.getDay() - 7); // Domingo de la semana pasada
+    lastWeekStart.setHours(0, 0, 0, 0);
+    
+    const lastWeekEnd = new Date(lastWeekStart);
+    lastWeekEnd.setDate(lastWeekStart.getDate() + 6); // Sábado de la semana pasada
+    lastWeekEnd.setHours(23, 59, 59, 999);
+    
+    console.log(`📅 Semana pasada: ${lastWeekStart.toLocaleDateString()} - ${lastWeekEnd.toLocaleDateString()}`);
+    
+    // Obtener pedidos regulares de la semana pasada
+    const regularOrders = await Order.findAll({
+      where: {
+        createdAt: {
+          [Op.between]: [lastWeekStart, lastWeekEnd]
+        }
+      },
+      include: [
+        { model: Client, attributes: ['id', 'name', 'email'] },
+        { model: User, as: 'deliveryPerson', attributes: ['id', 'username'] },
+        { 
+          model: OrderDetail,
+          as: 'orderDetails',
+          include: [{ model: Product, attributes: ['id', 'name', 'unitPrice'] }]
+        }
+      ],
+      order: [['createdAt', 'DESC']]
+    });
+
+    // Obtener pedidos de visitantes de la semana pasada
+    const guestOrders = await GuestOrder.findAll({
+      where: {
+        createdAt: {
+          [Op.between]: [lastWeekStart, lastWeekEnd]
+        }
+      },
+      include: [
+        { model: User, as: 'deliveryPerson', attributes: ['id', 'username'] },
+        { 
+          model: GuestOrderProduct,
+          as: 'products',
+          include: [{ model: Product, as: 'product', attributes: ['id', 'name', 'unitPrice'] }]
+        }
+      ],
+      order: [['createdAt', 'DESC']]
+    });
+
+    // Formatear datos (mismo código que semanal)
+    const formattedRegularOrders = regularOrders.map(order => ({
+      id: order.id,
+      type: 'regular',
+      clientName: order.Client?.name || 'N/A',
+      clientEmail: order.Client?.email || 'N/A',
+      address: order.deliveryAddress,
+      district: order.deliveryDistrict,
+      total: parseFloat(order.total || 0),
+      deliveryFee: parseFloat(order.deliveryFee || 0),
+      status: order.status,
+      createdAt: order.createdAt,
+      deliveredAt: order.status === 'entregado' ? order.updatedAt : null,
+      deliveryPerson: order.deliveryPerson?.username || 'N/A',
+      products: order.orderDetails?.map(detail => ({
+        id: detail.Product?.id,
+        name: detail.Product?.name,
+        quantity: detail.quantity,
+        unitPrice: detail.unitPrice,
+        subtotal: detail.subtotal
+      })) || []
+    }));
+
+    const formattedGuestOrders = guestOrders.map(order => ({
+      id: order.id,
+      type: 'guest',
+      clientName: order.clientName || 'Cliente Visitante',
+      clientEmail: order.clientEmail || 'N/A',
+      address: order.deliveryAddress,
+      district: order.deliveryDistrict,
+      total: parseFloat(order.total || 0),
+      deliveryFee: parseFloat(order.deliveryFee || 0),
+      status: order.status,
+      createdAt: order.createdAt,
+      deliveredAt: order.status === 'delivered' ? order.updatedAt : null,
+      deliveryPerson: order.deliveryPerson?.username || 'N/A',
+      products: order.products?.map(detail => ({
+        id: detail.product?.id,
+        name: detail.product?.name,
+        quantity: detail.quantity,
+        unitPrice: detail.unitPrice,
+        subtotal: detail.subtotal
+      })) || []
+    }));
+
+    // Combinar y ordenar
+    const allOrders = [
+      ...formattedRegularOrders.map(order => ({ ...order, deliveredAt: order.deliveredAt || order.createdAt })),
+      ...formattedGuestOrders.map(order => ({ ...order, deliveredAt: order.deliveredAt || order.createdAt }))
+    ].sort((a, b) => new Date(b.deliveredAt) - new Date(a.deliveredAt));
+
+    // Calcular estadísticas
+    const productStats = {};
+    let totalBidones = 0;
+    let totalPaquetes = 0;
+    let totalAmount = 0;
+    let deliveredAmount = 0;
+    let pendingAmount = 0;
+
+    allOrders.forEach(order => {
+      const amount = parseFloat(order.total || 0);
+      totalAmount += amount;
+      
+      if (order.status === 'entregado' || order.status === 'delivered') {
+        deliveredAmount += amount;
+      } else {
+        pendingAmount += amount;
+      }
+      
+      order.products.forEach(product => {
+        if (!productStats[product.name]) {
+          productStats[product.name] = 0;
+        }
+        productStats[product.name] += product.quantity;
+        
+        if (product.name.toLowerCase().includes('bidón')) {
+          totalBidones += product.quantity;
+        }
+        if (product.name.toLowerCase().includes('paquete')) {
+          totalPaquetes += product.quantity;
+        }
+      });
+    });
+
+    // Calcular estadísticas por día
+    const dailyStats = {};
+    allOrders.forEach(order => {
+      const date = new Date(order.createdAt).toLocaleDateString();
+      if (!dailyStats[date]) {
+        dailyStats[date] = {
+          date,
+          orders: 0,
+          amount: 0,
+          bidones: 0,
+          paquetes: 0
+        };
+      }
+      dailyStats[date].orders++;
+      dailyStats[date].amount += parseFloat(order.total || 0);
+      
+      order.products.forEach(product => {
+        if (product.name.toLowerCase().includes('bidón')) {
+          dailyStats[date].bidones += product.quantity;
+        }
+        if (product.name.toLowerCase().includes('paquete')) {
+          dailyStats[date].paquetes += product.quantity;
+        }
+      });
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: allOrders,
+      stats: {
+        totalOrders: allOrders.length,
+        totalAmount,
+        deliveredAmount,
+        pendingAmount,
+        totalBidones,
+        totalPaquetes,
+        productStats,
+        dailyStats: Object.values(dailyStats).sort((a, b) => new Date(a.date) - new Date(b.date))
+      },
+      period: {
+        start: lastWeekStart,
+        end: lastWeekEnd,
+        type: 'lastWeek'
+      }
+    });
+
+  } catch (error) {
+    console.error('Error al obtener ventas de la semana pasada:', error);
+    return res.status(500).json({ 
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+};
+
+// Obtener ventas del mes pasado
+exports.getLastMonthSales = async (req, res) => {
+  try {
+    console.log('📅 Obteniendo ventas del mes pasado...');
+    
+    const { Op } = require('sequelize');
+    const { Order, OrderDetail, GuestOrder, GuestOrderProduct, Product, Client, User } = require('../models');
+    
+    // Calcular inicio y fin del mes pasado
+    const now = new Date();
+    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    lastMonthStart.setHours(0, 0, 0, 0);
+    
+    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+    lastMonthEnd.setHours(23, 59, 59, 999);
+    
+    console.log(`📅 Mes pasado: ${lastMonthStart.toLocaleDateString()} - ${lastMonthEnd.toLocaleDateString()}`);
+    
+    // Obtener pedidos regulares del mes pasado
+    const regularOrders = await Order.findAll({
+      where: {
+        createdAt: {
+          [Op.between]: [lastMonthStart, lastMonthEnd]
+        }
+      },
+      include: [
+        { model: Client, attributes: ['id', 'name', 'email'] },
+        { model: User, as: 'deliveryPerson', attributes: ['id', 'username'] },
+        { 
+          model: OrderDetail,
+          as: 'orderDetails',
+          include: [{ model: Product, attributes: ['id', 'name', 'unitPrice'] }]
+        }
+      ],
+      order: [['createdAt', 'DESC']]
+    });
+
+    // Obtener pedidos de visitantes del mes pasado
+    const guestOrders = await GuestOrder.findAll({
+      where: {
+        createdAt: {
+          [Op.between]: [lastMonthStart, lastMonthEnd]
+        }
+      },
+      include: [
+        { model: User, as: 'deliveryPerson', attributes: ['id', 'username'] },
+        { 
+          model: GuestOrderProduct,
+          as: 'products',
+          include: [{ model: Product, as: 'product', attributes: ['id', 'name', 'unitPrice'] }]
+        }
+      ],
+      order: [['createdAt', 'DESC']]
+    });
+
+    // Formatear datos (mismo código que mensual)
+    const formattedRegularOrders = regularOrders.map(order => ({
+      id: order.id,
+      type: 'regular',
+      clientName: order.Client?.name || 'N/A',
+      clientEmail: order.Client?.email || 'N/A',
+      address: order.deliveryAddress,
+      district: order.deliveryDistrict,
+      total: parseFloat(order.total || 0),
+      deliveryFee: parseFloat(order.deliveryFee || 0),
+      status: order.status,
+      createdAt: order.createdAt,
+      deliveredAt: order.status === 'entregado' ? order.updatedAt : null,
+      deliveryPerson: order.deliveryPerson?.username || 'N/A',
+      products: order.orderDetails?.map(detail => ({
+        id: detail.Product?.id,
+        name: detail.Product?.name,
+        quantity: detail.quantity,
+        unitPrice: detail.unitPrice,
+        subtotal: detail.subtotal
+      })) || []
+    }));
+
+    const formattedGuestOrders = guestOrders.map(order => ({
+      id: order.id,
+      type: 'guest',
+      clientName: order.clientName || 'Cliente Visitante',
+      clientEmail: order.clientEmail || 'N/A',
+      address: order.deliveryAddress,
+      district: order.deliveryDistrict,
+      total: parseFloat(order.total || 0),
+      deliveryFee: parseFloat(order.deliveryFee || 0),
+      status: order.status,
+      createdAt: order.createdAt,
+      deliveredAt: order.status === 'delivered' ? order.updatedAt : null,
+      deliveryPerson: order.deliveryPerson?.username || 'N/A',
+      products: order.products?.map(detail => ({
+        id: detail.product?.id,
+        name: detail.product?.name,
+        quantity: detail.quantity,
+        unitPrice: detail.unitPrice,
+        subtotal: detail.subtotal
+      })) || []
+    }));
+
+    // Combinar y ordenar
+    const allOrders = [
+      ...formattedRegularOrders.map(order => ({ ...order, deliveredAt: order.deliveredAt || order.createdAt })),
+      ...formattedGuestOrders.map(order => ({ ...order, deliveredAt: order.deliveredAt || order.createdAt }))
+    ].sort((a, b) => new Date(b.deliveredAt) - new Date(a.deliveredAt));
+
+    // Calcular estadísticas
+    const productStats = {};
+    let totalBidones = 0;
+    let totalPaquetes = 0;
+    let totalAmount = 0;
+    let deliveredAmount = 0;
+    let pendingAmount = 0;
+
+    allOrders.forEach(order => {
+      const amount = parseFloat(order.total || 0);
+      totalAmount += amount;
+      
+      if (order.status === 'entregado' || order.status === 'delivered') {
+        deliveredAmount += amount;
+      } else {
+        pendingAmount += amount;
+      }
+      
+      order.products.forEach(product => {
+        if (!productStats[product.name]) {
+          productStats[product.name] = 0;
+        }
+        productStats[product.name] += product.quantity;
+        
+        if (product.name.toLowerCase().includes('bidón')) {
+          totalBidones += product.quantity;
+        }
+        if (product.name.toLowerCase().includes('paquete')) {
+          totalPaquetes += product.quantity;
+        }
+      });
+    });
+
+    // Calcular estadísticas por semana
+    const weeklyStats = {};
+    allOrders.forEach(order => {
+      const date = new Date(order.createdAt);
+      const weekStart = new Date(date);
+      weekStart.setDate(date.getDate() - date.getDay());
+      const weekKey = weekStart.toLocaleDateString();
+      
+      if (!weeklyStats[weekKey]) {
+        weeklyStats[weekKey] = {
+          week: weekKey,
+          orders: 0,
+          amount: 0,
+          bidones: 0,
+          paquetes: 0
+        };
+      }
+      weeklyStats[weekKey].orders++;
+      weeklyStats[weekKey].amount += parseFloat(order.total || 0);
+      
+      order.products.forEach(product => {
+        if (product.name.toLowerCase().includes('bidón')) {
+          weeklyStats[weekKey].bidones += product.quantity;
+        }
+        if (product.name.toLowerCase().includes('paquete')) {
+          weeklyStats[weekKey].paquetes += product.quantity;
+        }
+      });
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: allOrders,
+      stats: {
+        totalOrders: allOrders.length,
+        totalAmount,
+        deliveredAmount,
+        pendingAmount,
+        totalBidones,
+        totalPaquetes,
+        productStats,
+        weeklyStats: Object.values(weeklyStats).sort((a, b) => new Date(a.week) - new Date(b.week))
+      },
+      period: {
+        start: lastMonthStart,
+        end: lastMonthEnd,
+        type: 'lastMonth'
+      }
+    });
+
+  } catch (error) {
+    console.error('Error al obtener ventas del mes pasado:', error);
+    return res.status(500).json({ 
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+};
+
 // Obtener ventas mensuales
 exports.getMonthlySales = async (req, res) => {
   try {

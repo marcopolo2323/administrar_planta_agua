@@ -164,10 +164,11 @@ exports.getClientVoucherDetails = async (req, res) => {
         id: voucher.id,
         totalAmount: parseFloat(voucher.totalAmount || 0),
         createdAt: voucher.createdAt,
-        orderId: voucher.Order?.id,
-        orderDate: voucher.Order?.orderDate,
-        deliveryAddress: voucher.Order?.deliveryAddress,
-        deliveryDistrict: voucher.Order?.deliveryDistrict,
+        status: voucher.status,
+        orderId: voucher.order?.id || voucher.orderId,
+        orderDate: voucher.order?.orderDate,
+        deliveryAddress: voucher.order?.deliveryAddress,
+        deliveryDistrict: voucher.order?.deliveryDistrict,
         notes: voucher.notes
       })),
       summary: {

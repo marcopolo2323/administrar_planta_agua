@@ -97,19 +97,11 @@ const PaymentMethod = () => {
       details: 'Pago contra entrega - Sin comisiones adicionales'
     },
     {
-      id: 'yape',
-      name: 'Yape',
-      description: 'Paga con Yape al número 999 888 777',
-      icon: FaQrcode,
-      color: 'purple',
-      details: 'Escanea el código QR o transfiere al número mostrado'
-    },
-    {
       id: 'plin',
       name: 'Plin',
-      description: 'Paga con Plin al número 999 888 777',
+      description: 'Paga con Plin al número +51 961 606 183',
       icon: FaQrcode,
-      color: 'blue',
+      color: 'purple',
       details: 'Escanea el código QR o transfiere al número mostrado'
     }
   ];

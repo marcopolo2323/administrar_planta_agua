@@ -26,7 +26,7 @@ async function seedDatabase() {
       password: 'admin123',
       role: 'admin',
       name: 'Administrador',
-      phone: '999999999'
+      phone: '+51 961606183'
     });
 
     const vendedor = await User.create({

@@ -1,7 +1,7 @@
 YAPE QR CODE
 ============
-Número: +51 999 888 777
-Nombre: Planta de Agua
+Número: +51 961606183
+Nombre: AquaYara
 Monto: Variable según pedido
 
 Para pagar:

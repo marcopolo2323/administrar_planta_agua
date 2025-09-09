@@ -25,6 +25,7 @@ import {
 } from '@chakra-ui/react';
 import { FaEye, FaEyeSlash, FaUser, FaGift } from 'react-icons/fa';
 import useAuthStore from '../stores/authStore';
+import AquaYaraLogo from '../components/AquaYaraLogo';
 
 const ClientLogin = () => {
   const [formData, setFormData] = useState({
@@ -87,9 +88,13 @@ const ClientLogin = () => {
       <Card maxW="md" w="full" boxShadow="xl">
         <CardHeader textAlign="center" pb={2}>
           <VStack spacing={4}>
-            <Box color="green.600" fontSize="4xl">
-              <FaUser />
-            </Box>
+            <AquaYaraLogo 
+              size="lg" 
+              variant="vertical" 
+              color="blue.500" 
+              textColor="blue.600" 
+              taglineColor="teal.500"
+            />
             <Heading size="lg" color="gray.700">
               Área de Clientes
             </Heading>

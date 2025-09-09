@@ -34,7 +34,12 @@ import {
   StatNumber,
   StatHelpText,
   StatArrow,
-  Divider
+  Divider,
+  Tabs,
+  TabList,
+  TabPanels,
+  Tab,
+  TabPanel
 } from '@chakra-ui/react';
 import { 
   FaChartLine,
@@ -43,9 +48,14 @@ import {
   FaTruck,
   FaUsers,
   FaCalendarAlt,
-  FaDownload
+  FaDownload,
+  FaBox,
+  FaUserPlus,
+  FaCheckCircle
 } from 'react-icons/fa';
 import useReportStore from '../stores/reportStore';
+import AquaYaraLogo from '../components/AquaYaraLogo';
+import AdminContact from '../components/AdminContact';
 
 const Reports = () => {
   const [reportType, setReportType] = useState('sales');
@@ -147,9 +157,20 @@ const Reports = () => {
 
   return (
     <Box p={6}>
-      <Heading size="lg" color="gray.700" mb={6}>
-        Reportes y Análisis
-      </Heading>
+      <Flex justify="space-between" align="center" mb={6}>
+        <HStack spacing={4}>
+          <AquaYaraLogo size="md" variant="horizontal" />
+          <VStack align="start" spacing={0}>
+            <Heading size="lg" color="gray.700">
+              Reportes y Análisis
+            </Heading>
+            <Text color="gray.500" fontSize="sm">
+              Análisis detallado del negocio
+            </Text>
+          </VStack>
+        </HStack>
+        <AdminContact variant="info" />
+      </Flex>
 
       {/* Filtros */}
       <Card mb={6}>
@@ -219,33 +240,41 @@ const Reports = () => {
       {/* Resultados del reporte */}
       {loading ? (
         <Center h="400px">
-          <Spinner size="xl" />
+          <VStack spacing={4}>
+            <Spinner size="xl" color="blue.500" />
+            <Text color="gray.500">Generando reporte...</Text>
+          </VStack>
         </Center>
       ) : reportData ? (
         <VStack spacing={6} align="stretch">
           {/* Resumen estadístico */}
           <Card>
             <CardHeader>
-              <Heading size="md">
-                Resumen del Reporte - {reportTypes.find(r => r.value === reportType)?.label}
-              </Heading>
+              <HStack justify="space-between" align="center">
+                <Heading size="md">
+                  📊 Resumen del Reporte - {reportTypes.find(r => r.value === reportType)?.label}
+                </Heading>
+                <Badge colorScheme="blue" variant="subtle">
+                  {reportData.period ? `${reportData.period.start} - ${reportData.period.end}` : 'Período seleccionado'}
+                </Badge>
+              </HStack>
             </CardHeader>
             <CardBody>
               <SimpleGrid columns={{ base: 2, md: 4 }} spacing={6}>
                 <Stat>
-                  <StatLabel>Total Ventas</StatLabel>
-                  <StatNumber color="green.500">
+                  <StatLabel color="green.600">💰 Total Ventas</StatLabel>
+                  <StatNumber color="green.500" fontSize="2xl">
                     {formatCurrency(reportData.totalSales || 0)}
                   </StatNumber>
                   <StatHelpText>
-                    <StatArrow type="increase" />
-                    {reportData.growthPercentage || 0}% vs período anterior
+                    <StatArrow type={reportData.growthPercentage >= 0 ? "increase" : "decrease"} />
+                    {Math.abs(reportData.growthPercentage || 0).toFixed(1)}% vs período anterior
                   </StatHelpText>
                 </Stat>
 
                 <Stat>
-                  <StatLabel>Total Pedidos</StatLabel>
-                  <StatNumber color="blue.500">
+                  <StatLabel color="blue.600">📦 Total Pedidos</StatLabel>
+                  <StatNumber color="blue.500" fontSize="2xl">
                     {reportData.totalOrders || 0}
                   </StatNumber>
                   <StatHelpText>
@@ -254,18 +283,18 @@ const Reports = () => {
                 </Stat>
 
                 <Stat>
-                  <StatLabel>Entregas Completadas</StatLabel>
-                  <StatNumber color="purple.500">
+                  <StatLabel color="purple.600">🚚 Entregas Completadas</StatLabel>
+                  <StatNumber color="purple.500" fontSize="2xl">
                     {reportData.completedDeliveries || 0}
                   </StatNumber>
                   <StatHelpText>
-                    Tasa de éxito: {reportData.deliverySuccessRate || 0}%
+                    Tasa de éxito: {(reportData.deliverySuccessRate || 0).toFixed(1)}%
                   </StatHelpText>
                 </Stat>
 
                 <Stat>
-                  <StatLabel>Nuevos Clientes</StatLabel>
-                  <StatNumber color="orange.500">
+                  <StatLabel color="orange.600">👥 Nuevos Clientes</StatLabel>
+                  <StatNumber color="orange.500" fontSize="2xl">
                     {reportData.newCustomers || 0}
                   </StatNumber>
                   <StatHelpText>
@@ -276,65 +305,226 @@ const Reports = () => {
             </CardBody>
           </Card>
 
-          {/* Tabla de detalles */}
-          {reportData.details && reportData.details.length > 0 && (
-            <Card>
-              <CardHeader>
-                <Heading size="md">Detalles del Reporte</Heading>
-              </CardHeader>
-              <CardBody>
-                <TableContainer>
-                  <Table variant="simple" size="sm">
-                    <Thead>
-                      <Tr>
-                        <Th>Fecha</Th>
-                        <Th>Descripción</Th>
-                        <Th isNumeric>Monto</Th>
-                        <Th>Estado</Th>
-                      </Tr>
-                    </Thead>
-                    <Tbody>
-                      {Array.isArray(reportData.details) ? reportData.details.map((item, index) => (
-                        <Tr key={index}>
-                          <Td>{formatDate(item.date)}</Td>
-                          <Td>{item.description}</Td>
-                          <Td isNumeric>{formatCurrency(item.amount)}</Td>
-                          <Td>
-                            <Badge colorScheme={item.status === 'completed' ? 'green' : 'yellow'}>
-                              {item.status}
-                            </Badge>
-                          </Td>
-                        </Tr>
-                      )) : null}
-                    </Tbody>
-                  </Table>
-                </TableContainer>
-              </CardBody>
-            </Card>
-          )}
+          {/* Detalles del reporte con pestañas */}
+          <Card>
+            <CardHeader>
+              <Heading size="md">📋 Detalles del Reporte</Heading>
+            </CardHeader>
+            <CardBody>
+              <Tabs variant="enclosed" colorScheme="blue">
+                <TabList>
+                  <Tab>📊 Resumen</Tab>
+                  <Tab>📦 Pedidos</Tab>
+                  <Tab>👥 Clientes</Tab>
+                  <Tab>📈 Productos</Tab>
+                </TabList>
+                
+                <TabPanels>
+                  <TabPanel>
+                    {reportData.details && reportData.details.length > 0 ? (
+                      <TableContainer>
+                        <Table variant="simple" size="sm">
+                          <Thead>
+                            <Tr>
+                              <Th>Fecha</Th>
+                              <Th>Descripción</Th>
+                              <Th isNumeric>Monto</Th>
+                              <Th>Estado</Th>
+                              <Th>Tipo</Th>
+                            </Tr>
+                          </Thead>
+                          <Tbody>
+                            {reportData.details.slice(0, 10).map((item, index) => (
+                              <Tr key={index}>
+                                <Td>{formatDate(item.date)}</Td>
+                                <Td>{item.description}</Td>
+                                <Td isNumeric>{formatCurrency(item.amount)}</Td>
+                                <Td>
+                                  <Badge 
+                                    colorScheme={item.status === 'completed' ? 'green' : 'yellow'}
+                                    variant="subtle"
+                                  >
+                                    {item.status === 'completed' ? 'Completado' : 'Pendiente'}
+                                  </Badge>
+                                </Td>
+                                <Td>
+                                  <Badge 
+                                    colorScheme={item.type === 'regular' ? 'blue' : 'purple'}
+                                    variant="outline"
+                                  >
+                                    {item.type === 'regular' ? 'Regular' : 'Visitante'}
+                                  </Badge>
+                                </Td>
+                              </Tr>
+                            ))}
+                          </Tbody>
+                        </Table>
+                      </TableContainer>
+                    ) : (
+                      <Text color="gray.500" textAlign="center" py={8}>
+                        No hay detalles disponibles para este período
+                      </Text>
+                    )}
+                  </TabPanel>
+                  
+                  <TabPanel>
+                    {reportData.orders && reportData.orders.length > 0 ? (
+                      <TableContainer>
+                        <Table variant="simple" size="sm">
+                          <Thead>
+                            <Tr>
+                              <Th>ID</Th>
+                              <Th>Cliente</Th>
+                              <Th>Total</Th>
+                              <Th>Estado</Th>
+                              <Th>Repartidor</Th>
+                            </Tr>
+                          </Thead>
+                          <Tbody>
+                            {reportData.orders.slice(0, 10).map((order, index) => (
+                              <Tr key={index}>
+                                <Td>#{order.id}</Td>
+                                <Td>{order.clientName}</Td>
+                                <Td isNumeric>{formatCurrency(order.total)}</Td>
+                                <Td>
+                                  <Badge 
+                                    colorScheme={
+                                      order.status === 'entregado' ? 'green' : 
+                                      order.status === 'en_camino' ? 'blue' : 'yellow'
+                                    }
+                                    variant="subtle"
+                                  >
+                                    {order.status}
+                                  </Badge>
+                                </Td>
+                                <Td>{order.deliveryPerson || 'Sin asignar'}</Td>
+                              </Tr>
+                            ))}
+                          </Tbody>
+                        </Table>
+                      </TableContainer>
+                    ) : (
+                      <Text color="gray.500" textAlign="center" py={8}>
+                        No hay pedidos disponibles para este período
+                      </Text>
+                    )}
+                  </TabPanel>
+                  
+                  <TabPanel>
+                    {reportData.clients && reportData.clients.length > 0 ? (
+                      <TableContainer>
+                        <Table variant="simple" size="sm">
+                          <Thead>
+                            <Tr>
+                              <Th>Cliente</Th>
+                              <Th>Email</Th>
+                              <Th>Pedidos</Th>
+                              <Th isNumeric>Total Gastado</Th>
+                              <Th>Último Pedido</Th>
+                            </Tr>
+                          </Thead>
+                          <Tbody>
+                            {reportData.clients.slice(0, 10).map((client, index) => (
+                              <Tr key={index}>
+                                <Td fontWeight="medium">{client.name}</Td>
+                                <Td>{client.email}</Td>
+                                <Td>{client.totalOrders}</Td>
+                                <Td isNumeric>{formatCurrency(client.totalSpent)}</Td>
+                                <Td>{client.lastOrderDate ? formatDate(client.lastOrderDate) : 'N/A'}</Td>
+                              </Tr>
+                            ))}
+                          </Tbody>
+                        </Table>
+                      </TableContainer>
+                    ) : (
+                      <Text color="gray.500" textAlign="center" py={8}>
+                        No hay clientes disponibles para este período
+                      </Text>
+                    )}
+                  </TabPanel>
+                  
+                  <TabPanel>
+                    {reportData.products && reportData.products.length > 0 ? (
+                      <TableContainer>
+                        <Table variant="simple" size="sm">
+                          <Thead>
+                            <Tr>
+                              <Th>Producto</Th>
+                              <Th>Cantidad Vendida</Th>
+                              <Th isNumeric>Ingresos</Th>
+                              <Th isNumeric>Precio Promedio</Th>
+                              <Th>Pedidos</Th>
+                            </Tr>
+                          </Thead>
+                          <Tbody>
+                            {reportData.products.slice(0, 10).map((product, index) => (
+                              <Tr key={index}>
+                                <Td fontWeight="medium">{product.name}</Td>
+                                <Td>{product.totalQuantity}</Td>
+                                <Td isNumeric>{formatCurrency(product.totalRevenue)}</Td>
+                                <Td isNumeric>{formatCurrency(product.averagePrice)}</Td>
+                                <Td>{product.orders}</Td>
+                              </Tr>
+                            ))}
+                          </Tbody>
+                        </Table>
+                      </TableContainer>
+                    ) : (
+                      <Text color="gray.500" textAlign="center" py={8}>
+                        No hay productos disponibles para este período
+                      </Text>
+                    )}
+                  </TabPanel>
+                </TabPanels>
+              </Tabs>
+            </CardBody>
+          </Card>
 
           {/* Gráficos (placeholder) */}
           <Card>
             <CardHeader>
-              <Heading size="md">Análisis Visual</Heading>
+              <Heading size="md">📈 Análisis Visual</Heading>
             </CardHeader>
             <CardBody>
-              <Center h="300px" bg="gray.50" borderRadius="md">
-                <VStack>
-                  <FaChartLine size="48px" color="gray.400" />
-                  <Text color="gray.500">
-                    Los gráficos se implementarán con una librería como Chart.js
+              <Center h="300px" bg="gradient-to-r" bgGradient="linear(to-r, blue.50, teal.50)" borderRadius="md" border="2px dashed" borderColor="blue.200">
+                <VStack spacing={4}>
+                  <AquaYaraLogo size="lg" variant="vertical" color="blue.500" textColor="blue.600" taglineColor="teal.500" />
+                  <Text color="gray.600" textAlign="center" maxW="300px">
+                    Los gráficos interactivos se implementarán próximamente con Chart.js para un análisis más detallado
                   </Text>
+                  <Button colorScheme="blue" variant="outline" size="sm">
+                    Próximamente
+                  </Button>
                 </VStack>
               </Center>
             </CardBody>
           </Card>
         </VStack>
       ) : (
-        <Alert status="info">
-          <AlertIcon />
-          Selecciona un tipo de reporte y un rango de fechas para generar el análisis.
-        </Alert>
+        <Card>
+          <CardBody>
+            <Center py={12}>
+              <VStack spacing={4}>
+                <AquaYaraLogo size="xl" variant="vertical" color="gray.400" textColor="gray.500" taglineColor="gray.400" />
+                <VStack spacing={2}>
+                  <Text fontSize="lg" color="gray.600" fontWeight="medium">
+                    📊 Genera tu primer reporte
+                  </Text>
+                  <Text color="gray.500" textAlign="center" maxW="400px">
+                    Selecciona un tipo de reporte y un rango de fechas para comenzar el análisis de tu negocio
+                  </Text>
+                </VStack>
+                <HStack spacing={4} mt={4}>
+                  <Button colorScheme="blue" size="sm">
+                    <FaChartLine style={{ marginRight: '8px' }} />
+                    Generar Reporte
+                  </Button>
+                  <AdminContact variant="button" size="sm" />
+                </HStack>
+              </VStack>
+            </Center>
+          </CardBody>
+        </Card>
       )}
     </Box>
   );

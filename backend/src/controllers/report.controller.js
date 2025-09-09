@@ -1,42 +1,38 @@
 const { Op } = require('sequelize');
-const { Sale, Order, GuestOrder, Client, Product, DeliveryPerson } = require('../models');
+const { Order, GuestOrder, Client, User, Product, OrderDetail, GuestOrderProduct, Voucher } = require('../models');
 
-// Generar reporte general
 exports.generateReport = async (req, res) => {
   try {
     const { type, startDate, endDate } = req.query;
 
-    if (!type) {
+    if (!type || !startDate || !endDate) {
       return res.status(400).json({
         success: false,
-        message: 'Tipo de reporte es requerido'
+        message: 'Tipo de reporte, fecha inicio y fecha fin son requeridos'
       });
     }
 
-    const whereClause = {};
-    if (startDate && endDate) {
-      whereClause.createdAt = {
-        [Op.between]: [new Date(startDate), new Date(endDate)]
-      };
-    }
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999); // Incluir todo el día final
 
     let reportData = {};
 
     switch (type) {
       case 'sales':
-        reportData = await generateSalesReport(whereClause);
+        reportData = await generateSalesReport(start, end);
         break;
       case 'orders':
-        reportData = await generateOrdersReport(whereClause);
+        reportData = await generateOrdersReport(start, end);
         break;
       case 'deliveries':
-        reportData = await generateDeliveriesReport(whereClause);
+        reportData = await generateDeliveriesReport(start, end);
         break;
       case 'customers':
-        reportData = await generateCustomersReport(whereClause);
+        reportData = await generateCustomersReport(start, end);
         break;
       case 'products':
-        reportData = await generateProductsReport(whereClause);
+        reportData = await generateProductsReport(start, end);
         break;
       default:
         return res.status(400).json({
@@ -49,190 +45,505 @@ exports.generateReport = async (req, res) => {
       success: true,
       data: reportData
     });
+
   } catch (error) {
-    console.error('Error al generar reporte:', error);
+    console.error('Error generando reporte:', error);
     res.status(500).json({
       success: false,
-      message: 'Error interno del servidor',
-      error: error.message
+      message: 'Error interno del servidor'
     });
   }
 };
 
-// Reporte de ventas
-async function generateSalesReport(whereClause) {
-  const sales = await Sale.findAll({
-    where: whereClause,
+// Reporte de Ventas
+exports.generateSalesReport = async function generateSalesReport(startDate, endDate) {
+  // Pedidos regulares
+  const regularOrders = await Order.findAll({
+    where: {
+      createdAt: {
+        [Op.between]: [startDate, endDate]
+      }
+    },
     include: [
-      { model: Client, attributes: ['id', 'name'] }
+      {
+        model: Client,
+        as: 'Client',
+        attributes: ['id', 'name', 'email']
+      },
+      {
+        model: User,
+        as: 'deliveryPerson',
+        attributes: ['id', 'username']
+      }
     ],
     order: [['createdAt', 'DESC']]
   });
 
-  const totalSales = sales.reduce((sum, sale) => sum + parseFloat(sale.totalAmount || 0), 0);
-  const totalCount = sales.length;
-  const averageOrderValue = totalCount > 0 ? totalSales / totalCount : 0;
-
-  // Calcular crecimiento (comparar con período anterior)
-  const previousPeriodStart = new Date(whereClause.createdAt[Op.between][0]);
-  const previousPeriodEnd = new Date(whereClause.createdAt[Op.between][1]);
-  const periodLength = previousPeriodEnd - previousPeriodStart;
-  previousPeriodStart.setTime(previousPeriodStart.getTime() - periodLength);
-  previousPeriodEnd.setTime(previousPeriodEnd.getTime() - periodLength);
-
-  const previousSales = await Sale.findAll({
+  // Pedidos de visitantes
+  const guestOrders = await GuestOrder.findAll({
     where: {
       createdAt: {
-        [Op.between]: [previousPeriodStart, previousPeriodEnd]
+        [Op.between]: [startDate, endDate]
+      }
+    },
+    include: [
+      {
+        model: User,
+        as: 'deliveryPerson',
+        attributes: ['id', 'username']
+      }
+    ],
+    order: [['createdAt', 'DESC']]
+  });
+
+  // Calcular estadísticas
+  const totalSales = regularOrders.reduce((sum, order) => sum + parseFloat(order.total || 0), 0) +
+                    guestOrders.reduce((sum, order) => sum + parseFloat(order.total || 0), 0);
+
+  const totalOrders = regularOrders.length + guestOrders.length;
+  const completedDeliveries = [...regularOrders, ...guestOrders].filter(order => order.status === 'entregado').length;
+  const deliverySuccessRate = totalOrders > 0 ? (completedDeliveries / totalOrders) * 100 : 0;
+
+  // Período anterior para comparación
+  const periodLength = endDate - startDate;
+  const previousStart = new Date(startDate.getTime() - periodLength);
+  const previousEnd = new Date(startDate.getTime() - 1);
+
+  const previousRegularOrders = await Order.findAll({
+    where: {
+      createdAt: {
+        [Op.between]: [previousStart, previousEnd]
       }
     }
   });
 
-  const previousTotal = previousSales.reduce((sum, sale) => sum + parseFloat(sale.totalAmount || 0), 0);
-  const growthPercentage = previousTotal > 0 ? ((totalSales - previousTotal) / previousTotal) * 100 : 0;
+  const previousGuestOrders = await GuestOrder.findAll({
+    where: {
+      createdAt: {
+        [Op.between]: [previousStart, previousEnd]
+      }
+    }
+  });
+
+  const previousTotalSales = previousRegularOrders.reduce((sum, order) => sum + parseFloat(order.total || 0), 0) +
+                            previousGuestOrders.reduce((sum, order) => sum + parseFloat(order.total || 0), 0);
+
+  const growthPercentage = previousTotalSales > 0 ? 
+    ((totalSales - previousTotalSales) / previousTotalSales) * 100 : 0;
+
+  // Detalles del reporte
+  const details = [
+    ...regularOrders.map(order => ({
+      date: order.createdAt.toISOString().split('T')[0],
+      description: `Pedido regular #${order.id} - ${order.Client?.name || 'Cliente'}`,
+      amount: parseFloat(order.total || 0),
+      status: order.status === 'entregado' ? 'completed' : 'pending',
+      type: 'regular'
+    })),
+    ...guestOrders.map(order => ({
+      date: order.createdAt.toISOString().split('T')[0],
+      description: `Pedido visitante #${order.id} - ${order.customerName}`,
+      amount: parseFloat(order.total || 0),
+      status: order.status === 'entregado' ? 'completed' : 'pending',
+      type: 'guest'
+    }))
+  ].sort((a, b) => new Date(b.date) - new Date(a.date));
 
   return {
     totalSales,
-    totalCount,
-    averageOrderValue,
-    growthPercentage: Math.round(growthPercentage * 100) / 100,
-    details: sales.map(sale => ({
-      date: sale.createdAt,
-      description: `Venta #${sale.id}`,
-      amount: sale.totalAmount,
-      status: 'completed'
-    }))
+    totalOrders,
+    completedDeliveries,
+    deliverySuccessRate,
+    growthPercentage,
+    averageOrderValue: totalOrders > 0 ? totalSales / totalOrders : 0,
+    newCustomers: 0, // Se puede implementar lógica para detectar clientes nuevos
+    totalCustomers: await Client.count(),
+    details,
+    period: {
+      start: startDate.toISOString().split('T')[0],
+      end: endDate.toISOString().split('T')[0]
+    }
   };
 }
 
-// Reporte de pedidos
-async function generateOrdersReport(whereClause) {
-  const orders = await Order.findAll({
-    where: whereClause,
+// Reporte de Pedidos
+async function generateOrdersReport(startDate, endDate) {
+  const regularOrders = await Order.findAll({
+    where: {
+      createdAt: {
+        [Op.between]: [startDate, endDate]
+      }
+    },
     include: [
-      { model: Client, attributes: ['id', 'name'] },
-      { model: DeliveryPerson, attributes: ['id', 'name'] }
+      {
+        model: Client,
+        as: 'Client',
+        attributes: ['id', 'name', 'email']
+      },
+      {
+        model: User,
+        as: 'deliveryPerson',
+        attributes: ['id', 'username']
+      },
+      {
+        model: OrderDetail,
+        as: 'orderDetails',
+        include: [
+          {
+            model: Product,
+            as: 'Product',
+            attributes: ['id', 'name', 'price']
+          }
+        ]
+      }
     ],
     order: [['createdAt', 'DESC']]
   });
 
   const guestOrders = await GuestOrder.findAll({
-    where: whereClause,
+    where: {
+      createdAt: {
+        [Op.between]: [startDate, endDate]
+      }
+    },
+    include: [
+      {
+        model: User,
+        as: 'deliveryPerson',
+        attributes: ['id', 'username']
+      },
+      {
+        model: GuestOrderProduct,
+        as: 'products',
+        include: [
+          {
+            model: Product,
+            as: 'product',
+            attributes: ['id', 'name', 'price']
+          }
+        ]
+      }
+    ],
     order: [['createdAt', 'DESC']]
   });
 
-  const allOrders = [...orders, ...guestOrders];
-  const totalOrders = allOrders.length;
-  const completedOrders = allOrders.filter(order => order.status === 'delivered').length;
-  const pendingOrders = allOrders.filter(order => ['pending', 'confirmed', 'preparing'].includes(order.status)).length;
+  const totalOrders = regularOrders.length + guestOrders.length;
+  const totalAmount = regularOrders.reduce((sum, order) => sum + parseFloat(order.total || 0), 0) +
+                    guestOrders.reduce((sum, order) => sum + parseFloat(order.total || 0), 0);
+
+  // Estadísticas por estado
+  const statusStats = {};
+  [...regularOrders, ...guestOrders].forEach(order => {
+    statusStats[order.status] = (statusStats[order.status] || 0) + 1;
+  });
 
   return {
     totalOrders,
-    completedOrders,
-    pendingOrders,
-    completionRate: totalOrders > 0 ? (completedOrders / totalOrders) * 100 : 0,
-    details: allOrders.map(order => ({
-      date: order.createdAt,
-      description: `Pedido #${order.id}`,
-      amount: order.totalAmount || 0,
-      status: order.status
-    }))
+    totalAmount,
+    regularOrders: regularOrders.length,
+    guestOrders: guestOrders.length,
+    statusStats,
+    orders: [
+      ...regularOrders.map(order => ({
+        id: order.id,
+        type: 'regular',
+        clientName: order.Client?.name || 'N/A',
+        total: parseFloat(order.total || 0),
+        status: order.status,
+        createdAt: order.createdAt,
+        deliveryPerson: order.deliveryPerson?.username || 'N/A',
+        products: order.orderDetails?.map(detail => ({
+          name: detail.Product?.name || 'N/A',
+          quantity: detail.quantity,
+          price: parseFloat(detail.price || 0)
+        })) || []
+      })),
+      ...guestOrders.map(order => ({
+        id: order.id,
+        type: 'guest',
+        clientName: order.customerName,
+        total: parseFloat(order.total || 0),
+        status: order.status,
+        createdAt: order.createdAt,
+        deliveryPerson: order.deliveryPerson?.username || 'N/A',
+        products: order.products?.map(item => ({
+          name: item.product?.name || 'N/A',
+          quantity: item.quantity,
+          price: parseFloat(item.price || 0)
+        })) || []
+      }))
+    ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
   };
 }
 
-// Reporte de entregas
-async function generateDeliveriesReport(whereClause) {
-  const orders = await Order.findAll({
+// Reporte de Entregas
+async function generateDeliveriesReport(startDate, endDate) {
+  const regularOrders = await Order.findAll({
     where: {
-      ...whereClause,
-      status: 'delivered'
+      createdAt: {
+        [Op.between]: [startDate, endDate]
+      }
     },
     include: [
-      { model: DeliveryPerson, attributes: ['id', 'name'] }
+      {
+        model: Client,
+        as: 'Client',
+        attributes: ['id', 'name', 'phone']
+      },
+      {
+        model: User,
+        as: 'deliveryPerson',
+        attributes: ['id', 'username', 'phone']
+      }
     ],
-    order: [['updatedAt', 'DESC']]
+    order: [['createdAt', 'DESC']]
   });
 
   const guestOrders = await GuestOrder.findAll({
     where: {
-      ...whereClause,
-      status: 'delivered'
+      createdAt: {
+        [Op.between]: [startDate, endDate]
+      }
     },
-    order: [['updatedAt', 'DESC']]
+    include: [
+      {
+        model: User,
+        as: 'deliveryPerson',
+        attributes: ['id', 'username', 'phone']
+      }
+    ],
+    order: [['createdAt', 'DESC']]
   });
 
-  const allDeliveries = [...orders, ...guestOrders];
-  const totalDeliveries = allDeliveries.length;
+  const allOrders = [...regularOrders, ...guestOrders];
+  const completedDeliveries = allOrders.filter(order => order.status === 'entregado');
+  const pendingDeliveries = allOrders.filter(order => ['pendiente', 'confirmado', 'en_preparacion', 'en_camino'].includes(order.status));
 
   // Estadísticas por repartidor
-  const deliveryStats = {};
-  allDeliveries.forEach(delivery => {
-    if (delivery.DeliveryPerson) {
-      const personName = delivery.DeliveryPerson.name;
-      if (!deliveryStats[personName]) {
-        deliveryStats[personName] = 0;
-      }
-      deliveryStats[personName]++;
+  const deliveryPersonStats = {};
+  allOrders.forEach(order => {
+    const deliveryPerson = order.deliveryPerson?.username || 'Sin asignar';
+    if (!deliveryPersonStats[deliveryPerson]) {
+      deliveryPersonStats[deliveryPerson] = {
+        total: 0,
+        completed: 0,
+        pending: 0
+      };
+    }
+    deliveryPersonStats[deliveryPerson].total++;
+    if (order.status === 'entregado') {
+      deliveryPersonStats[deliveryPerson].completed++;
+    } else {
+      deliveryPersonStats[deliveryPerson].pending++;
     }
   });
 
   return {
-    totalDeliveries,
-    deliveryStats,
-    details: allDeliveries.map(delivery => ({
-      date: delivery.updatedAt,
-      description: `Entrega #${delivery.id}`,
-      amount: delivery.totalAmount || 0,
-      status: 'delivered'
+    totalDeliveries: allOrders.length,
+    completedDeliveries: completedDeliveries.length,
+    pendingDeliveries: pendingDeliveries.length,
+    successRate: allOrders.length > 0 ? (completedDeliveries.length / allOrders.length) * 100 : 0,
+    deliveryPersonStats,
+    deliveries: allOrders.map(order => ({
+      id: order.id,
+      type: order.Client ? 'regular' : 'guest',
+      clientName: order.Client?.name || order.customerName,
+      clientPhone: order.Client?.phone || order.customerPhone,
+      total: parseFloat(order.total || 0),
+      status: order.status,
+      createdAt: order.createdAt,
+      deliveryPerson: order.deliveryPerson?.username || 'Sin asignar',
+      deliveryAddress: order.deliveryAddress,
+      deliveryDistrict: order.deliveryDistrict
     }))
   };
 }
 
-// Reporte de clientes
-async function generateCustomersReport(whereClause) {
-  const clients = await Client.findAll({
-    where: whereClause,
-    order: [['createdAt', 'DESC']]
+// Reporte de Clientes
+async function generateCustomersReport(startDate, endDate) {
+  // Clientes que hicieron pedidos en el período
+  const clientsWithOrders = await Client.findAll({
+    include: [
+      {
+        model: Order,
+        as: 'Orders',
+        where: {
+          createdAt: {
+            [Op.between]: [startDate, endDate]
+          }
+        },
+        required: true,
+        include: [
+          {
+            model: User,
+            as: 'deliveryPerson',
+            attributes: ['id', 'username']
+          }
+        ]
+      }
+    ],
+    order: [['name', 'ASC']]
   });
 
-  const totalCustomers = clients.length;
-  const newCustomers = clients.filter(client => {
-    const clientDate = new Date(client.createdAt);
-    const startDate = whereClause.createdAt ? new Date(whereClause.createdAt[Op.between][0]) : new Date();
-    return clientDate >= startDate;
-  }).length;
+  // Estadísticas de clientes
+  const totalClients = await Client.count();
+  const activeClients = clientsWithOrders.length;
+  const newClients = await Client.count({
+    where: {
+      createdAt: {
+        [Op.between]: [startDate, endDate]
+      }
+    }
+  });
+
+  // Clientes con vales pendientes
+  const clientsWithPendingVouchers = await Client.findAll({
+    include: [
+      {
+        model: Voucher,
+        as: 'Vouchers',
+        where: { status: 'pending' },
+        required: true
+      }
+    ]
+  });
 
   return {
-    totalCustomers,
-    newCustomers,
-    details: clients.map(client => ({
-      date: client.createdAt,
-      description: `Cliente: ${client.name}`,
-      amount: 0,
-      status: 'active'
-    }))
+    totalClients,
+    activeClients,
+    newClients,
+    clientsWithPendingVouchers: clientsWithPendingVouchers.length,
+    clients: clientsWithOrders.map(client => {
+      const totalSpent = client.Orders.reduce((sum, order) => sum + parseFloat(order.total || 0), 0);
+      const totalOrders = client.Orders.length;
+      const lastOrder = client.Orders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
+      
+      return {
+        id: client.id,
+        name: client.name,
+        email: client.email,
+        phone: client.phone,
+        totalSpent,
+        totalOrders,
+        averageOrderValue: totalOrders > 0 ? totalSpent / totalOrders : 0,
+        lastOrderDate: lastOrder?.createdAt,
+        lastOrderAmount: lastOrder ? parseFloat(lastOrder.total || 0) : 0,
+        district: client.district
+      };
+    })
   };
 }
 
-// Reporte de productos
-async function generateProductsReport(whereClause) {
-  const products = await Product.findAll({
-    where: whereClause,
-    order: [['createdAt', 'DESC']]
+// Reporte de Productos
+async function generateProductsReport(startDate, endDate) {
+  // Productos vendidos en pedidos regulares
+  const regularOrderDetails = await OrderDetail.findAll({
+    where: {
+      createdAt: {
+        [Op.between]: [startDate, endDate]
+      }
+    },
+    include: [
+      {
+        model: Product,
+        as: 'Product',
+        attributes: ['id', 'name', 'price']
+      },
+      {
+        model: Order,
+        as: 'Order',
+        attributes: ['id', 'createdAt', 'total']
+      }
+    ]
   });
 
-  const totalProducts = products.length;
-  const activeProducts = products.filter(product => product.active).length;
+  // Productos vendidos en pedidos de visitantes
+  const guestOrderProducts = await GuestOrderProduct.findAll({
+    where: {
+      createdAt: {
+        [Op.between]: [startDate, endDate]
+      }
+    },
+    include: [
+      {
+        model: Product,
+        as: 'product',
+        attributes: ['id', 'name', 'price']
+      },
+      {
+        model: GuestOrder,
+        as: 'GuestOrder',
+        attributes: ['id', 'createdAt', 'total']
+      }
+    ]
+  });
+
+  // Agregar productos de pedidos regulares
+  const productStats = {};
+  
+  regularOrderDetails.forEach(detail => {
+    const productId = detail.Product?.id;
+    const productName = detail.Product?.name || 'Producto desconocido';
+    const quantity = detail.quantity;
+    const price = parseFloat(detail.price || 0);
+    const total = quantity * price;
+
+    if (!productStats[productId]) {
+      productStats[productId] = {
+        id: productId,
+        name: productName,
+        totalQuantity: 0,
+        totalRevenue: 0,
+        averagePrice: price,
+        orders: 0
+      };
+    }
+
+    productStats[productId].totalQuantity += quantity;
+    productStats[productId].totalRevenue += total;
+    productStats[productId].orders++;
+  });
+
+  // Agregar productos de pedidos de visitantes
+  guestOrderProducts.forEach(item => {
+    const productId = item.product?.id;
+    const productName = item.product?.name || 'Producto desconocido';
+    const quantity = item.quantity;
+    const price = parseFloat(item.price || 0);
+    const total = quantity * price;
+
+    if (!productStats[productId]) {
+      productStats[productId] = {
+        id: productId,
+        name: productName,
+        totalQuantity: 0,
+        totalRevenue: 0,
+        averagePrice: price,
+        orders: 0
+      };
+    }
+
+    productStats[productId].totalQuantity += quantity;
+    productStats[productId].totalRevenue += total;
+    productStats[productId].orders++;
+  });
+
+  // Convertir a array y ordenar por cantidad vendida
+  const products = Object.values(productStats)
+    .map(product => ({
+      ...product,
+      averagePrice: product.totalQuantity > 0 ? product.totalRevenue / product.totalQuantity : 0
+    }))
+    .sort((a, b) => b.totalQuantity - a.totalQuantity);
+
+  const totalRevenue = products.reduce((sum, product) => sum + product.totalRevenue, 0);
+  const totalQuantity = products.reduce((sum, product) => sum + product.totalQuantity, 0);
 
   return {
-    totalProducts,
-    activeProducts,
-    inactiveProducts: totalProducts - activeProducts,
-    details: products.map(product => ({
-      date: product.createdAt,
-      description: product.name,
-      amount: product.price || 0,
-      status: product.active ? 'active' : 'inactive'
-    }))
+    totalProducts: products.length,
+    totalRevenue,
+    totalQuantity,
+    averagePrice: totalQuantity > 0 ? totalRevenue / totalQuantity : 0,
+    products
   };
 }

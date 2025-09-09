@@ -90,14 +90,40 @@ const ClientPaymentsAdmin = () => {
       if (response.data.success) {
         setStats(response.data.data);
         console.log('📊 Estadísticas obtenidas:', response.data.data);
+      } else {
+        console.warn('⚠️ Respuesta sin éxito:', response.data);
+        toast({
+          title: 'Advertencia',
+          description: response.data.message || 'No se pudieron cargar las estadísticas',
+          status: 'warning',
+          duration: 3000,
+          isClosable: true
+        });
       }
     } catch (error) {
       console.error('❌ Error al obtener estadísticas:', error);
+      
+      let errorMessage = 'No se pudieron cargar las estadísticas de pagos';
+      
+      if (error.response) {
+        if (error.response.status === 401) {
+          errorMessage = 'Sesión expirada. Por favor, inicia sesión nuevamente.';
+        } else if (error.response.status === 403) {
+          errorMessage = 'No tienes permisos para acceder a esta página.';
+        } else if (error.response.status === 500) {
+          errorMessage = 'Error del servidor. Intenta nuevamente.';
+        } else {
+          errorMessage = error.response.data?.message || errorMessage;
+        }
+      } else if (error.request) {
+        errorMessage = 'No se pudo conectar con el servidor.';
+      }
+      
       toast({
         title: 'Error',
-        description: 'No se pudieron cargar las estadísticas de pagos',
+        description: errorMessage,
         status: 'error',
-        duration: 3000,
+        duration: 5000,
         isClosable: true
       });
     } finally {
@@ -427,7 +453,7 @@ const ClientPaymentsAdmin = () => {
                           <Text fontWeight="bold">{selectedClient.summary.totalVouchers}</Text>
                         </HStack>
                         <HStack justify="space-between" w="full">
-                          <Text>Monto total:</Text>
+                          <Text>Monto total pendiente:</Text>
                           <Text fontWeight="bold" color="red.600">
                             S/ {selectedClient.summary.totalAmount.toFixed(2)}
                           </Text>
@@ -437,6 +463,15 @@ const ClientPaymentsAdmin = () => {
                           <Text>
                             {selectedClient.summary.oldestVoucher 
                               ? new Date(selectedClient.summary.oldestVoucher).toLocaleDateString()
+                              : 'N/A'
+                            }
+                          </Text>
+                        </HStack>
+                        <HStack justify="space-between" w="full">
+                          <Text>Vale más reciente:</Text>
+                          <Text>
+                            {selectedClient.summary.newestVoucher 
+                              ? new Date(selectedClient.summary.newestVoucher).toLocaleDateString()
                               : 'N/A'
                             }
                           </Text>
@@ -455,23 +490,53 @@ const ClientPaymentsAdmin = () => {
                         <Table size="sm">
                           <Thead>
                             <Tr>
-                              <Th>ID</Th>
+                              <Th>ID Vale</Th>
                               <Th>Fecha</Th>
-                              <Th>Pedido</Th>
+                              <Th>N° Pedido</Th>
                               <Th>Monto</Th>
-                              <Th>Dirección</Th>
+                              <Th>Estado</Th>
+                              <Th>Dirección de Entrega</Th>
                             </Tr>
                           </Thead>
                           <Tbody>
-                            {selectedClient.pendingVouchers.map((voucher) => (
-                              <Tr key={voucher.id}>
-                                <Td>{voucher.id}</Td>
-                                <Td>{new Date(voucher.createdAt).toLocaleDateString()}</Td>
-                                <Td>#{voucher.orderId}</Td>
-                                <Td>S/ {voucher.totalAmount.toFixed(2)}</Td>
-                                <Td>{voucher.deliveryDistrict}</Td>
+                            {selectedClient.pendingVouchers.length === 0 ? (
+                              <Tr>
+                                <Td colSpan={6} textAlign="center" py={8}>
+                                  <VStack spacing={2}>
+                                    <Text color="gray.500" fontSize="sm">
+                                      No hay vales pendientes para este cliente
+                                    </Text>
+                                  </VStack>
+                                </Td>
                               </Tr>
-                            ))}
+                            ) : (
+                              selectedClient.pendingVouchers.map((voucher) => (
+                                <Tr key={voucher.id}>
+                                  <Td>{voucher.id}</Td>
+                                  <Td>{new Date(voucher.createdAt).toLocaleDateString()}</Td>
+                                  <Td>{voucher.orderId ? `#${voucher.orderId}` : 'N/A'}</Td>
+                                  <Td>S/ {voucher.totalAmount.toFixed(2)}</Td>
+                                  <Td>
+                                    <Badge 
+                                      colorScheme={voucher.status === 'pending' ? 'orange' : 'green'}
+                                      fontSize="xs"
+                                    >
+                                      {voucher.status === 'pending' ? 'Pendiente' : 'Pagado'}
+                                    </Badge>
+                                  </Td>
+                                  <Td>
+                                    {voucher.deliveryAddress ? (
+                                      <VStack align="start" spacing={1}>
+                                        <Text fontSize="sm">{voucher.deliveryAddress}</Text>
+                                        <Text fontSize="xs" color="gray.500">{voucher.deliveryDistrict}</Text>
+                                      </VStack>
+                                    ) : (
+                                      <Text fontSize="sm" color="gray.500">N/A</Text>
+                                    )}
+                                  </Td>
+                                </Tr>
+                              ))
+                            )}
                           </Tbody>
                         </Table>
                       </TableContainer>

@@ -1,9 +1,10 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import useAuthStore from '../stores/authStore';
-import NotificationCenter from '../components/NotificationCenter';
 import useAutoRefresh from '../hooks/useAutoRefresh';
 import TokenDebug from '../components/TokenDebug';
 import { useRole } from '../hooks/useRole';
+import AquaYaraLogo from '../components/AquaYaraLogo';
+import AdminContact from '../components/AdminContact';
 import {
   Box,
   Flex,
@@ -90,12 +91,13 @@ const DashboardLayout = () => {
     <VStack spacing={0} h="full" align="stretch">
       {/* Logo */}
       <Box p={6} borderBottom="1px solid" borderColor="whiteAlpha.200">
-        <Text fontSize="xl" fontWeight="bold" color="white">
-          💧 AquaSystem
-        </Text>
-        <Text fontSize="sm" color="whiteAlpha.700">
-          Planta de Agua
-        </Text>
+        <AquaYaraLogo 
+          size="md" 
+          variant="vertical" 
+          color="white" 
+          textColor="white" 
+          taglineColor="whiteAlpha.700"
+        />
       </Box>
 
       {/* Navigation Menu */}
@@ -177,7 +179,13 @@ const DashboardLayout = () => {
         <DrawerContent>
           <DrawerCloseButton />
           <DrawerHeader bg="purple.600" color="white">
-            💧 AquaSystem
+            <AquaYaraLogo 
+              size="sm" 
+              variant="horizontal" 
+              color="white" 
+              textColor="white" 
+              taglineColor="whiteAlpha.700"
+            />
           </DrawerHeader>
           <DrawerBody p={0}>
             <Box bg="purple.600" color="white" h="full">
@@ -213,13 +221,14 @@ const DashboardLayout = () => {
                   aria-label="Abrir menú"
                 />
               )}
+              <AquaYaraLogo size="sm" variant="horizontal" />
               <Text fontSize="lg" fontWeight="semibold" color="gray.700">
                 {isDeliveryPerson() ? 'Panel de Repartidor' : 'Panel de Administración'}
               </Text>
             </HStack>
             
             <HStack spacing={4}>
-              <NotificationCenter />
+              <AdminContact variant="badge" />
               <Badge colorScheme="green" variant="subtle">
                 En línea
               </Badge>

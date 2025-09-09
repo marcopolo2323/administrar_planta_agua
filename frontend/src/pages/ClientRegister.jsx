@@ -28,6 +28,7 @@ import {
 } from '@chakra-ui/react';
 import { FaEye, FaEyeSlash, FaUser, FaGift, FaMapMarkerAlt, FaPhone } from 'react-icons/fa';
 import axios from '../utils/axios';
+import AquaYaraLogo from '../components/AquaYaraLogo';
 
 const ClientRegister = () => {
   const [formData, setFormData] = useState({
@@ -246,10 +247,14 @@ const ClientRegister = () => {
     <Box minH="100vh" bg="gray.50" display="flex" alignItems="center" justifyContent="center" p={4}>
       <Card maxW="md" w="full">
         <CardHeader textAlign="center">
-          <VStack spacing={2}>
-            <Box p={3} bg="blue.100" borderRadius="full">
-              <FaGift size={32} color="#3182ce" />
-            </Box>
+          <VStack spacing={4}>
+            <AquaYaraLogo 
+              size="lg" 
+              variant="vertical" 
+              color="blue.500" 
+              textColor="blue.600" 
+              taglineColor="teal.500"
+            />
             <Heading size="lg" color="blue.600">
               Registro de Cliente Frecuente
             </Heading>

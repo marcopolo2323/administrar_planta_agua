@@ -44,12 +44,7 @@ import {
   Spinner,
   Center,
   SimpleGrid,
-  useBreakpointValue,
-  Tabs,
-  TabList,
-  TabPanels,
-  Tab,
-  TabPanel
+  useBreakpointValue
 } from '@chakra-ui/react';
 import { SearchIcon, AddIcon, EditIcon, ViewIcon } from '@chakra-ui/icons';
 import useSaleStore from '../stores/saleStore';
@@ -317,7 +312,10 @@ const Sales = () => {
         <VStack align="start" spacing={1}>
           <Heading size="lg" color="gray.700">
             {timeFilter === 'today' ? 'Pedidos del Día' : 
-             timeFilter === 'weekly' ? 'Pedidos de la Semana' : 'Pedidos del Mes'}
+             timeFilter === 'yesterday' ? 'Pedidos de Ayer' :
+             timeFilter === 'weekly' ? 'Pedidos de la Semana' : 
+             timeFilter === 'lastWeek' ? 'Pedidos de la Semana Pasada' :
+             timeFilter === 'monthly' ? 'Pedidos del Mes' : 'Pedidos del Mes Pasado'}
           </Heading>
           <Text color="gray.600" fontSize="sm">
             {timeFilter === 'today' ? new Date().toLocaleDateString('es-ES', { 
@@ -326,7 +324,19 @@ const Sales = () => {
               month: 'long', 
               day: 'numeric' 
             }) : 
-            timeFilter === 'weekly' ? 'Semana actual' : 'Mes actual'}
+            timeFilter === 'yesterday' ? (() => {
+              const yesterday = new Date();
+              yesterday.setDate(yesterday.getDate() - 1);
+              return yesterday.toLocaleDateString('es-ES', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+              });
+            })() :
+            timeFilter === 'weekly' ? 'Semana actual' : 
+            timeFilter === 'lastWeek' ? 'Semana pasada' :
+            timeFilter === 'monthly' ? 'Mes actual' : 'Mes pasado'}
           </Text>
         </VStack>
         <Button
@@ -339,13 +349,76 @@ const Sales = () => {
       </Flex>
 
       {/* Filtros de tiempo */}
-      <Tabs value={timeFilter} onChange={handleTimeFilterChange} mb={6}>
-        <TabList>
-          <Tab value="today">Hoy</Tab>
-          <Tab value="weekly">Semana</Tab>
-          <Tab value="monthly">Mes</Tab>
-        </TabList>
-      </Tabs>
+      <Card mb={6} bg="gray.50" border="1px" borderColor="gray.200">
+        <CardBody>
+          <VStack spacing={3} align="stretch">
+            <HStack spacing={4} align="center" justify="space-between">
+              <HStack spacing={4} align="center">
+                <Text fontWeight="bold" color="gray.700" fontSize="lg">
+                  📊 Período de Análisis:
+                </Text>
+                <Select
+                  value={timeFilter}
+                  onChange={(e) => handleTimeFilterChange(e.target.value)}
+                  maxW="280px"
+                  bg="white"
+                  borderColor="blue.300"
+                  _focus={{ borderColor: "blue.500", boxShadow: "0 0 0 1px blue.500" }}
+                >
+                  <option value="today">📅 Hoy</option>
+                  <option value="yesterday">📅 Ayer</option>
+                  <option value="weekly">📅 Esta Semana</option>
+                  <option value="lastWeek">📅 Semana Pasada</option>
+                  <option value="monthly">📅 Este Mes</option>
+                  <option value="lastMonth">📅 Mes Pasado</option>
+                </Select>
+              </HStack>
+              <HStack spacing={2}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  colorScheme="blue"
+                  onClick={() => {
+                    if (timeFilter === 'today') handleTimeFilterChange('yesterday');
+                    else if (timeFilter === 'weekly') handleTimeFilterChange('lastWeek');
+                    else if (timeFilter === 'monthly') handleTimeFilterChange('lastMonth');
+                  }}
+                  isDisabled={timeFilter === 'yesterday' || timeFilter === 'lastWeek' || timeFilter === 'lastMonth'}
+                >
+                  🔄 Comparar
+                </Button>
+              </HStack>
+            </HStack>
+            <HStack spacing={2} align="center" justify="space-between">
+              <HStack spacing={2} align="center">
+                <Text fontSize="sm" color="blue.600" fontWeight="medium">
+                  ℹ️
+                </Text>
+                <Text fontSize="sm" color="gray.600">
+                  {timeFilter === 'today' ? 'Mostrando pedidos del día actual' : 
+                   timeFilter === 'yesterday' ? 'Mostrando pedidos del día anterior' :
+                   timeFilter === 'weekly' ? 'Mostrando pedidos de domingo a sábado (semana actual)' : 
+                   timeFilter === 'lastWeek' ? 'Mostrando pedidos de la semana anterior' :
+                   timeFilter === 'monthly' ? 'Mostrando pedidos del mes actual' : 'Mostrando pedidos del mes anterior'}
+                </Text>
+              </HStack>
+              <Badge 
+                colorScheme={timeFilter === 'today' || timeFilter === 'weekly' || timeFilter === 'monthly' ? 'green' : 'blue'}
+                fontSize="xs"
+                px={2}
+                py={1}
+                borderRadius="md"
+              >
+                {timeFilter === 'today' ? 'ACTUAL' : 
+                 timeFilter === 'yesterday' ? 'ANTERIOR' :
+                 timeFilter === 'weekly' ? 'ACTUAL' : 
+                 timeFilter === 'lastWeek' ? 'ANTERIOR' :
+                 timeFilter === 'monthly' ? 'ACTUAL' : 'ANTERIOR'}
+              </Badge>
+            </HStack>
+          </VStack>
+        </CardBody>
+      </Card>
 
       {/* Estadísticas */}
       <SimpleGrid columns={{ base: 1, md: 6 }} spacing={4} mb={6}>
@@ -375,7 +448,7 @@ const Sales = () => {
         </Card>
         <Card>
           <CardBody>
-            <Text fontSize="sm" color="gray.600">Bidones</Text>
+            <Text fontSize="sm" color="gray.600">Bidones Vendidos</Text>
             <Text fontSize="2xl" fontWeight="bold" color="purple.600">
               {salesStats.totalBidones}
             </Text>
@@ -383,7 +456,7 @@ const Sales = () => {
         </Card>
         <Card>
           <CardBody>
-            <Text fontSize="sm" color="gray.600">Paquetes</Text>
+            <Text fontSize="sm" color="gray.600">Paquetes Vendidos</Text>
             <Text fontSize="2xl" fontWeight="bold" color="cyan.600">
               {salesStats.totalPaquetes}
             </Text>
@@ -404,7 +477,10 @@ const Sales = () => {
           <Flex justify="space-between" align="center">
             <Heading size="md">
               {timeFilter === 'today' ? 'Pedidos del Día' : 
-               timeFilter === 'weekly' ? 'Pedidos de la Semana' : 'Pedidos del Mes'}
+               timeFilter === 'yesterday' ? 'Pedidos de Ayer' :
+               timeFilter === 'weekly' ? 'Pedidos de la Semana' : 
+               timeFilter === 'lastWeek' ? 'Pedidos de la Semana Pasada' :
+               timeFilter === 'monthly' ? 'Pedidos del Mes' : 'Pedidos del Mes Pasado'}
             </Heading>
             <InputGroup maxW="300px">
               <InputLeftElement pointerEvents="none">
@@ -424,7 +500,10 @@ const Sales = () => {
               <AlertIcon />
               <AlertTitle>
                 {timeFilter === 'today' ? 'No hay pedidos del día' : 
-                 timeFilter === 'weekly' ? 'No hay pedidos de la semana' : 'No hay pedidos del mes'}
+                 timeFilter === 'yesterday' ? 'No hay pedidos de ayer' :
+                 timeFilter === 'weekly' ? 'No hay pedidos de la semana' : 
+                 timeFilter === 'lastWeek' ? 'No hay pedidos de la semana pasada' :
+                 timeFilter === 'monthly' ? 'No hay pedidos del mes' : 'No hay pedidos del mes pasado'}
               </AlertTitle>
               <AlertDescription>
                 {searchTerm ? 'No se encontraron pedidos con el término de búsqueda.' : 

@@ -59,7 +59,20 @@ exports.getClientById = async (req, res) => {
 // Crear un nuevo cliente
 exports.createClient = async (req, res) => {
   try {
-    const { name, documentType, documentNumber, address, district, phone, email, isCompany, hasCredit } = req.body;
+    const { 
+      name, 
+      documentType, 
+      documentNumber, 
+      address, 
+      district, 
+      phone, 
+      email, 
+      isCompany, 
+      hasCredit,
+      clientStatus,
+      recommendations,
+      notes
+    } = req.body;
 
     // Verificar si ya existe un cliente con el mismo número de documento
     const existingClient = await Client.findOne({ where: { documentNumber } });
@@ -76,7 +89,10 @@ exports.createClient = async (req, res) => {
       phone,
       email,
       isCompany,
-      hasCredit
+      hasCredit,
+      clientStatus: clientStatus || 'nuevo',
+      recommendations,
+      notes
     });
 
     return res.status(201).json({
@@ -93,7 +109,21 @@ exports.createClient = async (req, res) => {
 exports.updateClient = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, documentType, documentNumber, address, district, phone, email, isCompany, hasCredit, active } = req.body;
+    const { 
+      name, 
+      documentType, 
+      documentNumber, 
+      address, 
+      district, 
+      phone, 
+      email, 
+      isCompany, 
+      hasCredit, 
+      active,
+      clientStatus,
+      recommendations,
+      notes
+    } = req.body;
 
     const client = await Client.findByPk(id);
     if (!client) {
@@ -118,7 +148,10 @@ exports.updateClient = async (req, res) => {
       email,
       isCompany,
       hasCredit,
-      active
+      active,
+      clientStatus,
+      recommendations,
+      notes
     });
 
     return res.status(200).json({

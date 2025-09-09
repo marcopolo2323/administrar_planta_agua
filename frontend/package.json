@@ -1,16 +1,17 @@
 {
-  "name": "frontend",
+  "name": "aquayara-frontend",
   "version": "1.0.0",
-  "description": "",
+  "description": "Sistema de gestión para AquaYara - Planta de Agua",
   "main": "index.js",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": ["agua", "gestión", "ventas", "pedidos", "aquayara"],
+  "author": "AquaYara Team",
+  "license": "MIT",
   "dependencies": {
     "@chakra-ui/icons": "2.0.19",
     "@chakra-ui/react": "^2.8.2",

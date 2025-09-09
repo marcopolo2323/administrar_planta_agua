@@ -85,6 +85,24 @@ const Client = sequelize.define('Client', {
   notes: {
     type: DataTypes.TEXT,
     allowNull: true
+  },
+  clientStatus: {
+    type: DataTypes.ENUM('activo', 'nuevo', 'inactivo', 'retomando'),
+    allowNull: false,
+    defaultValue: 'nuevo'
+  },
+  recommendations: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
+  lastOrderDate: {
+    type: DataTypes.DATE,
+    allowNull: true
+  },
+  totalOrders: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 0
   }
 }, {
   timestamps: true

@@ -24,6 +24,7 @@ import {
 import { useNavigate, useParams } from 'react-router-dom';
 import { FaArrowLeft, FaCheck, FaQrcode, FaCopy, FaMoneyBillWave } from 'react-icons/fa';
 import useGuestOrderStore from '../stores/guestOrderStore';
+import plinQR from '../assets/images/plin_qr.jpeg';
 
 const PaymentProcess = () => {
   const navigate = useNavigate();
@@ -150,25 +151,12 @@ const PaymentProcess = () => {
 
   const getPaymentInfo = () => {
     switch (orderData.paymentMethod) {
-      case 'yape':
-        return {
-          title: 'Pago con Yape',
-          icon: FaQrcode,
-          color: 'purple',
-          number: '999 888 777',
-          instructions: [
-            '1. Abre tu app de Yape',
-            '2. Escanea el código QR o ingresa el número',
-            '3. Ingresa el monto exacto',
-            '4. Envía el comprobante por WhatsApp'
-          ]
-        };
       case 'plin':
         return {
           title: 'Pago con Plin',
           icon: FaQrcode,
-          color: 'blue',
-          number: '999 888 777',
+          color: 'purple',
+          number: '+51 961 606 183',
           instructions: [
             '1. Abre tu app de Plin',
             '2. Escanea el código QR o ingresa el número',
@@ -245,26 +233,25 @@ const PaymentProcess = () => {
                         </Box>
                       )}
 
-                      {/* QR Code placeholder */}
-                      {paymentInfo.number && (
+                      {/* QR Code */}
+                      {paymentInfo.number && orderData.paymentMethod === 'plin' && (
                         <Box textAlign="center" p={4} bg="white" borderRadius="md">
-                          <Text fontWeight="bold" mb={2}>Código QR:</Text>
+                          <Text fontWeight="bold" mb={2}>Código QR de Plin:</Text>
                           <Box
                             w="200px"
                             h="200px"
-                            bg="gray.100"
+                            bg="white"
                             borderRadius="md"
-                            display="flex"
-                            alignItems="center"
-                            justifyContent="center"
+                            border="2px solid"
+                            borderColor="purple.200"
+                            overflow="hidden"
                             mx="auto"
                           >
-                            <VStack>
-                              <FaQrcode size="48px" color="gray" />
-                              <Text fontSize="sm" color="gray.500">
-                                QR Code
-                              </Text>
-                            </VStack>
+                            <img 
+                              src={plinQR} 
+                              alt="QR de Plin" 
+                              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                            />
                           </Box>
                         </Box>
                       )}

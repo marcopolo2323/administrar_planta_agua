@@ -33,6 +33,8 @@ import {
 import axios from '../utils/axios';
 import useAuthStore from '../stores/authStore';
 import useDistrictStore from '../stores/districtStore';
+import bidonImage from '../assets/images/img_buyon.jpeg';
+import paqueteImage from '../assets/images/img_paquete_botellas.jpeg';
 
 const ClientOrder = () => {
   const [products, setProducts] = useState([]);
@@ -48,6 +50,17 @@ const ClientOrder = () => {
   const [loadingProfile, setLoadingProfile] = useState(false);
   const { user } = useAuthStore();
   const { districts: storeDistricts, fetchDistricts } = useDistrictStore();
+
+  // Función para obtener la imagen del producto
+  const getProductImage = (productName) => {
+    const name = productName.toLowerCase();
+    if (name.includes('bidón') || name.includes('bidon') || name.includes('garrafa')) {
+      return bidonImage;
+    } else if (name.includes('paquete') || name.includes('pack') || name.includes('botellas')) {
+      return paqueteImage;
+    }
+    return bidonImage; // Imagen por defecto
+  };
   const toast = useToast();
 
   useEffect(() => {
@@ -331,9 +344,25 @@ const ClientOrder = () => {
                 ) : (
                   products.map((product) => (
                   <Box key={product.id} p={4} border="1px" borderColor="gray.200" borderRadius="md">
-                    <HStack justify="space-between">
-                      <VStack align="start" spacing={1}>
-                        <Text fontWeight="bold">{product.name}</Text>
+                    <HStack spacing={4} align="start">
+                      {/* Imagen del producto */}
+                      <Box flexShrink={0}>
+                        <img
+                          src={getProductImage(product.name)}
+                          alt={product.name}
+                          style={{
+                            width: '80px',
+                            height: '80px',
+                            objectFit: 'cover',
+                            borderRadius: '8px',
+                            border: '2px solid #e2e8f0'
+                          }}
+                        />
+                      </Box>
+                      
+                      {/* Información del producto */}
+                      <VStack align="start" spacing={1} flex={1}>
+                        <Text fontWeight="bold" fontSize="lg">{product.name}</Text>
                         <Text fontSize="sm" color="gray.600">
                           {product.description}
                         </Text>
@@ -358,11 +387,14 @@ const ClientOrder = () => {
                           )}
                         </VStack>
                       </VStack>
+                      
+                      {/* Botón de agregar */}
                       <Button
                         size="sm"
                         colorScheme="blue"
                         leftIcon={<FaPlus />}
                         onClick={() => addToCart(product)}
+                        flexShrink={0}
                       >
                         Agregar
                       </Button>
@@ -388,13 +420,31 @@ const ClientOrder = () => {
                 <VStack spacing={4} align="stretch">
                   {cart.map((item) => (
                     <Box key={item.productId} p={3} border="1px" borderColor="gray.200" borderRadius="md">
-                      <HStack justify="space-between">
-                        <VStack align="start" spacing={1}>
+                      <HStack spacing={3} align="start">
+                        {/* Imagen del producto en el carrito */}
+                        <Box flexShrink={0}>
+                          <img
+                            src={getProductImage(item.product.name)}
+                            alt={item.product.name}
+                            style={{
+                              width: '50px',
+                              height: '50px',
+                              objectFit: 'cover',
+                              borderRadius: '6px',
+                              border: '1px solid #e2e8f0'
+                            }}
+                          />
+                        </Box>
+                        
+                        {/* Información del producto */}
+                        <VStack align="start" spacing={1} flex={1}>
                           <Text fontWeight="bold">{item.product.name}</Text>
                           <Text fontSize="sm" color="gray.600">
                             S/ {item.price.toFixed(2)} c/u
                           </Text>
                         </VStack>
+                        
+                        {/* Controles de cantidad */}
                         <HStack spacing={2}>
                           <Button
                             size="xs"

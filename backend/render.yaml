@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: aquayara-backend
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        fromDatabase:
+          name: aquayara-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CORS_ORIGIN
+        value: https://aquayara.vercel.app
+
+databases:
+  - name: aquayara-db
+    plan: free
+    databaseName: aquayara
+    user: aquayara_user

@@ -67,6 +67,27 @@ const Order = sequelize.define('Order', {
     type: DataTypes.TEXT,
     allowNull: true
   },
+  subscriptionId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'Subscriptions',
+      key: 'id'
+    },
+    comment: 'ID de la suscripción si el pedido es parte de un plan'
+  },
+  isSubscriptionOrder: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+    comment: 'Indica si el pedido es parte de una suscripción'
+  },
+  bottlesFromSubscription: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    defaultValue: 0,
+    comment: 'Cantidad de bidones descontados de la suscripción'
+  },
   deliveryFee: {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: false,

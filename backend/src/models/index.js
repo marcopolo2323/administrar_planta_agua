@@ -23,6 +23,8 @@ const GuestOrderProduct = require('./guestOrderProduct.model');
 const DeliveryFee = require('./deliveryFee.model');
 const District = require('./district.model');
 const Voucher = require('./voucher.model');
+const Subscription = require('./subscription.model');
+const SubscriptionPlan = require('./subscriptionPlan.model');
 
 // Definir relaciones después de que todos los modelos estén inicializados
 // Relaciones de ventas
@@ -182,6 +184,15 @@ District.hasMany(GuestOrder, { foreignKey: 'districtId', as: 'guestOrders' });
 GuestOrder.belongsTo(User, { foreignKey: 'deliveryPersonId', as: 'deliveryPerson' });
 User.hasMany(GuestOrder, { foreignKey: 'deliveryPersonId', as: 'assignedGuestOrders' });
 
+// Relaciones de suscripciones
+Client.hasMany(Subscription, { foreignKey: 'clientId', as: 'subscriptions' });
+Subscription.belongsTo(Client, { foreignKey: 'clientId', as: 'client' });
+
+SubscriptionPlan.hasMany(Subscription, { foreignKey: 'planId', as: 'subscriptions' });
+Subscription.belongsTo(SubscriptionPlan, { foreignKey: 'planId', as: 'plan' });
+
+Subscription.hasMany(Order, { foreignKey: 'subscriptionId', as: 'orders' });
+Order.belongsTo(Subscription, { foreignKey: 'subscriptionId', as: 'subscription' });
 
 // Exportar modelos y conexión
 module.exports = {
@@ -207,5 +218,7 @@ module.exports = {
   GuestOrderProduct,
   DeliveryFee,
   District,
-  Voucher
+  Voucher,
+  Subscription,
+  SubscriptionPlan
 };

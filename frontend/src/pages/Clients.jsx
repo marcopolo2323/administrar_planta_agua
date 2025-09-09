@@ -33,6 +33,7 @@ import {
   FormLabel,
   Select,
   Switch,
+  Textarea,
   Alert,
   AlertIcon,
   AlertTitle,
@@ -78,7 +79,10 @@ const Clients = () => {
     hasCredit: false,
     creditLimit: '',
     paymentDueDay: '',
-    active: true
+    active: true,
+    clientStatus: 'nuevo',
+    recommendations: '',
+    notes: ''
   });
 
   const isMobile = useBreakpointValue({ base: true, md: false });
@@ -183,7 +187,10 @@ const Clients = () => {
       hasCredit: client.hasCredit || false,
       creditLimit: client.creditLimit || '',
       paymentDueDay: client.paymentDueDay || '',
-      active: client.active
+      active: client.active,
+      clientStatus: client.clientStatus || 'nuevo',
+      recommendations: client.recommendations || '',
+      notes: client.notes || ''
     });
     onOpen();
   };
@@ -198,6 +205,36 @@ const Clients = () => {
         return 'purple';
       default:
         return 'gray';
+    }
+  };
+
+  const getClientStatusColor = (status) => {
+    switch (status) {
+      case 'activo':
+        return 'green';
+      case 'nuevo':
+        return 'blue';
+      case 'inactivo':
+        return 'red';
+      case 'retomando':
+        return 'orange';
+      default:
+        return 'gray';
+    }
+  };
+
+  const getClientStatusText = (status) => {
+    switch (status) {
+      case 'activo':
+        return 'Activo';
+      case 'nuevo':
+        return 'Nuevo';
+      case 'inactivo':
+        return 'Inactivo';
+      case 'retomando':
+        return 'Retomando';
+      default:
+        return 'Nuevo';
     }
   };
 
@@ -323,7 +360,9 @@ const Clients = () => {
                   <Th>Documento</Th>
                   <Th>Contacto</Th>
                   <Th>Estado</Th>
+                  <Th>Tipo Cliente</Th>
                   <Th>Crédito</Th>
+                  <Th>Pedidos</Th>
                   <Th>Acciones</Th>
                 </Tr>
               </Thead>
@@ -362,6 +401,11 @@ const Clients = () => {
                       </Badge>
                     </Td>
                     <Td>
+                      <Badge colorScheme={getClientStatusColor(client.clientStatus)}>
+                        {getClientStatusText(client.clientStatus)}
+                      </Badge>
+                    </Td>
+                    <Td>
                       {client.hasCredit ? (
                         <Text color="purple.600" fontWeight="bold">
                           S/ {parseFloat(client.creditLimit || 0).toFixed(2)}
@@ -369,6 +413,18 @@ const Clients = () => {
                       ) : (
                         <Text color="gray.400">-</Text>
                       )}
+                    </Td>
+                    <Td>
+                      <VStack align="start" spacing={1}>
+                        <Text fontSize="sm" fontWeight="bold">
+                          {client.totalOrders || 0} pedidos
+                        </Text>
+                        {client.lastOrderDate && (
+                          <Text fontSize="xs" color="gray.500">
+                            Último: {new Date(client.lastOrderDate).toLocaleDateString()}
+                          </Text>
+                        )}
+                      </VStack>
                     </Td>
                     <Td>
                       <HStack spacing={2}>
@@ -507,6 +563,39 @@ const Clients = () => {
                 <Switch
                   isChecked={formData.active}
                   onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
+                />
+              </FormControl>
+
+              <FormControl>
+                <FormLabel>Estado del Cliente</FormLabel>
+                <Select
+                  value={formData.clientStatus}
+                  onChange={(e) => setFormData({ ...formData, clientStatus: e.target.value })}
+                >
+                  <option value="nuevo">Nuevo</option>
+                  <option value="activo">Activo</option>
+                  <option value="inactivo">Inactivo</option>
+                  <option value="retomando">Retomando</option>
+                </Select>
+              </FormControl>
+
+              <FormControl>
+                <FormLabel>Recomendaciones del Cliente</FormLabel>
+                <Textarea
+                  value={formData.recommendations}
+                  onChange={(e) => setFormData({ ...formData, recommendations: e.target.value })}
+                  placeholder="¿Qué puede mejorar la empresa? ¿Qué sugiere el cliente?"
+                  rows={3}
+                />
+              </FormControl>
+
+              <FormControl>
+                <FormLabel>Notas Adicionales</FormLabel>
+                <Textarea
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  placeholder="Notas adicionales sobre el cliente"
+                  rows={2}
                 />
               </FormControl>
             </VStack>
