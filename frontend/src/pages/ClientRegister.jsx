@@ -42,7 +42,9 @@ const ClientRegister = () => {
     phone: '',
     address: '',
     district: '',
-    reference: ''
+    reference: '',
+    clientStatus: 'nuevo',
+    recommendations: ''
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -117,7 +119,19 @@ const ClientRegister = () => {
     if (formData.documentType === 'DNI' && (!/^\d{8}$/.test(formData.documentNumber))) {
       toast({
         title: 'Error',
-        description: 'El DNI debe tener 8 dígitos',
+        description: 'El DNI debe tener exactamente 8 dígitos',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+      setLoading(false);
+      return;
+    }
+
+    if (formData.documentType === 'RUC' && (!/^\d{11}$/.test(formData.documentNumber))) {
+      toast({
+        title: 'Error',
+        description: 'El RUC debe tener exactamente 11 dígitos',
         status: 'error',
         duration: 3000,
         isClosable: true,
@@ -138,7 +152,9 @@ const ClientRegister = () => {
         address: formData.address,
         district: formData.district,
         defaultDeliveryAddress: formData.address,
-        defaultContactPhone: formData.phone
+        defaultContactPhone: formData.phone,
+        clientStatus: formData.clientStatus,
+        recommendations: formData.recommendations
       });
 
       if (response.data.success) {
@@ -245,7 +261,7 @@ const ClientRegister = () => {
 
   return (
     <Box minH="100vh" bg="gray.50" display="flex" alignItems="center" justifyContent="center" p={4}>
-      <Card maxW="md" w="full">
+      <Card maxW="lg" w="full">
         <CardHeader textAlign="center">
           <VStack spacing={4}>
             <AquaYaraLogo 
@@ -259,190 +275,247 @@ const ClientRegister = () => {
               Registro de Cliente Frecuente
             </Heading>
             <Text color="gray.600" fontSize="sm">
-              Crea tu cuenta para acceder a precios especiales y vales
+              Crea tu cuenta para acceder a precios especiales y suscripciones
             </Text>
           </VStack>
         </CardHeader>
         <CardBody>
           <form onSubmit={handleSubmit}>
-            <VStack spacing={4}>
-              {/* Nombre Completo */}
-              <FormControl isRequired>
-                <FormLabel>Nombre Completo</FormLabel>
-                <Input
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  placeholder="Tu nombre completo"
-                />
-              </FormControl>
-
-              {/* Usuario */}
-              <FormControl isRequired>
-                <FormLabel>Usuario</FormLabel>
-                <InputGroup>
-                  <InputLeftElement pointerEvents="none">
-                    <FaUser color="gray.300" />
-                  </InputLeftElement>
-                  <Input
-                    type="text"
-                    name="username"
-                    value={formData.username}
-                    onChange={handleChange}
-                    placeholder="Ingresa tu usuario"
-                  />
-                </InputGroup>
-              </FormControl>
-
-              {/* Email */}
-              <FormControl isRequired>
-                <FormLabel>Email</FormLabel>
-                <Input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  placeholder="tu@email.com"
-                />
-              </FormControl>
-
-              {/* Tipo de Documento */}
-              <FormControl isRequired>
-                <FormLabel>Tipo de Documento</FormLabel>
-                <Select
-                  name="documentType"
-                  value={formData.documentType}
-                  onChange={handleChange}
-                >
-                  <option value="DNI">DNI</option>
-                  <option value="CE">Carné de Extranjería</option>
-                  <option value="PASAPORTE">Pasaporte</option>
-                </Select>
-              </FormControl>
-
-              {/* Número de Documento */}
-              <FormControl isRequired>
-                <FormLabel>Número de Documento</FormLabel>
-                <Input
-                  type="text"
-                  name="documentNumber"
-                  value={formData.documentNumber}
-                  onChange={handleChange}
-                  placeholder="12345678"
-                />
-              </FormControl>
-
-              {/* Teléfono */}
-              <FormControl isRequired>
-                <FormLabel>Teléfono</FormLabel>
-                <InputGroup>
-                  <InputLeftElement pointerEvents="none">
-                    <FaPhone color="gray.300" />
-                  </InputLeftElement>
-                  <Input
-                    type="tel"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleChange}
-                    placeholder="999999999"
-                  />
-                </InputGroup>
-              </FormControl>
-
-              {/* Distrito */}
-              <FormControl isRequired>
-                <FormLabel>Distrito</FormLabel>
-                <Select
-                  name="district"
-                  value={formData.district}
-                  onChange={handleChange}
-                  placeholder="Selecciona tu distrito"
-                >
-                  {districts.map(district => (
-                    <option key={district.id} value={district.name}>
-                      {district.name} - Flete: S/ {parseFloat(district.deliveryFee || 0).toFixed(2)}
-                    </option>
-                  ))}
-                </Select>
-              </FormControl>
-
-              {/* Dirección */}
-              <FormControl isRequired>
-                <FormLabel>Dirección</FormLabel>
-                <InputGroup>
-                  <InputLeftElement pointerEvents="none">
-                    <FaMapMarkerAlt color="gray.300" />
-                  </InputLeftElement>
-                  <Input
-                    type="text"
-                    name="address"
-                    value={formData.address}
-                    onChange={handleChange}
-                    placeholder="Calle, número, piso, etc."
-                  />
-                </InputGroup>
-              </FormControl>
-
-              {/* Referencia */}
-              <FormControl>
-                <FormLabel>Referencia (opcional)</FormLabel>
-                <Textarea
-                  name="reference"
-                  value={formData.reference}
-                  onChange={handleChange}
-                  placeholder="Cerca de... (opcional)"
-                  rows={2}
-                />
-              </FormControl>
-
-              {/* Contraseña */}
-              <FormControl isRequired>
-                <FormLabel>Contraseña</FormLabel>
-                <InputGroup>
-                  <Input
-                    type={showPassword ? 'text' : 'password'}
-                    name="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    placeholder="Mínimo 6 caracteres"
-                    autoComplete="new-password"
-                  />
-                  <InputRightElement>
-                    <IconButton
-                      aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-                      icon={showPassword ? <FaEyeSlash /> : <FaEye />}
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowPassword(!showPassword)}
+            <VStack spacing={6}>
+              {/* Información Personal */}
+              <Box w="full">
+                <Heading size="md" color="blue.600" mb={4}>Información Personal</Heading>
+                <VStack spacing={4}>
+                  {/* Nombre Completo */}
+                  <FormControl isRequired>
+                    <FormLabel>Nombre Completo</FormLabel>
+                    <Input
+                      type="text"
+                      name="name"
+                      value={formData.name}
+                      onChange={handleChange}
+                      placeholder="Tu nombre completo"
                     />
-                  </InputRightElement>
-                </InputGroup>
-              </FormControl>
+                  </FormControl>
 
-              {/* Confirmar Contraseña */}
-              <FormControl isRequired>
-                <FormLabel>Confirmar Contraseña</FormLabel>
-                <InputGroup>
-                  <Input
-                    type={showConfirmPassword ? 'text' : 'password'}
-                    name="confirmPassword"
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
-                    placeholder="Repite tu contraseña"
-                    autoComplete="new-password"
-                  />
-                  <InputRightElement>
-                    <IconButton
-                      aria-label={showConfirmPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-                      icon={showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  {/* Usuario */}
+                  <FormControl isRequired>
+                    <FormLabel>Usuario</FormLabel>
+                    <InputGroup>
+                      <InputLeftElement pointerEvents="none">
+                        <FaUser color="gray.300" />
+                      </InputLeftElement>
+                      <Input
+                        type="text"
+                        name="username"
+                        value={formData.username}
+                        onChange={handleChange}
+                        placeholder="Ingresa tu usuario"
+                      />
+                    </InputGroup>
+                  </FormControl>
+
+                  {/* Email */}
+                  <FormControl isRequired>
+                    <FormLabel>Email</FormLabel>
+                    <Input
+                      type="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleChange}
+                      placeholder="tu@email.com"
                     />
-                  </InputRightElement>
-                </InputGroup>
-              </FormControl>
+                  </FormControl>
+                </VStack>
+              </Box>
+
+              {/* Información de Documento */}
+              <Box w="full">
+                <Heading size="md" color="blue.600" mb={4}>Documento de Identidad</Heading>
+                <VStack spacing={4}>
+                  {/* Tipo de Documento y Número en la misma fila */}
+                  <HStack spacing={4} w="full">
+                    <FormControl isRequired flex="1">
+                      <FormLabel>Tipo de Documento</FormLabel>
+                      <Select
+                        name="documentType"
+                        value={formData.documentType}
+                        onChange={handleChange}
+                      >
+                        <option value="DNI">DNI</option>
+                        <option value="RUC">RUC</option>
+                      </Select>
+                    </FormControl>
+
+                    <FormControl isRequired flex="2">
+                      <FormLabel>Número de Documento</FormLabel>
+                      <Input
+                        type="text"
+                        name="documentNumber"
+                        value={formData.documentNumber}
+                        onChange={handleChange}
+                        placeholder={formData.documentType === 'DNI' ? '12345678' : '12345678901'}
+                        maxLength={formData.documentType === 'DNI' ? 8 : 11}
+                      />
+                    </FormControl>
+                  </HStack>
+
+                  {/* Teléfono */}
+                  <FormControl isRequired>
+                    <FormLabel>Teléfono</FormLabel>
+                    <InputGroup>
+                      <InputLeftElement pointerEvents="none">
+                        <FaPhone color="gray.300" />
+                      </InputLeftElement>
+                      <Input
+                        type="tel"
+                        name="phone"
+                        value={formData.phone}
+                        onChange={handleChange}
+                        placeholder="999999999"
+                      />
+                    </InputGroup>
+                  </FormControl>
+                </VStack>
+              </Box>
+
+              {/* Información de Ubicación */}
+              <Box w="full">
+                <Heading size="md" color="blue.600" mb={4}>Ubicación</Heading>
+                <VStack spacing={4}>
+                  {/* Distrito */}
+                  <FormControl isRequired>
+                    <FormLabel>Distrito</FormLabel>
+                    <Select
+                      name="district"
+                      value={formData.district}
+                      onChange={handleChange}
+                      placeholder="Selecciona tu distrito"
+                    >
+                      {districts.map(district => (
+                        <option key={district.id} value={district.name}>
+                          {district.name} - Flete: S/ {parseFloat(district.deliveryFee || 0).toFixed(2)}
+                        </option>
+                      ))}
+                    </Select>
+                  </FormControl>
+
+                  {/* Dirección */}
+                  <FormControl isRequired>
+                    <FormLabel>Dirección</FormLabel>
+                    <InputGroup>
+                      <InputLeftElement pointerEvents="none">
+                        <FaMapMarkerAlt color="gray.300" />
+                      </InputLeftElement>
+                      <Input
+                        type="text"
+                        name="address"
+                        value={formData.address}
+                        onChange={handleChange}
+                        placeholder="Calle, número, piso, etc."
+                      />
+                    </InputGroup>
+                  </FormControl>
+
+                  {/* Referencia */}
+                  <FormControl>
+                    <FormLabel>Referencia (opcional)</FormLabel>
+                    <Textarea
+                      name="reference"
+                      value={formData.reference}
+                      onChange={handleChange}
+                      placeholder="Cerca de... (opcional)"
+                      rows={2}
+                    />
+                  </FormControl>
+                </VStack>
+              </Box>
+
+              {/* Información de Cliente */}
+              <Box w="full">
+                <Heading size="md" color="blue.600" mb={4}>Información de Cliente</Heading>
+                <VStack spacing={4}>
+                  {/* Estado del Cliente */}
+                  <FormControl isRequired>
+                    <FormLabel>Tipo de Cliente</FormLabel>
+                    <Select
+                      name="clientStatus"
+                      value={formData.clientStatus}
+                      onChange={handleChange}
+                    >
+                      <option value="nuevo">Nuevo Cliente</option>
+                      <option value="activo">Cliente Antiguo/Activo</option>
+                      <option value="retomando">Retomando el Servicio</option>
+                    </Select>
+                  </FormControl>
+
+                  {/* Recomendaciones */}
+                  <FormControl>
+                    <FormLabel>Recomendaciones (opcional)</FormLabel>
+                    <Textarea
+                      name="recommendations"
+                      value={formData.recommendations}
+                      onChange={handleChange}
+                      placeholder="¿Qué opina sobre nuestro servicio? ¿En qué podemos mejorar? (opcional)"
+                      rows={3}
+                    />
+                  </FormControl>
+                </VStack>
+              </Box>
+
+              {/* Información de Seguridad */}
+              <Box w="full">
+                <Heading size="md" color="blue.600" mb={4}>Seguridad</Heading>
+                <VStack spacing={4}>
+                  {/* Contraseña */}
+                  <FormControl isRequired>
+                    <FormLabel>Contraseña</FormLabel>
+                    <InputGroup>
+                      <Input
+                        type={showPassword ? 'text' : 'password'}
+                        name="password"
+                        value={formData.password}
+                        onChange={handleChange}
+                        placeholder="Mínimo 6 caracteres"
+                        autoComplete="new-password"
+                      />
+                      <InputRightElement>
+                        <IconButton
+                          aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                          icon={showPassword ? <FaEyeSlash /> : <FaEye />}
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setShowPassword(!showPassword)}
+                        />
+                      </InputRightElement>
+                    </InputGroup>
+                  </FormControl>
+
+                  {/* Confirmar Contraseña */}
+                  <FormControl isRequired>
+                    <FormLabel>Confirmar Contraseña</FormLabel>
+                    <InputGroup>
+                      <Input
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        name="confirmPassword"
+                        value={formData.confirmPassword}
+                        onChange={handleChange}
+                        placeholder="Repite tu contraseña"
+                        autoComplete="new-password"
+                      />
+                      <InputRightElement>
+                        <IconButton
+                          aria-label={showConfirmPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                          icon={showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        />
+                      </InputRightElement>
+                    </InputGroup>
+                  </FormControl>
+                </VStack>
+              </Box>
 
               <Button
                 type="submit"

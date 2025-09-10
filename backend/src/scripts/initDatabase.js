@@ -29,6 +29,11 @@ const initDatabase = async () => {
     await Client.sync({ force: true });
     await District.sync({ force: true });
     
+    console.log('   🔄 Creando tablas de suscripciones...');
+    const { SubscriptionPlan, Subscription } = require('../models');
+    await SubscriptionPlan.sync({ force: true });
+    await Subscription.sync({ force: true });
+    
     console.log('   🔄 Creando tablas de delivery...');
     await DeliveryFee.sync({ force: true });
     await DeliveryPerson.sync({ force: true });

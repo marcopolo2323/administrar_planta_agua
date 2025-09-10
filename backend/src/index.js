@@ -69,6 +69,7 @@ const voucherRoutes = require('./routes/voucher.routes');
 const userRoutes = require('./routes/user.routes');
 const clientPaymentsRoutes = require('./routes/client.payments.routes');
 const subscriptionRoutes = require('./routes/subscription.routes');
+const monthlyPaymentRoutes = require('./routes/monthlyPayment.routes');
 
 // Rutas públicas (deben ir antes de las protegidas)
 app.get('/api/delivery-fees', async (req, res) => {
@@ -107,6 +108,7 @@ app.use('/api/vouchers', voucherRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/client-payments', clientPaymentsRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
+app.use('/api/monthly-payments', monthlyPaymentRoutes);
 app.use('/api/reports', reportRoutes);
 
 // Rutas de productos (mantener compatibilidad)

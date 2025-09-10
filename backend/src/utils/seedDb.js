@@ -81,7 +81,11 @@ async function seedDatabase() {
         active: true,
         userId: clienteFrecuente.id,
         defaultDeliveryAddress: 'Av. Los Pinos 123',
-        defaultContactPhone: '966666666'
+        defaultContactPhone: '966666666',
+        clientStatus: 'activo',
+        recommendations: 'Excelente servicio, muy puntual en las entregas. Recomiendo mejorar la comunicación sobre el estado del pedido.',
+        lastOrderDate: new Date(),
+        totalOrders: 5
       },
       {
         name: 'María López',
@@ -98,7 +102,11 @@ async function seedDatabase() {
         paymentDueDay: 30,
         active: true,
         defaultDeliveryAddress: 'Jr. Las Flores 456',
-        defaultContactPhone: '955555555'
+        defaultContactPhone: '955555555',
+        clientStatus: 'nuevo',
+        recommendations: 'Primera vez que uso el servicio, espero que sea bueno.',
+        lastOrderDate: null,
+        totalOrders: 0
       }
     ]);
 

@@ -17,13 +17,29 @@ exports.registerClient = async (req, res) => {
       district, 
       phone, 
       defaultDeliveryAddress,
-      defaultContactPhone
+      defaultContactPhone,
+      clientStatus,
+      recommendations
     } = req.body;
 
     // Verificar si el usuario ya existe
     const existingUser = await User.findOne({ where: { email } });
     if (existingUser) {
       return res.status(400).json({ message: 'El correo electrónico ya está registrado' });
+    }
+
+    // Validar tipo de documento
+    if (!['DNI', 'RUC'].includes(documentType)) {
+      return res.status(400).json({ message: 'Tipo de documento no válido. Solo se acepta DNI o RUC' });
+    }
+
+    // Validar formato de documento
+    if (documentType === 'DNI' && (!/^\d{8}$/.test(documentNumber))) {
+      return res.status(400).json({ message: 'El DNI debe tener exactamente 8 dígitos' });
+    }
+
+    if (documentType === 'RUC' && (!/^\d{11}$/.test(documentNumber))) {
+      return res.status(400).json({ message: 'El RUC debe tener exactamente 11 dígitos' });
     }
 
     // Verificar si el número de documento ya existe
@@ -55,7 +71,9 @@ exports.registerClient = async (req, res) => {
         hasCredit: true, // Habilitar crédito para clientes frecuentes
         creditLimit: 1000.00, // Límite de crédito inicial
         defaultDeliveryAddress: defaultDeliveryAddress || address,
-        defaultContactPhone: defaultContactPhone || phone
+        defaultContactPhone: defaultContactPhone || phone,
+        clientStatus: clientStatus || 'nuevo',
+        recommendations
       }, { transaction: t });
 
       return { user, client };

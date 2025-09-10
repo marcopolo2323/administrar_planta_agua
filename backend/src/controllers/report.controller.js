@@ -20,7 +20,7 @@ exports.generateReport = async (req, res) => {
 
     switch (type) {
       case 'sales':
-        reportData = await generateSalesReport(start, end);
+        reportData = await exports.generateSalesReport(start, end);
         break;
       case 'orders':
         reportData = await generateOrdersReport(start, end);

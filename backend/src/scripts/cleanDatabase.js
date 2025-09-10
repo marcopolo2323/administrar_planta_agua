@@ -2,8 +2,8 @@ const { sequelize } = require('../models');
 
 const cleanDatabase = async () => {
   try {
-    console.log('🧹 Limpiando base de datos...');
-    console.log('================================');
+    console.log('🧹 Iniciando limpieza completa de la base de datos...');
+    console.log('================================================');
     
     // Obtener todas las tablas
     const [tables] = await sequelize.query(`
@@ -14,41 +14,38 @@ const cleanDatabase = async () => {
       AND tablename NOT LIKE 'sql_%'
     `);
     
-    console.log(`📋 Encontradas ${tables.length} tablas:`);
-    tables.forEach(table => {
-      console.log(`   - ${table.tablename}`);
-    });
+    console.log(`📋 Encontradas ${tables.length} tablas para limpiar`);
     
-    // Deshabilitar restricciones de clave foránea temporalmente
-    console.log('\n🔓 Deshabilitando restricciones de clave foránea...');
+    // Deshabilitar triggers de foreign key temporalmente
     await sequelize.query('SET session_replication_role = replica;');
     
-    // Eliminar todas las tablas
-    console.log('\n🗑️ Eliminando tablas...');
+    // Limpiar cada tabla
     for (const table of tables) {
-      try {
-        await sequelize.query(`DROP TABLE IF EXISTS "${table.tablename}" CASCADE;`);
-        console.log(`   ✅ ${table.tablename} eliminada`);
-      } catch (error) {
-        console.log(`   ⚠️ Error al eliminar ${table.tablename}: ${error.message}`);
-      }
+      const tableName = table.tablename;
+      console.log(`🗑️ Limpiando tabla: ${tableName}`);
+      await sequelize.query(`TRUNCATE TABLE "${tableName}" RESTART IDENTITY CASCADE;`);
     }
     
-    // Rehabilitar restricciones de clave foránea
-    console.log('\n🔒 Rehabilitando restricciones de clave foránea...');
+    // Rehabilitar triggers de foreign key
     await sequelize.query('SET session_replication_role = DEFAULT;');
     
-    console.log('\n✅ Base de datos limpiada completamente');
-    console.log('================================');
-    console.log('💡 Ahora puedes ejecutar: node src/scripts/initDatabase.js');
-    console.log('   para crear una base de datos completamente nueva');
+    console.log('\n✅ ¡Base de datos limpiada completamente!');
+    console.log('================================================');
+    console.log('📊 Tablas limpiadas:');
+    tables.forEach(table => console.log(`   - ${table.tablename}`));
+    
+    console.log('\n⚠️ IMPORTANTE:');
+    console.log('   - Todos los datos han sido eliminados');
+    console.log('   - Los IDs se reiniciarán desde 1');
+    console.log('   - Las tablas están vacías pero la estructura se mantiene');
+    
+    console.log('\n📝 Próximos pasos:');
+    console.log('   1. Ejecutar: node initDatabase.js (para datos de prueba)');
+    console.log('   2. O ejecutar: node migrateExcelClients.js <archivo.xlsx> (para migrar desde Excel)');
     
   } catch (error) {
-    console.error('❌ Error al limpiar la base de datos:', error);
+    console.error('❌ Error durante la limpieza:', error);
     throw error;
-  } finally {
-    await sequelize.close();
-    console.log('\n🔌 Conexión a la base de datos cerrada');
   }
 };
 

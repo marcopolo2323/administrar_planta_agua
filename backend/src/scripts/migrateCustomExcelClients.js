@@ -17,12 +17,12 @@ const generateTempPassword = () => {
   return Math.random().toString(36).slice(-8);
 };
 
-// Función para mapear estado del cliente desde Excel
+// Función para mapear estado del cliente desde tu Excel
 const mapClientStatus = (excelStatus) => {
   if (!excelStatus) return 'nuevo';
   
   const status = excelStatus.toLowerCase().trim();
-  if (status.includes('activo') || status.includes('antiguo')) return 'activo';
+  if (status.includes('antiguo') || status.includes('activo')) return 'activo';
   if (status.includes('nuevo')) return 'nuevo';
   if (status.includes('retomando') || status.includes('retomar')) return 'retomando';
   if (status.includes('inactivo')) return 'inactivo';
@@ -30,9 +30,20 @@ const mapClientStatus = (excelStatus) => {
   return 'nuevo'; // Por defecto
 };
 
-const migrateExcelClients = async (excelFilePath) => {
+// Función para determinar tipo de documento
+const getDocumentType = (documentNumber) => {
+  if (!documentNumber) return 'DNI';
+  
+  const doc = documentNumber.toString().trim();
+  if (doc.length === 11) return 'RUC';
+  if (doc.length === 8) return 'DNI';
+  
+  return 'DNI'; // Por defecto
+};
+
+const migrateCustomExcelClients = async (excelFilePath) => {
   try {
-    console.log('🚀 Iniciando migración de clientes desde Excel...');
+    console.log('🚀 Iniciando migración de clientes desde Excel personalizado...');
     console.log('================================================');
     
     // Verificar que el archivo existe
@@ -60,42 +71,31 @@ const migrateExcelClients = async (excelFilePath) => {
     console.log('\n📋 Estructura del archivo:');
     console.log('Columnas encontradas:', Object.keys(jsonData[0]));
     
-    // Mapear columnas (ajustar según tu archivo Excel)
-    const columnMapping = {
-      name: 'nombre' || 'name' || 'Nombre',
-      documentType: 'tipo_documento' || 'documentType' || 'Tipo Documento',
-      documentNumber: 'numero_documento' || 'documentNumber' || 'Número Documento',
-      phone: 'telefono' || 'phone' || 'Teléfono',
-      email: 'email' || 'correo' || 'Email',
-      address: 'direccion' || 'address' || 'Dirección',
-      district: 'distrito' || 'district' || 'Distrito',
-      clientStatus: 'estado_cliente' || 'clientStatus' || 'Estado Cliente',
-      recommendations: 'recomendaciones' || 'recommendations' || 'Recomendaciones',
-      notes: 'notas' || 'notes' || 'Notas'
-    };
-    
     console.log('\n🔄 Iniciando migración...');
     
     let successCount = 0;
     let errorCount = 0;
     const errors = [];
+    const credentials = [];
     
     for (let i = 0; i < jsonData.length; i++) {
       const row = jsonData[i];
       const rowNumber = i + 2; // +2 porque Excel empieza en 1 y la primera fila es header
       
       try {
-        // Extraer datos del row
-        const name = row[columnMapping.name] || row['nombre'] || row['name'] || row['Nombre'];
-        const documentType = row[columnMapping.documentType] || row['tipo_documento'] || row['documentType'] || 'DNI';
-        const documentNumber = row[columnMapping.documentNumber] || row['numero_documento'] || row['documentNumber'] || row['Número Documento'];
-        const phone = row[columnMapping.phone] || row['telefono'] || row['phone'] || row['Teléfono'];
-        const email = row[columnMapping.email] || row['email'] || row['correo'] || row['Email'];
-        const address = row[columnMapping.address] || row['direccion'] || row['address'] || row['Dirección'];
-        const district = row[columnMapping.district] || row['distrito'] || row['district'] || row['Distrito'];
-        const clientStatus = mapClientStatus(row[columnMapping.clientStatus] || row['estado_cliente'] || row['clientStatus'] || row['Estado Cliente']);
-        const recommendations = row[columnMapping.recommendations] || row['recomendaciones'] || row['recommendations'] || row['Recomendaciones'] || '';
-        const notes = row[columnMapping.notes] || row['notas'] || row['notes'] || row['Notas'] || '';
+        // Extraer datos del row usando los nombres exactos de tus columnas
+        const name = row['NOMBRE COMPLETO O RAZON SOCIAL'] || row['NOMBRE COMPLETO O RAZÓN SOCIAL'];
+        const documentNumber = String(row['DNI O RUC'] || '').trim();
+        const phone = String(row['CELULAR'] || '').trim();
+        const email = row['Dirección de correo electrónico'] || row['GMAIL'];
+        const address = row['VIVIENDA (JIRON, AVENIDA, AA.HH)'];
+        const district = row['Distrito'];
+        const clientStatus = mapClientStatus(row['CLIENTE']);
+        const recommendations = row['RECOMENDACIÓN'] || row['RECOMENDACIÓN PERSONAL'] || '';
+        const notes = `Marca temporal: ${row['Marca temporal'] || 'N/A'}\n` +
+                     `Recomendación: ${recommendations}\n` +
+                     `Pago por delivery: ${row['SOLO PARA ESTUDIO DE MERCADO Y CAMBIOS EN SEPTIEMBRE, ¿ESTÁ USTED DISPUESTO A PAGAR POR EL DELIVERY?'] || 'N/A'}\n` +
+                     `Autoriza contacto: ${row['NOS AUTORIZA USAR SU CONTACTO PARA PROPORCIONARLE O/Y OFRECERLE DESCUENTOS EN RECREOS TURÍSTICOS EN PUCALLPA Y VENTA DE LOTES EN CASHIBO'] || 'N/A'}`;
         
         // Validar campos obligatorios
         if (!name || !documentNumber) {
@@ -105,13 +105,14 @@ const migrateExcelClients = async (excelFilePath) => {
         // Verificar si el cliente ya existe
         const existingClient = await Client.findOne({ where: { documentNumber } });
         if (existingClient) {
-          console.log(`⚠️ Fila ${rowNumber}: Cliente con DNI ${documentNumber} ya existe, saltando...`);
+          console.log(`⚠️ Fila ${rowNumber}: Cliente con DNI/RUC ${documentNumber} ya existe, saltando...`);
           continue;
         }
         
         // Generar credenciales
         const username = generateUsername(name, documentNumber);
         const tempPassword = generateTempPassword();
+        const documentType = getDocumentType(documentNumber);
         
         // Crear transacción para usuario y cliente
         const result = await sequelize.transaction(async (t) => {
@@ -129,7 +130,7 @@ const migrateExcelClients = async (excelFilePath) => {
           // Crear cliente
           const client = await Client.create({
             name,
-            documentType: documentType === 'RUC' ? 'RUC' : 'DNI',
+            documentType,
             documentNumber,
             address: address || '',
             district: district || '',
@@ -159,6 +160,19 @@ const migrateExcelClients = async (excelFilePath) => {
         console.log(`   👤 Usuario: ${result.user.username}`);
         console.log(`   🔑 Contraseña temporal: ${tempPassword}`);
         console.log(`   📊 Estado: ${clientStatus}`);
+        console.log(`   📄 Tipo: ${documentType}`);
+        
+        // Guardar credenciales para reporte
+        credentials.push({
+          fila: rowNumber,
+          nombre: name,
+          documento: documentNumber,
+          tipo: documentType,
+          email: result.user.email,
+          usuario: result.user.username,
+          contraseña: tempPassword,
+          estado: clientStatus
+        });
         
         successCount++;
         
@@ -179,16 +193,25 @@ const migrateExcelClients = async (excelFilePath) => {
       errors.forEach(error => console.log(`   - ${error}`));
     }
     
-    console.log('\n🔑 Credenciales generadas:');
-    console.log('   - Username: nombre + últimos 4 dígitos del DNI');
-    console.log('   - Email: username@aguayara.com (si no se proporciona)');
-    console.log('   - Contraseña: generada aleatoriamente');
-    console.log('   - Estado: mapeado desde Excel o "nuevo" por defecto');
+    // Mostrar resumen de credenciales
+    if (credentials.length > 0) {
+      console.log('\n🔑 CREDENCIALES GENERADAS:');
+      console.log('================================================');
+      credentials.forEach(cred => {
+        console.log(`\n📋 Fila ${cred.fila}: ${cred.nombre}`);
+        console.log(`   📄 ${cred.tipo}: ${cred.documento}`);
+        console.log(`   📧 Email: ${cred.email}`);
+        console.log(`   👤 Usuario: ${cred.usuario}`);
+        console.log(`   🔑 Contraseña: ${cred.contraseña}`);
+        console.log(`   📊 Estado: ${cred.estado}`);
+      });
+    }
     
     console.log('\n📝 Próximos pasos:');
     console.log('   1. Revisar los errores si los hay');
     console.log('   2. Los clientes pueden cambiar su contraseña en el primer login');
     console.log('   3. Verificar que los datos se importaron correctamente');
+    console.log('   4. Guardar las credenciales generadas para comunicación con clientes');
     
   } catch (error) {
     console.error('❌ Error durante la migración:', error);
@@ -204,12 +227,12 @@ if (require.main === module) {
   const excelFilePath = process.argv[2];
   
   if (!excelFilePath) {
-    console.log('❌ Uso: node migrateExcelClients.js <ruta_del_archivo_excel>');
-    console.log('📝 Ejemplo: node migrateExcelClients.js ./clientes.xlsx');
+    console.log('❌ Uso: node migrateCustomExcelClients.js <ruta_del_archivo_excel>');
+    console.log('📝 Ejemplo: node migrateCustomExcelClients.js ./clientes.xlsx');
     process.exit(1);
   }
   
-  migrateExcelClients(excelFilePath)
+  migrateCustomExcelClients(excelFilePath)
     .then(() => {
       console.log('\n🎊 ¡Migración completada exitosamente!');
       process.exit(0);
@@ -220,4 +243,4 @@ if (require.main === module) {
     });
 }
 
-module.exports = migrateExcelClients;
+module.exports = migrateCustomExcelClients;

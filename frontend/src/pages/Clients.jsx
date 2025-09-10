@@ -76,8 +76,6 @@ const Clients = () => {
     phone: '',
     email: '',
     isCompany: false,
-    hasCredit: false,
-    creditLimit: '',
     paymentDueDay: '',
     active: true,
     clientStatus: 'nuevo',
@@ -160,8 +158,6 @@ const Clients = () => {
       phone: '',
       email: '',
       isCompany: false,
-      hasCredit: false,
-      creditLimit: '',
       paymentDueDay: '',
       active: true
     });
@@ -184,8 +180,6 @@ const Clients = () => {
       phone: client.phone || '',
       email: client.email || '',
       isCompany: client.isCompany || false,
-      hasCredit: client.hasCredit || false,
-      creditLimit: client.creditLimit || '',
       paymentDueDay: client.paymentDueDay || '',
       active: client.active,
       clientStatus: client.clientStatus || 'nuevo',
@@ -323,11 +317,6 @@ const Clients = () => {
                         </Text>
                       )}
                       
-                      {client.hasCredit && (
-                        <Badge colorScheme="purple">
-                          Crédito: S/ {parseFloat(client.creditLimit || 0).toFixed(2)}
-                        </Badge>
-                      )}
                       
                       <HStack spacing={2}>
                         <Button
@@ -361,7 +350,6 @@ const Clients = () => {
                   <Th>Contacto</Th>
                   <Th>Estado</Th>
                   <Th>Tipo Cliente</Th>
-                  <Th>Crédito</Th>
                   <Th>Pedidos</Th>
                   <Th>Acciones</Th>
                 </Tr>
@@ -404,15 +392,6 @@ const Clients = () => {
                       <Badge colorScheme={getClientStatusColor(client.clientStatus)}>
                         {getClientStatusText(client.clientStatus)}
                       </Badge>
-                    </Td>
-                    <Td>
-                      {client.hasCredit ? (
-                        <Text color="purple.600" fontWeight="bold">
-                          S/ {parseFloat(client.creditLimit || 0).toFixed(2)}
-                        </Text>
-                      ) : (
-                        <Text color="gray.400">-</Text>
-                      )}
                     </Td>
                     <Td>
                       <VStack align="start" spacing={1}>
@@ -538,25 +517,6 @@ const Clients = () => {
                 />
               </FormControl>
 
-              <FormControl>
-                <FormLabel>¿Tiene crédito?</FormLabel>
-                <Switch
-                  isChecked={formData.hasCredit}
-                  onChange={(e) => setFormData({ ...formData, hasCredit: e.target.checked })}
-                />
-              </FormControl>
-
-              {formData.hasCredit && (
-                <FormControl>
-                  <FormLabel>Límite de Crédito</FormLabel>
-                  <Input
-                    type="number"
-                    value={formData.creditLimit}
-                    onChange={(e) => setFormData({ ...formData, creditLimit: e.target.value })}
-                    placeholder="Límite de crédito"
-                  />
-                </FormControl>
-              )}
 
               <FormControl>
                 <FormLabel>¿Activo?</FormLabel>

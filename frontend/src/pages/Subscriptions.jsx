@@ -38,7 +38,8 @@ import {
   Flex
 } from '@chakra-ui/react';
 import { FaGift, FaCalendarAlt, FaTint, FaCheckCircle, FaClock } from 'react-icons/fa';
-import axios from 'axios';
+import axios from '../utils/axios';
+import useAuthStore from '../stores/authStore';
 
 const Subscriptions = () => {
   const [subscriptionPlans, setSubscriptionPlans] = useState([]);
@@ -48,6 +49,7 @@ const Subscriptions = () => {
   const [isSubscribing, setIsSubscribing] = useState(false);
   const { isOpen, onOpen, onClose } = useDisclosure();
   const toast = useToast();
+  const { user } = useAuthStore();
 
   // Datos del formulario de suscripción
   const [subscriptionData, setSubscriptionData] = useState({
@@ -69,16 +71,10 @@ const Subscriptions = () => {
       setSubscriptionPlans(plansResponse.data);
 
       // Obtener suscripciones del cliente (si está autenticado)
-      const token = localStorage.getItem('token');
-      if (token) {
+      if (user && user.role === 'cliente') {
         try {
-          const clientId = localStorage.getItem('clientId');
-          if (clientId) {
-            const subscriptionsResponse = await axios.get(`/api/subscriptions/client/${clientId}`, {
-              headers: { Authorization: `Bearer ${token}` }
-            });
-            setClientSubscriptions(subscriptionsResponse.data);
-          }
+          const subscriptionsResponse = await axios.get('/api/subscriptions/client');
+          setClientSubscriptions(subscriptionsResponse.data.data || []);
         } catch (error) {
           console.log('Cliente no autenticado o sin suscripciones');
         }
@@ -110,13 +106,11 @@ const Subscriptions = () => {
   const handleSubscriptionSubmit = async () => {
     try {
       setIsSubscribing(true);
-      const token = localStorage.getItem('token');
-      const clientId = localStorage.getItem('clientId');
 
-      if (!token || !clientId) {
+      if (!user || user.role !== 'cliente') {
         toast({
           title: 'Error',
-          description: 'Debes iniciar sesión para suscribirte',
+          description: 'Debes iniciar sesión como cliente para suscribirte',
           status: 'error',
           duration: 3000,
           isClosable: true
@@ -124,9 +118,7 @@ const Subscriptions = () => {
         return;
       }
 
-      await axios.post(`/api/subscriptions/client/${clientId}/subscribe`, subscriptionData, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await axios.post('/api/subscriptions/client/subscribe', subscriptionData);
 
       toast({
         title: '¡Suscripción exitosa!',

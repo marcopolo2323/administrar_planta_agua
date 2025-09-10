@@ -124,15 +124,16 @@ const Dashboard = () => {
   ];
 
   return (
-    <Box p={{ base: 4, md: 6 }}>
+    <Box p={{ base: 2, md: 4 }} maxW="100%" overflow="hidden">
       {/* Header */}
       <Flex 
         direction={{ base: 'column', md: 'row' }} 
         align={{ base: 'center', md: 'flex-start' }} 
         justify="space-between" 
         mb={6}
+        wrap="wrap"
       >
-        <VStack align={{ base: 'center', md: 'flex-start' }} spacing={2}>
+        <VStack align={{ base: 'center', md: 'flex-start' }} spacing={2} maxW={{ base: '100%', md: '70%' }}>
           <AquaYaraLogo 
             size="md" 
             variant="horizontal" 
@@ -140,10 +141,10 @@ const Dashboard = () => {
             textColor="blue.600" 
             taglineColor="teal.500"
           />
-          <Heading size="lg" color="gray.700">
+          <Heading size="lg" color="gray.700" textAlign={{ base: 'center', md: 'left' }}>
             Dashboard Administrativo
           </Heading>
-          <Text color="gray.500" fontSize="sm">
+          <Text color="gray.500" fontSize="sm" textAlign={{ base: 'center', md: 'left' }}>
             Gestión completa del negocio
           </Text>
         </VStack>
@@ -153,7 +154,7 @@ const Dashboard = () => {
       </Flex>
 
       {/* Estadísticas principales */}
-      <SimpleGrid columns={{ base: 1, sm: 2, lg: 4 }} spacing={4} mb={8}>
+      <SimpleGrid columns={{ base: 1, sm: 2, lg: 4 }} spacing={4} mb={8} maxW="100%">
         <Card bg={cardBg} borderColor={borderColor} boxShadow="sm">
           <CardBody>
             <Stat>
@@ -204,20 +205,21 @@ const Dashboard = () => {
       </SimpleGrid>
 
       {/* Acciones rápidas */}
-      <Card bg={cardBg} borderColor={borderColor} boxShadow="sm">
+      <Card bg={cardBg} borderColor={borderColor} boxShadow="sm" maxW="100%">
         <CardBody>
           <Heading size="md" mb={4} color="gray.700">🚀 Acciones Rápidas</Heading>
           <SimpleGrid 
             columns={{ base: 2, sm: 3, md: 4, lg: 4 }} 
             spacing={4}
+            maxW="100%"
           >
             {quickActions.map((action, index) => (
               <Button
                 key={index}
                 colorScheme={action.color}
                 variant="outline"
-                size={isMobile ? "md" : "lg"}
-                height={isMobile ? "100px" : "120px"}
+                size={isMobile ? "sm" : "md"}
+                height={isMobile ? "80px" : "100px"}
                 flexDirection="column"
                 onClick={action.onClick}
                 _hover={{ 
@@ -228,13 +230,16 @@ const Dashboard = () => {
                 transition="all 0.2s"
                 borderWidth="2px"
                 borderRadius="lg"
+                minW="0"
+                w="100%"
+                maxW="100%"
               >
-                <VStack spacing={2}>
-                  <action.icon size={isMobile ? "20px" : "24px"} />
-                  <Text fontSize={isMobile ? "xs" : "sm"} fontWeight="bold" textAlign="center">
+                <VStack spacing={1} maxW="100%">
+                  <action.icon size={isMobile ? "16px" : "20px"} />
+                  <Text fontSize={isMobile ? "xs" : "sm"} fontWeight="bold" textAlign="center" noOfLines={1}>
                     {action.title}
                   </Text>
-                  <Text fontSize="xs" color="gray.500" textAlign="center">
+                  <Text fontSize="xs" color="gray.500" textAlign="center" noOfLines={2}>
                     {action.description}
                   </Text>
                   <Badge 

@@ -1,0 +1,659 @@
+[
+  {
+    "nombre": "Juan Pérez",
+    "documento": "12345678",
+    "tipo": "DNI",
+    "email": "cliente1@example.com",
+    "usuario": "cliente1",
+    "telefono": "966666666",
+    "estado": "activo"
+  },
+  {
+    "nombre": "María López",
+    "documento": "87654321",
+    "tipo": "DNI",
+    "email": "N/A",
+    "usuario": "N/A",
+    "telefono": "955555555",
+    "estado": "nuevo"
+  },
+  {
+    "nombre": "Wilhelm Miguel Barrientos Chacón ",
+    "documento": "004041346",
+    "tipo": "DNI",
+    "email": "barrientoswilhelm@gmail.com",
+    "usuario": "wilhelmm0040",
+    "telefono": "986110270",
+    "estado": "nuevo"
+  },
+  {
+    "nombre": "Ericca  Evelynn Rojas Rengifo de Cortez",
+    "documento": "00117907",
+    "tipo": "DNI",
+    "email": "ericcarojas22@gmail.com",
+    "usuario": "ericcaev0011",
+    "telefono": "914900967",
+    "estado": "activo"
+  },
+  {
+    "nombre": "Horacio Gilmer Rodriguez Lázaro ",
+    "documento": "06640086",
+    "tipo": "DNI",
+    "email": "hgilmerrl@gmail.com",
+    "usuario": "horaciog0664",
+    "telefono": "9967270276",
+    "estado": "activo"
+  },
+  {
+    "nombre": "María luz Bembino Fonseca ",
+    "documento": "00071600",
+    "tipo": "DNI",
+    "email": "marialuzbembinofonseca@gmail.com",
+    "usuario": "maraluzb0007",
+    "telefono": "939922623",
+    "estado": "activo"
+  },
+  {
+    "nombre": "Luz María Rivera Huamán ",
+    "documento": "03236620",
+    "tipo": "DNI",
+    "email": "luzrh24@gmail.com",
+    "usuario": "luzmarar0323",
+    "telefono": "980390820",
+    "estado": "activo"
+  },
+  {
+    "nombre": "Laura pineda",
+    "documento": "04867611",
+    "tipo": "DNI",
+    "email": "laurap.pineda06@gmail.com",
+    "usuario": "laurapin0486",
+    "telefono": "935296376",
+    "estado": "activo"
+  },
+  {
+    "nombre": "Corporación YASHIMITSU sac ",
+    "documento": "20606719596",
+    "tipo": "RUC",
+    "email": "yashichirusbel@gmail.com",
+    "usuario": "corporac2060",
+    "telefono": "942658541",
+    "estado": "activo"
+  },
+  {
+    "nombre": "Anita Milagros Moreno Ramirez ",
+    "documento": "44719863",
+    "tipo": "DNI",
+    "email": "belumilan20@gmail.com",
+    "usuario": "anitamil4471",
+    "telefono": "912438191",
+    "estado": "activo"
+  },
+  {
+    "nombre": "Pamela Moreno Ramirez ",
+    "documento": "46184410",
+    "tipo": "DNI",
+    "email": "pame10589@gmail.com",
+    "usuario": "pamelamo4618",
+    "telefono": "987779945",
+    "estado": "activo"
+  },
+  {
+    "nombre": "Mirela del aguila ",
+    "documento": "42036885",
+    "tipo": "DNI",
+    "email": "miredg1627@gmail.com",
+    "usuario": "mirelade4203",
+    "telefono": "971160159",
+    "estado": "activo"
+  },
+  {
+    "nombre": "Omar nascimento amaringo",
+    "documento": "46693019",
+    "tipo": "DNI",
+    "email": "donomarffc@gmail.com",
+    "usuario": "omarnasc4669",
+    "telefono": "962563736",
+    "estado": "activo"
+  },
+  {
+    "nombre": "Gabriela Danae Huanchi Huanca ",
+    "documento": "71479839",
+    "tipo": "DNI",
+    "email": "gabrieladhh@gmail.com",
+    "usuario": "gabriela7147",
+    "telefono": "952813019",
+    "estado": "nuevo"
+  },
+  {
+    "nombre": "Aquemi Fernández de Prentice ",
+    "documento": "47928430",
+    "tipo": "DNI",
+    "email": "feel.life627@gmail.com",
+    "usuario": "aquemife4792",
+    "telefono": "966 958 150",
+    "estado": "activo"
+  },
+  {
+    "nombre": "ADITH JOBANY RAMIREZ SATALAYA ",
+    "documento": "40932802",
+    "tipo": "DNI",
+    "email": "ramirezadith2@gmail.com",
+    "usuario": "adithjob4093",
+    "telefono": "944610192",
+    "estado": "activo"
+  },
+  {
+    "nombre": "Mily Dávila ",
+    "documento": "77342414",
+    "tipo": "DNI",
+    "email": "mily.davila96@gmail.com",
+    "usuario": "milydvil7734",
+    "telefono": "975507928",
+    "estado": "activo"
+  },
+  {
+    "nombre": "Hzjvhnk",
+    "documento": "374667767777",
+    "tipo": "DNI",
+    "email": "joshesino@gmail.com",
+    "usuario": "hzjvhnk3746",
+    "telefono": "85756757755",
+    "estado": "activo"
+  },
+  {
+    "nombre": "Rubén Vargas Ugarte ",
+    "documento": "10024254572",
+    "tipo": "RUC",
+    "email": "pilarms1988@gmail.com",
+    "usuario": "rubnvarg1002",
+    "telefono": "918606268",
+    "estado": "activo"
+  },
+  {
+    "nombre": "Maycoll Velarde ",
+    "documento": "80382756",
+    "tipo": "DNI",
+    "email": "amazonjungle.7@gmail.com",
+    "usuario": "maycollv8038",
+    "telefono": "990109790",
+    "estado": "activo"
+  },
+  {
+    "nombre": "Sra yeni",
+    "documento": "45082003",
+    "tipo": "DNI",
+    "email": "dportshouse@gmail.com",
+    "usuario": "srayeni4508",
+    "telefono": "932464854",
+    "estado": "activo"
+  },
+  {
+    "nombre": "Doris Ruiz Grandez",
+    "documento": "42593422",
+    "tipo": "DNI",
+    "email": "ruizgrandezdoris@gmail.com",
+    "usuario": "dorisrui4259",
+    "telefono": "925330719",
+    "estado": "activo"
+  },
+  {
+    "nombre": "Miguel angel melendez acho",
+    "documento": "74324303",
+    "tipo": "DNI",
+    "email": "miguelmelendez1610@gmail.com",
+    "usuario": "miguelan7432",
+    "telefono": "918302113",
+    "estado": "activo"
+  },
+  {
+    "nombre": "ROSSANA EMPERATRIZ GARCÍA ALVARADO ",
+    "documento": "25563771",
+    "tipo": "DNI",
+    "email": "rossangarciaalv@gmail.com",
+    "usuario": "rossanae2556",
+    "telefono": "952902133",
+    "estado": "activo"
+  },
+  {
+    "nombre": "PROGRAMA NACIONAL DE ASISTENCIA SOLIDARIA PENSION 65",
+    "documento": "20547960051",
+    "tipo": "RUC",
+    "email": "mcarbajal@pension65.gob.pe",
+    "usuario": "programa2054",
+    "telefono": "943254116",
+    "estado": "activo"
+  },
+  {
+    "nombre": "Carmen María Camacho Mostacedo ",
+    "documento": "15393591461",
+    "tipo": "RUC",
+    "email": "polleriaelsabor2011@gmail.com",
+    "usuario": "carmenma1539",
+    "telefono": "948556239",
+    "estado": "activo"
+  },
+  {
+    "nombre": "UNIDAD EJECUTORA 003FOMENTO Y GESTION SOSTENIBLE DE LA PRODUCCION FORESTAL EN EL PERU",
+    "documento": "20609530279",
+    "tipo": "RUC",
+    "email": "anthonykenyi16@gmail.com",
+    "usuario": "unidadej2060",
+    "telefono": "966528551",
+    "estado": "nuevo"
+  },
+  {
+    "nombre": "Fermina Carmen veramendio huertas ",
+    "documento": "22973059",
+    "tipo": "DNI",
+    "email": "anghelyx123@gmail.com",
+    "usuario": "ferminac2297",
+    "telefono": "925900515",
+    "estado": "nuevo"
+  },
+  {
+    "nombre": "Aurora Alvarado Romero ",
+    "documento": "25843275",
+    "tipo": "DNI",
+    "email": "alvaradoromeroaurora@gmail.com",
+    "usuario": "auroraal2584",
+    "telefono": "955246813",
+    "estado": "activo"
+  },
+  {
+    "nombre": "Tedy Mario Torres Vasquez",
+    "documento": "73113653",
+    "tipo": "DNI",
+    "email": "loltedy507@gmail.com",
+    "usuario": "tedymari7311",
+    "telefono": "914340896",
+    "estado": "activo"
+  },
+  {
+    "nombre": "Carlos Javier Gil Teagua ",
+    "documento": "80480195",
+    "tipo": "DNI",
+    "email": "carlosjaviergilteagua@gmail.com",
+    "usuario": "carlosja8048",
+    "telefono": "945970970",
+    "estado": "activo"
+  },
+  {
+    "nombre": "Rosa Estephani Viena Valles",
+    "documento": "70292704",
+    "tipo": "DNI",
+    "email": "esviva90@gmail.com",
+    "usuario": "rosaeste7029",
+    "telefono": "982414276",
+    "estado": "activo"
+  },
+  {
+    "nombre": "Gerson Martín Cachique mori ",
+    "documento": "70050420",
+    "tipo": "DNI",
+    "email": "martincachiquemori@gmail.com",
+    "usuario": "gersonma7005",
+    "telefono": "938543600",
+    "estado": "activo"
+  },
+  {
+    "nombre": "Norma Vela ",
+    "documento": "72904606",
+    "tipo": "DNI",
+    "email": "sara.reategui.97@gmail.com",
+    "usuario": "normavel7290",
+    "telefono": "957666460",
+    "estado": "activo"
+  },
+  {
+    "nombre": "Jorge Correa Robalino",
+    "documento": "4225000",
+    "tipo": "DNI",
+    "email": "jorcorrear@gmail.com",
+    "usuario": "jorgecor4225",
+    "telefono": "951835526",
+    "estado": "activo"
+  },
+  {
+    "nombre": "Finita Dany Aliaga Soria ",
+    "documento": "40357948",
+    "tipo": "DNI",
+    "email": "finitadanyaliagasoria@gmail.com",
+    "usuario": "finitada4035",
+    "telefono": "931 893 551",
+    "estado": "activo"
+  },
+  {
+    "nombre": "Claudia Grajeda ",
+    "documento": "72631533",
+    "tipo": "DNI",
+    "email": "claudiavaleria1118@gmail.com",
+    "usuario": "claudiag7263",
+    "telefono": "940870530",
+    "estado": "activo"
+  },
+  {
+    "nombre": "Merli Altamirano Ramirez ",
+    "documento": "6275861",
+    "tipo": "DNI",
+    "email": "merly621758@gmail.com",
+    "usuario": "merlialt6275",
+    "telefono": "963234117",
+    "estado": "activo"
+  },
+  {
+    "nombre": "Nativa nails",
+    "documento": "4540982",
+    "tipo": "DNI",
+    "email": "denia26mcm@gmail.com",
+    "usuario": "nativana4540",
+    "telefono": "952528396",
+    "estado": "activo"
+  },
+  {
+    "nombre": "Edward Fonseca ",
+    "documento": "40952210",
+    "tipo": "DNI",
+    "email": "edwardfonse40@gmail.com",
+    "usuario": "edwardfo4095",
+    "telefono": "955595243",
+    "estado": "activo"
+  },
+  {
+    "nombre": "Leydi Alexis Vega Rojas ",
+    "documento": "44954436",
+    "tipo": "DNI",
+    "email": "leydialexisvegarojas@gmail.com",
+    "usuario": "leydiale4495",
+    "telefono": "961618937",
+    "estado": "activo"
+  },
+  {
+    "nombre": "Isabel Reyna Cardenas",
+    "documento": "40795496",
+    "tipo": "DNI",
+    "email": "rolandopalacios1308@gmail.com",
+    "usuario": "isabelre4079",
+    "telefono": "998546252",
+    "estado": "activo"
+  },
+  {
+    "nombre": "AYKO ZENAYDA KATAYAMA LOZANO ",
+    "documento": "86824",
+    "tipo": "DNI",
+    "email": "aykokatayama68@gmail.com",
+    "usuario": "aykozena8682",
+    "telefono": "945396309",
+    "estado": "activo"
+  },
+  {
+    "nombre": "Melvin Souza Toullier ",
+    "documento": "42983532",
+    "tipo": "DNI",
+    "email": "melvinsouzatoullier@gmail.com",
+    "usuario": "melvinso4298",
+    "telefono": "938572301",
+    "estado": "activo"
+  },
+  {
+    "nombre": "Andrea Luz Adco Castro ",
+    "documento": "10780190316",
+    "tipo": "RUC",
+    "email": "andreaadcocastro@gmail.com",
+    "usuario": "andrealu1078",
+    "telefono": "929479627",
+    "estado": "activo"
+  },
+  {
+    "nombre": "Yhara Vanessa Cancino cardenas ",
+    "documento": "71043272",
+    "tipo": "DNI",
+    "email": "yhara.cancino@gmail.com",
+    "usuario": "yharavan7104",
+    "telefono": "974581046",
+    "estado": "activo"
+  },
+  {
+    "nombre": "IRIS DEXY VALLES PEÑA",
+    "documento": "70979972",
+    "tipo": "DNI",
+    "email": "ppetiducayali@pge.gob.pe",
+    "usuario": "irisdexy7097",
+    "telefono": "957181048",
+    "estado": "activo"
+  },
+  {
+    "nombre": "Rosita saurino flores ",
+    "documento": "60197317",
+    "tipo": "DNI",
+    "email": "roslinceles@gmail.com",
+    "usuario": "rositasa6019",
+    "telefono": "997808567",
+    "estado": "activo"
+  },
+  {
+    "nombre": "Lenin Galarza Aguilar ",
+    "documento": "71965146",
+    "tipo": "DNI",
+    "email": "leninpaul.0298@gmail.com",
+    "usuario": "leningal7196",
+    "telefono": "942891272",
+    "estado": "retomando"
+  },
+  {
+    "nombre": "Carmen Magali Flores Pérez ",
+    "documento": "41331178",
+    "tipo": "DNI",
+    "email": "marmer2815@gmail.com",
+    "usuario": "carmenma4133",
+    "telefono": "967963585",
+    "estado": "activo"
+  },
+  {
+    "nombre": "OMNIWANDA",
+    "documento": "10000082436",
+    "tipo": "RUC",
+    "email": "omniwanda@gmail.com",
+    "usuario": "omniwand1000",
+    "telefono": "944959080",
+    "estado": "nuevo"
+  },
+  {
+    "nombre": "Carlo Magno Lima Arbildo ",
+    "documento": "41927307",
+    "tipo": "DNI",
+    "email": "carlolima1105@gmail.com",
+    "usuario": "carlomag4192",
+    "telefono": "993071127",
+    "estado": "activo"
+  },
+  {
+    "nombre": "NEGOCIOS INTERNACIONALES LOS HALCONES DEL NORTE EIRL ",
+    "documento": "20610917136",
+    "tipo": "RUC",
+    "email": "siempreadelanteediba1234@gmail.com",
+    "usuario": "negocios2061",
+    "telefono": "961613454",
+    "estado": "activo"
+  },
+  {
+    "nombre": "Cristel Bardales Vela ",
+    "documento": "48912428",
+    "tipo": "DNI",
+    "email": "bardalesvela.95@gmail.com",
+    "usuario": "cristelb4891",
+    "telefono": "942223168",
+    "estado": "activo"
+  },
+  {
+    "nombre": "Ferggye Pinedo Vega",
+    "documento": "61025938",
+    "tipo": "DNI",
+    "email": "ferggyepinedo@gmail.com",
+    "usuario": "ferggyep6102",
+    "telefono": "992814174",
+    "estado": "activo"
+  },
+  {
+    "nombre": "Samir Linares Barbaran",
+    "documento": "73196133",
+    "tipo": "DNI",
+    "email": "zurdilet@gmail.com",
+    "usuario": "samirlin7319",
+    "telefono": "961628235",
+    "estado": "activo"
+  },
+  {
+    "nombre": "Elsa Consuelo vásquez Ruiz ",
+    "documento": "5323462",
+    "tipo": "DNI",
+    "email": "consuvasru@hotmail.com",
+    "usuario": "elsacons5323",
+    "telefono": "923432016",
+    "estado": "activo"
+  },
+  {
+    "nombre": "Sandra paredes ",
+    "documento": "62687631",
+    "tipo": "DNI",
+    "email": "sandraparedes2504@gmail.com",
+    "usuario": "sandrapa6268",
+    "telefono": "977172329",
+    "estado": "nuevo"
+  },
+  {
+    "nombre": "Restaurant MI YOHAN",
+    "documento": "10765260685",
+    "tipo": "RUC",
+    "email": "jzamorahonoratosantacruz@gmail.com",
+    "usuario": "restaura1076",
+    "telefono": "954313960",
+    "estado": "activo"
+  },
+  {
+    "nombre": "RONALD HAMILTON MELENDEZ GONZALES",
+    "documento": "41164113",
+    "tipo": "DNI",
+    "email": "ronaldmelendez007@gmail.com",
+    "usuario": "ronaldha4116",
+    "telefono": "945076550",
+    "estado": "activo"
+  },
+  {
+    "nombre": "Vivian mozombite Ruiz ",
+    "documento": "71482051",
+    "tipo": "DNI",
+    "email": "vivian.mozombite65@gmail.com",
+    "usuario": "vivianmo7148",
+    "telefono": "949675928",
+    "estado": "nuevo"
+  },
+  {
+    "nombre": "Gabriela Ramirez Guerra ",
+    "documento": "43841948",
+    "tipo": "DNI",
+    "email": "gaby.ramirez.guerra@gmail.com",
+    "usuario": "gabriela4384",
+    "telefono": "987388088",
+    "estado": "activo"
+  },
+  {
+    "nombre": "Bryan capcha martinez",
+    "documento": "45145312",
+    "tipo": "DNI",
+    "email": "jordinluna95@gmail.com",
+    "usuario": "bryancap4514",
+    "telefono": "962772859",
+    "estado": "activo"
+  },
+  {
+    "nombre": "Bertha luz Valles oliveira ",
+    "documento": "40487521",
+    "tipo": "DNI",
+    "email": "vallesoliveiraberthaluz@gmail.com",
+    "usuario": "berthalu4048",
+    "telefono": "975036539",
+    "estado": "activo"
+  },
+  {
+    "nombre": "Kiara rengifo ",
+    "documento": "77087283",
+    "tipo": "DNI",
+    "email": "lizzeth.rengifo.garcia@gmail.com",
+    "usuario": "kiararen7708",
+    "telefono": "923505926",
+    "estado": "activo"
+  },
+  {
+    "nombre": "JHON BLAS",
+    "documento": "43043375",
+    "tipo": "DNI",
+    "email": "blasblas18@gmail.com",
+    "usuario": "jhonblas4304",
+    "telefono": "962680578",
+    "estado": "activo"
+  },
+  {
+    "nombre": "Clever Fredy Jorge Santamaria ",
+    "documento": "45825455",
+    "tipo": "DNI",
+    "email": "tauroklever@gmail.com",
+    "usuario": "cleverfr4582",
+    "telefono": "963127823",
+    "estado": "activo"
+  },
+  {
+    "nombre": "Claussy Jimena Mourao Guzmán ",
+    "documento": "75916788",
+    "tipo": "DNI",
+    "email": "ximenamourao901@gmail.com",
+    "usuario": "claussyj7591",
+    "telefono": "918951944",
+    "estado": "activo"
+  },
+  {
+    "nombre": "Adrianita taminchi Vasquez ",
+    "documento": "45010586",
+    "tipo": "DNI",
+    "email": "taminchivasquez@gmail.com",
+    "usuario": "adrianit4501",
+    "telefono": "912794575",
+    "estado": "activo"
+  },
+  {
+    "nombre": "Nury Rodas Piña ",
+    "documento": "62906457",
+    "tipo": "DNI",
+    "email": "nuryrodasp17@gmail.com",
+    "usuario": "nuryroda6290",
+    "telefono": "917024709",
+    "estado": "activo"
+  },
+  {
+    "nombre": "Irma Marina Barbaran Pinedo ",
+    "documento": "52760",
+    "tipo": "DNI",
+    "email": "imbarbaranpinedo@gmail.com",
+    "usuario": "irmamari5276",
+    "telefono": "961651497",
+    "estado": "activo"
+  },
+  {
+    "nombre": "GERMAN WEYDER TARAZONA RENGIFO ",
+    "documento": "21878845",
+    "tipo": "DNI",
+    "email": "germanweyder@gmail.com",
+    "usuario": "germanwe2187",
+    "telefono": "961613086",
+    "estado": "activo"
+  },
+  {
+    "nombre": "Yoid Granados ",
+    "documento": "71987576",
+    "tipo": "DNI",
+    "email": "yoidgranados@gmail.com",
+    "usuario": "yoidgran7198",
+    "telefono": "935467903",
+    "estado": "activo"
+  }
+]
