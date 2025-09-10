@@ -15,7 +15,6 @@ import Products from './pages/Products';
 import Clients from './pages/Clients';
 import Sales from './pages/Sales';
 import Orders from './pages/Orders';
-import Notifications from './pages/Notifications';
 import GuestOrder from './pages/GuestOrder';
 import DeliveryFeesManagement from './pages/DeliveryFeesManagement';
 import DeliveryPersonsManagement from './pages/DeliveryPersonsManagement';
@@ -31,10 +30,10 @@ import ClientRegister from './pages/ClientRegister';
 import ClientDashboard from './pages/ClientDashboard';
 import ClientOrder from './pages/ClientOrder';
 import ClientPayments from './pages/ClientPayments';
-import VouchersManagement from './pages/VouchersManagement';
 import ClientPaymentsAdmin from './pages/ClientPaymentsAdmin';
 import Subscriptions from './pages/Subscriptions';
 import SubscriptionOrder from './pages/SubscriptionOrder';
+import SubscriptionsManagement from './pages/SubscriptionsManagement';
 
 const App = () => {
   const { token, checkAuth } = useAuthStore();
@@ -89,12 +88,11 @@ const App = () => {
           <Route path="clients" element={<ProtectedRoute requiredRoles={['admin', 'vendedor']}><Clients /></ProtectedRoute>} />
           <Route path="sales" element={<ProtectedRoute requiredRoles={['admin', 'vendedor']}><Sales /></ProtectedRoute>} />
           <Route path="orders" element={<ProtectedRoute requiredRoles={['admin', 'vendedor']}><Orders /></ProtectedRoute>} />
-          <Route path="notifications" element={<ProtectedRoute requiredRoles={['admin', 'vendedor']}><Notifications /></ProtectedRoute>} />
           <Route path="guest-orders" element={<ProtectedRoute requiredRoles={['admin', 'vendedor']}><Orders /></ProtectedRoute>} />
           <Route path="delivery-fees" element={<ProtectedRoute requiredRoles={['admin']}><DeliveryFeesManagement /></ProtectedRoute>} />
           <Route path="delivery-persons" element={<ProtectedRoute requiredRoles={['admin']}><DeliveryPersonsManagement /></ProtectedRoute>} />
-          <Route path="vouchers" element={<ProtectedRoute requiredRoles={['admin', 'vendedor']}><VouchersManagement /></ProtectedRoute>} />
           <Route path="client-payments" element={<ProtectedRoute requiredRoles={['admin']}><ClientPaymentsAdmin /></ProtectedRoute>} />
+          <Route path="subscriptions" element={<ProtectedRoute requiredRoles={['admin']}><SubscriptionsManagement /></ProtectedRoute>} />
           <Route path="reports" element={<ProtectedRoute requiredRoles={['admin']}><Reports /></ProtectedRoute>} />
         </Route>
 

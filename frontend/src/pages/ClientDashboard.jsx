@@ -419,83 +419,6 @@ const ClientDashboard = () => {
           </CardBody>
         </Card>
 
-        {/* Lista de vales */}
-        <Card>
-          <CardHeader>
-            <Heading size="md">
-              <Icon as={FaGift} mr={2} />
-              Mis Vales
-            </Heading>
-          </CardHeader>
-          <CardBody>
-            {vouchers.length === 0 ? (
-              <Box textAlign="center" py={10}>
-                <Text color="gray.500" fontSize="lg">
-                  No tienes vales registrados
-                </Text>
-              </Box>
-            ) : (
-              <TableContainer>
-                <Table variant="simple">
-                  <Thead>
-                    <Tr>
-                      <Th>Pedido</Th>
-                      <Th>Descripción</Th>
-                      <Th>Total</Th>
-                      <Th>Estado</Th>
-                      <Th>Repartidor</Th>
-                      <Th>Fecha</Th>
-                      <Th>Acciones</Th>
-                    </Tr>
-                  </Thead>
-                  <Tbody>
-                    {vouchers.map((voucher) => (
-                      <Tr key={voucher.id}>
-                        <Td>
-                          <Text fontWeight="bold" color="blue.600">
-                            #{voucher.orderId || 'N/A'}
-                          </Text>
-                        </Td>
-                        <Td>
-                          <VStack align="start" spacing={1}>
-                            <Text fontWeight="bold">
-                              {voucher.product?.name || 'Pedido Completo'}
-                            </Text>
-                            <Text fontSize="sm" color="gray.600">
-                              {voucher.notes || 'Vale por pedido completo'}
-                            </Text>
-                          </VStack>
-                        </Td>
-                        <Td fontWeight="bold" color="green.600">
-                          S/ {parseFloat(voucher.totalAmount).toFixed(2)}
-                        </Td>
-                        <Td>
-                          <Badge colorScheme={getStatusColor(voucher.status)}>
-                            {getStatusText(voucher.status)}
-                          </Badge>
-                        </Td>
-                        <Td>{voucher.deliveryPerson?.username || 'Sin asignar'}</Td>
-                        <Td fontSize="sm">{formatDate(voucher.createdAt)}</Td>
-                        <Td>
-                          {voucher.status === 'delivered' && (
-                            <Button
-                              size="sm"
-                              colorScheme="green"
-                              leftIcon={<FaMoneyBillWave />}
-                              onClick={() => updateVoucherStatus(voucher.id, 'paid')}
-                            >
-                              Marcar Pagado
-                            </Button>
-                          )}
-                        </Td>
-                      </Tr>
-                    ))}
-                  </Tbody>
-                </Table>
-              </TableContainer>
-            )}
-          </CardBody>
-        </Card>
 
         {/* Botón para hacer pedido rápido */}
         <Card>
@@ -504,24 +427,15 @@ const ClientDashboard = () => {
               <Icon as={FaShoppingCart} fontSize="3xl" color="blue.500" />
               <Heading size="md">¿Necesitas hacer un pedido?</Heading>
               <Text color="gray.600">
-                Puedes hacer un pedido rápido sin vales o contactar a tu repartidor para crear vales
+                Puedes hacer un pedido rápido directamente desde aquí
               </Text>
-              <HStack spacing={4}>
-                <Button
-                  colorScheme="blue"
-                  leftIcon={<FaShoppingCart />}
-                  onClick={() => window.open('/guest-order', '_blank')}
-                >
-                  Pedido Rápido
-                </Button>
-                <Button
-                  colorScheme="green"
-                  variant="outline"
-                  leftIcon={<FaGift />}
-                >
-                  Solicitar Vales
-                </Button>
-              </HStack>
+              <Button
+                colorScheme="blue"
+                leftIcon={<FaShoppingCart />}
+                onClick={() => window.open('/guest-order', '_blank')}
+              >
+                Pedido Rápido
+              </Button>
             </VStack>
           </CardBody>
         </Card>

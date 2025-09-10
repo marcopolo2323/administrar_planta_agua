@@ -83,45 +83,64 @@ class DocumentGeneratorService {
    * @param {string} orderId - ID del pedido
    */
   _addHeader(doc, documentType, orderId) {
+    // Fondo azul para el encabezado
+    doc.rect(0, 0, doc.page.width, 120)
+       .fill('#1E40AF'); // Azul AquaYara
+    
     // Logo y nombre de la empresa
-    doc.fontSize(16) // Reducir tamaño de fuente
+    doc.fillColor('white')
+       .fontSize(24)
        .font('Helvetica-Bold')
-       .text('AGUA PURIFICADA DEL VALLE', { align: 'center' })
-       .moveDown(0.3); // Reducir espacio
+       .text('AQUAYARA', { align: 'center', y: 20 })
+       .fontSize(12)
+       .font('Helvetica')
+       .text('Sistema de Purificación de Agua', { align: 'center', y: 50 })
+       .moveDown(0.3);
     
     // Información de la empresa
-    doc.fontSize(9) // Reducir tamaño de fuente
-       .font('Helvetica')
-       .text('RUC: 20123456789', { align: 'center' })
-       .text('Av. Principal 123, Lima, Perú', { align: 'center' })
-       .text('Teléfono: (01) 123-4567', { align: 'center' })
-       .moveDown(0.5); // Reducir espacio
+    doc.fontSize(10)
+       .text('RUC: 20123456789', { align: 'center', y: 70 })
+       .text('Av. Principal 123, Lima, Perú', { align: 'center', y: 85 })
+       .text('Teléfono: +51 961 606 183', { align: 'center', y: 100 })
+       .moveDown(0.5);
+    
+    // Volver al color negro para el resto del contenido
+    doc.fillColor('black');
     
     // Tipo de documento y número
-    doc.fontSize(14) // Reducir tamaño de fuente
+    doc.fontSize(18)
        .font('Helvetica-Bold')
-       .text(documentType === 'factura' ? 'FACTURA ELECTRÓNICA' : 'BOLETA DE VENTA', { align: 'center' })
-       .fontSize(11) // Reducir tamaño de fuente
-       .text(`N° ${orderId}`, { align: 'center' })
-       .moveDown(0.3); // Reducir espacio
+       .text(documentType === 'factura' ? 'FACTURA ELECTRÓNICA' : 'BOLETA ELECTRÓNICA', { align: 'center', y: 130 })
+       .fontSize(14)
+       .text(`N° ${orderId}`, { align: 'center', y: 150 })
+       .moveDown(0.3);
     
-    // Fecha
-    const currentDate = new Date().toLocaleDateString('es-PE', {
+    // Fecha y hora
+    const currentDate = new Date();
+    const dateStr = currentDate.toLocaleDateString('es-PE', {
       year: 'numeric',
-      month: 'long',
-      day: 'numeric'
+      month: '2-digit',
+      day: '2-digit'
+    });
+    const timeStr = currentDate.toLocaleTimeString('es-PE', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
     });
     
-    doc.fontSize(9) // Reducir tamaño de fuente
+    doc.fontSize(10)
        .font('Helvetica')
-       .text(`Fecha: ${currentDate}`, { align: 'right' })
-       .moveDown(0.5); // Reducir espacio
+       .text(`Fecha: ${dateStr}`, { align: 'right', y: 170 })
+       .text(`Hora: ${timeStr}`, { align: 'right', y: 185 })
+       .moveDown(0.5);
     
     // Línea separadora
-    doc.moveTo(50, doc.y)
+    doc.strokeColor('#1E40AF')
+       .lineWidth(2)
+       .moveTo(50, doc.y)
        .lineTo(doc.page.width - 50, doc.y)
        .stroke()
-       .moveDown(0.3); // Reducir espacio
+       .moveDown(0.5);
   }
   
   /**
@@ -130,33 +149,51 @@ class DocumentGeneratorService {
    * @param {Object} orderData - Datos del pedido
    */
   _addReceiptClientInfo(doc, orderData) {
-    doc.fontSize(11) // Reducir tamaño de fuente
-       .font('Helvetica-Bold')
-       .text('DATOS DEL CLIENTE')
-       .moveDown(0.3); // Reducir espacio
+    // Fondo gris claro para la sección del cliente
+    const clientSectionY = doc.y;
+    doc.rect(50, clientSectionY, doc.page.width - 100, 80)
+       .fill('#F8FAFC');
     
-    doc.fontSize(9) // Reducir tamaño de fuente
+    // Título de la sección
+    doc.fillColor('black')
+       .fontSize(12)
+       .font('Helvetica-Bold')
+       .text('DATOS DEL CLIENTE', 60, clientSectionY + 10)
+       .moveDown(0.3);
+    
+    // Información del cliente en dos columnas
+    const leftColumnX = 60;
+    const rightColumnX = 300;
+    
+    doc.fontSize(10)
        .font('Helvetica')
-       .text(`Cliente: ${orderData.customerName || orderData.guestOrder?.guestName || 'Cliente Final'}`)
-       .text(`Teléfono: ${orderData.customerPhone || orderData.guestOrder?.guestPhone || 'No especificado'}`)
-       .text(`Email: ${orderData.customerEmail || orderData.guestOrder?.guestEmail || 'No especificado'}`)
-       .moveDown(0.3); // Reducir espacio
+       .text(`Cliente: ${orderData.customerName || orderData.guestOrder?.guestName || 'Cliente Final'}`, leftColumnX, clientSectionY + 30)
+       .text(`Teléfono: ${orderData.customerPhone || orderData.guestOrder?.guestPhone || 'No especificado'}`, leftColumnX, clientSectionY + 45)
+       .text(`Email: ${orderData.customerEmail || orderData.guestOrder?.guestEmail || 'No especificado'}`, leftColumnX, clientSectionY + 60);
     
     if (orderData.deliveryAddress) {
-      doc.text(`Dirección de entrega: ${orderData.deliveryAddress}`)
-         .moveDown(0.3); // Reducir espacio
+      doc.text(`Dirección: ${orderData.deliveryAddress}`, rightColumnX, clientSectionY + 30);
     }
     
     if (orderData.deliveryDistrict) {
-      doc.text(`Distrito: ${orderData.deliveryDistrict}`)
-         .moveDown(0.3); // Reducir espacio
+      doc.text(`Distrito: ${orderData.deliveryDistrict}`, rightColumnX, clientSectionY + 45);
     }
     
+    // Método de pago si está disponible
+    if (orderData.paymentMethod) {
+      doc.text(`Método de pago: ${orderData.paymentMethod}`, rightColumnX, clientSectionY + 60);
+    }
+    
+    // Mover el cursor después de la sección del cliente
+    doc.y = clientSectionY + 90;
+    
     // Línea separadora
-    doc.moveTo(50, doc.y)
+    doc.strokeColor('#1E40AF')
+       .lineWidth(1)
+       .moveTo(50, doc.y)
        .lineTo(doc.page.width - 50, doc.y)
        .stroke()
-       .moveDown(0.3); // Reducir espacio
+       .moveDown(0.5);
   }
   
   /**
@@ -207,17 +244,21 @@ class DocumentGeneratorService {
    * @param {Object} orderData - Datos del pedido
    */
   _addOrderDetails(doc, orderData) {
-    doc.fontSize(12)
+    doc.fontSize(14)
        .font('Helvetica-Bold')
        .text('DETALLE DE PRODUCTOS')
        .moveDown(0.5);
     
-    // Encabezados de la tabla
+    // Encabezados de la tabla con fondo azul
     const tableTop = doc.y;
-    const tableHeaders = ['Producto', 'Cantidad', 'Precio Unit.', 'Subtotal'];
+    const tableHeaders = ['Producto', 'Cantidad', 'Precio Unit.'];
     // Ajustar anchos de columna para optimizar espacio
-    const columnWidths = [220, 60, 70, 70];
+    const columnWidths = [220, 60, 70];
     let currentX = 50;
+    
+    // Fondo azul claro para los encabezados
+    doc.rect(50, tableTop, doc.page.width - 100, 25)
+       .fill('#E0F2FE');
     
     // Verificar si hay datos de compra y buscar en todas las posibles ubicaciones
     if (!orderData.orderDetails && !orderData.items) {
@@ -274,22 +315,32 @@ class DocumentGeneratorService {
     console.log('Datos para generar documento:', {
       tieneOrderDetails: !!orderData.orderDetails && orderData.orderDetails.length > 0,
       tieneItems: !!orderData.items && orderData.items.length > 0,
-      orderDataKeys: Object.keys(orderData)
+      orderDataKeys: Object.keys(orderData),
+      orderDetails: orderData.orderDetails,
+      items: orderData.items,
+      subtotal: orderData.subtotal,
+      deliveryFee: orderData.deliveryFee,
+      total: orderData.total
     });
     
-    doc.fontSize(10)
+    doc.fillColor('black')
+       .fontSize(10)
        .font('Helvetica-Bold');
     
     tableHeaders.forEach((header, i) => {
       const align = i === 0 ? 'left' : 'right';
-      doc.text(header, currentX, tableTop, { width: columnWidths[i], align });
+      doc.text(header, currentX, tableTop + 8, { width: columnWidths[i], align });
       currentX += columnWidths[i];
     });
     
-    doc.moveDown(0.5);
+    // Mantener el color negro para el contenido
+    doc.fillColor('black');
+    doc.y = tableTop + 30;
     
     // Línea separadora después de los encabezados
-    doc.moveTo(50, doc.y)
+    doc.strokeColor('#1E40AF')
+       .lineWidth(1)
+       .moveTo(50, doc.y)
        .lineTo(doc.page.width - 50, doc.y)
        .stroke()
        .moveDown(0.5);
@@ -338,8 +389,6 @@ class DocumentGeneratorService {
             doc.text(`S/ ${typeof unitPrice === 'number' ? unitPrice.toFixed(2) : '0.00'}`, currentX, rowTop, { width: columnWidths[2], align: 'right' });
             currentX += columnWidths[2];
             
-            // Subtotal
-            doc.text(`S/ ${typeof subtotal === 'number' ? subtotal.toFixed(2) : '0.00'}`, currentX, rowTop, { width: columnWidths[3], align: 'right' });
             
             doc.moveDown(0.5);
           } catch (itemError) {
@@ -348,18 +397,22 @@ class DocumentGeneratorService {
           }
         });
       } else if (orderDetails && orderDetails.length > 0) {
-        orderDetails.forEach(item => {
+        console.log('Procesando orderDetails:', orderDetails);
+        orderDetails.forEach((item, index) => {
           try {
+            console.log(`Procesando item ${index}:`, item);
             const product = item.product || {};
             const quantity = item.quantity || 1;
             const unitPrice = item.unitPrice || product.unitPrice || 0;
             const subtotal = item.subtotal || (unitPrice * quantity);
             
+            console.log(`Item ${index} - quantity: ${quantity}, unitPrice: ${unitPrice}, subtotal: ${subtotal}`);
+            
             currentX = 50;
             const rowTop = doc.y;
             
             // Producto
-            doc.text(product.name || 'Producto', currentX, rowTop, { width: columnWidths[0], align: 'left' });
+            doc.text(product.name || item.productName || 'Producto', currentX, rowTop, { width: columnWidths[0], align: 'left' });
             currentX += columnWidths[0];
             
             // Cantidad
@@ -370,8 +423,6 @@ class DocumentGeneratorService {
             doc.text(`S/ ${typeof unitPrice === 'number' ? unitPrice.toFixed(2) : '0.00'}`, currentX, rowTop, { width: columnWidths[2], align: 'right' });
             currentX += columnWidths[2];
             
-            // Subtotal
-            doc.text(`S/ ${typeof subtotal === 'number' ? subtotal.toFixed(2) : '0.00'}`, currentX, rowTop, { width: columnWidths[3], align: 'right' });
             
             doc.moveDown(0.5);
           } catch (itemError) {
@@ -381,12 +432,16 @@ class DocumentGeneratorService {
         });
       } else if (items && items.length > 0) {
         // Formato alternativo para items
-        items.forEach(item => {
+        console.log('Procesando items:', items);
+        items.forEach((item, index) => {
           try {
+            console.log(`Procesando item ${index}:`, item);
             const productName = item.product?.name || item.productName || 'Producto';
             const quantity = item.quantity || 1;
             const unitPrice = item.price || item.unitPrice || 0;
             const subtotal = item.subtotal || (unitPrice * quantity);
+            
+            console.log(`Item ${index} - quantity: ${quantity}, unitPrice: ${unitPrice}, subtotal: ${subtotal}`);
             
             currentX = 50;
             const rowTop = doc.y;
@@ -403,8 +458,6 @@ class DocumentGeneratorService {
             doc.text(`S/ ${typeof unitPrice === 'number' ? unitPrice.toFixed(2) : '0.00'}`, currentX, rowTop, { width: columnWidths[2], align: 'right' });
             currentX += columnWidths[2];
             
-            // Subtotal
-            doc.text(`S/ ${typeof subtotal === 'number' ? subtotal.toFixed(2) : '0.00'}`, currentX, rowTop, { width: columnWidths[3], align: 'right' });
             
             doc.moveDown(0.5);
           } catch (itemError) {
@@ -452,16 +505,14 @@ class DocumentGeneratorService {
           }
         }
         
-        // Agregar deliveryFee al total si existe
-        const deliveryFee = typeof orderData.deliveryFee === 'number' ? orderData.deliveryFee : parseFloat(orderData.deliveryFee || 0);
-        if (!isNaN(deliveryFee)) {
-          total += deliveryFee;
-        }
+        // No agregar deliveryFee aquí, ya está incluido en el total original
+        // El total ya viene calculado desde el frontend con el deliveryFee incluido
         
         console.log('Total calculado en PDF:', { 
           originalTotal: orderData.total, 
-          deliveryFee, 
-          finalTotal: total 
+          finalTotal: total,
+          orderDataKeys: Object.keys(orderData),
+          subtotal: orderData.subtotal
         });
       } catch (e) {
         console.error('Error al convertir total a número:', e);
@@ -474,14 +525,12 @@ class DocumentGeneratorService {
         if (orderData.subtotal !== undefined && orderData.subtotal !== null) {
           subtotal = typeof orderData.subtotal === 'number' ? orderData.subtotal : parseFloat(orderData.subtotal || 0);
           if (isNaN(subtotal)) {
-            // Calcular subtotal como total - deliveryFee
-            const deliveryFee = typeof orderData.deliveryFee === 'number' ? orderData.deliveryFee : parseFloat(orderData.deliveryFee || 0);
-            subtotal = Math.round((total - deliveryFee) * 100) / 100;
+            // Usar el subtotal que viene del frontend directamente
+            subtotal = orderData.subtotal || 0;
           }
         } else {
-          // Calcular subtotal como total - deliveryFee (sin IGV)
-          const deliveryFee = typeof orderData.deliveryFee === 'number' ? orderData.deliveryFee : parseFloat(orderData.deliveryFee || 0);
-          subtotal = Math.round((total - deliveryFee) * 100) / 100;
+          // Usar el subtotal que viene del frontend directamente
+          subtotal = orderData.subtotal || 0;
         }
         
         console.log('Subtotal calculado en PDF:', { 
@@ -492,8 +541,7 @@ class DocumentGeneratorService {
         });
       } catch (e) {
         console.error('Error al calcular subtotal:', e);
-        const deliveryFee = typeof orderData.deliveryFee === 'number' ? orderData.deliveryFee : parseFloat(orderData.deliveryFee || 0);
-        subtotal = Math.round((total - deliveryFee) * 100) / 100;
+        subtotal = orderData.subtotal || 0;
       }
       
       // Obtener el costo de envío si existe
@@ -508,34 +556,42 @@ class DocumentGeneratorService {
         deliveryFee = 0;
       }
       
+      // Fondo gris para la sección de totales
+      const totalsY = doc.y;
+      doc.rect(300, totalsY, doc.page.width - 350, 80)
+         .fill('#F8FAFC');
+      
       // Alinear a la derecha
-      const rightColumnX = doc.page.width - 150;
+      const rightColumnX = 310;
       const rightColumnWidth = 100;
       
-      doc.fontSize(10)
+      // Asegurar que el texto sea negro
+      doc.fillColor('black')
+         .fontSize(10)
          .font('Helvetica')
-         .text('Subtotal:', rightColumnX, doc.y, { width: rightColumnWidth, align: 'left' })
-         .text(`S/ ${subtotal.toFixed(2)}`, rightColumnX + rightColumnWidth, doc.y - doc.currentLineHeight(), { width: rightColumnWidth, align: 'right' })
-         .moveDown(0.5);
+         .text('Subtotal:', rightColumnX, totalsY + 10, { width: rightColumnWidth, align: 'left' })
+         .text(`S/ ${subtotal.toFixed(2)}`, rightColumnX + rightColumnWidth, totalsY + 10, { width: rightColumnWidth, align: 'right' });
       
       // Mostrar costo de envío si existe
       if (deliveryFee > 0) {
-        doc.text('Costo de envío:', rightColumnX, doc.y, { width: rightColumnWidth, align: 'left' })
-           .text(`S/ ${deliveryFee.toFixed(2)}`, rightColumnX + rightColumnWidth, doc.y - doc.currentLineHeight(), { width: rightColumnWidth, align: 'right' })
-           .moveDown(0.5);
+        doc.text('Costo de envío:', rightColumnX, totalsY + 25, { width: rightColumnWidth, align: 'left' })
+           .text(`S/ ${deliveryFee.toFixed(2)}`, rightColumnX + rightColumnWidth, totalsY + 25, { width: rightColumnWidth, align: 'right' });
       }
       
       // Línea separadora para el total
-      doc.moveTo(rightColumnX, doc.y)
-         .lineTo(doc.page.width - 50, doc.y)
-         .stroke()
-         .moveDown(0.5);
+      doc.strokeColor('#1E40AF')
+         .lineWidth(2)
+         .moveTo(rightColumnX, totalsY + 45)
+         .lineTo(doc.page.width - 50, totalsY + 45)
+         .stroke();
       
-      doc.fontSize(12)
+      doc.fontSize(14)
          .font('Helvetica-Bold')
-         .text('TOTAL:', rightColumnX, doc.y, { width: rightColumnWidth, align: 'left' })
-         .text(`S/ ${total.toFixed(2)}`, rightColumnX + rightColumnWidth, doc.y - doc.currentLineHeight(), { width: rightColumnWidth, align: 'right' })
-         .moveDown(1);
+         .text('TOTAL:', rightColumnX, totalsY + 55, { width: rightColumnWidth, align: 'left' })
+         .text(`S/ ${total.toFixed(2)}`, rightColumnX + rightColumnWidth, totalsY + 55, { width: rightColumnWidth, align: 'right' });
+      
+      // Mover el cursor después de la sección de totales
+      doc.y = totalsY + 90;
     } catch (error) {
       console.error('Error al generar totales:', error);
       // Mostrar un mensaje de error en el documento
@@ -551,27 +607,34 @@ class DocumentGeneratorService {
    * @param {PDFDocument} doc - Documento PDF
    */
   _addFooter(doc) {
-    // Línea separadora
-    doc.moveTo(50, doc.y)
-       .lineTo(doc.page.width - 50, doc.y)
-       .stroke()
-       .moveDown(0.3); // Reducir espacio
+    // Fondo azul para el pie de página
+    const footerY = doc.y;
+    doc.rect(0, footerY, doc.page.width, 100)
+       .fill('#1E40AF');
     
     // Mensaje de agradecimiento
-    doc.fontSize(9) // Reducir tamaño de fuente
-       .font('Helvetica')
-       .text('¡Gracias por su compra!', { align: 'center' })
-       .moveDown(0.3); // Reducir espacio
+    doc.fillColor('white')
+       .fontSize(12)
+       .font('Helvetica-Bold')
+       .text('¡Gracias por elegir AquaYara!', { align: 'center', y: footerY + 10 })
+       .moveDown(0.3);
     
     // Información adicional
-    doc.fontSize(7) // Reducir tamaño de fuente
-       .text('Este documento es un comprobante válido para efectos fiscales.', { align: 'center' })
-       .text('Para cualquier consulta, contáctenos al (01) 123-4567 o visite nuestra página web.', { align: 'center' })
-       .moveDown(0.3); // Reducir espacio
+    doc.fontSize(9)
+       .font('Helvetica')
+       .text('Este documento es un comprobante válido para efectos fiscales.', { align: 'center', y: footerY + 30 })
+       .text('Para cualquier consulta, contáctenos al +51 961 606 183', { align: 'center', y: footerY + 45 })
+       .text('Email: admin@aquayara.com', { align: 'center', y: footerY + 60 })
+       .moveDown(0.3);
+    
+    // Información de la empresa
+    doc.fontSize(8)
+       .text('AquaYara - Sistema de Purificación de Agua', { align: 'center', y: footerY + 75 })
+       .text('RUC: 20123456789 | Av. Principal 123, Lima, Perú', { align: 'center', y: footerY + 85 });
     
     // Número de página
     const pageNumber = `Página ${doc.page.pageNumber}`;
-    doc.text(pageNumber, 50, doc.page.height - 40, { align: 'center' });
+    doc.text(pageNumber, 50, doc.page.height - 20, { align: 'center' });
   }
   
   /**

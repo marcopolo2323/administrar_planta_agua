@@ -18,7 +18,7 @@ import {
   Badge
 } from '@chakra-ui/react';
 import { useNavigate } from 'react-router-dom';
-import { FaBox, FaUsers, FaTruck, FaCreditCard, FaChartLine, FaDollarSign, FaShoppingCart } from 'react-icons/fa';
+import { FaBox, FaUsers, FaTruck, FaCreditCard, FaChartLine, FaDollarSign, FaShoppingCart, FaCalendarAlt } from 'react-icons/fa';
 import useProductStore from '../stores/productStore';
 import useClientStore from '../stores/clientStore';
 import useOrderStore from '../stores/orderStore';
@@ -90,20 +90,20 @@ const Dashboard = () => {
       description: 'Ver ventas del día'
     },
     {
-      title: 'Vales',
-      icon: FaCreditCard,
-      color: 'teal',
-      onClick: () => navigate('/dashboard/vouchers'),
-      count: '🎫',
-      description: 'Sistema de crédito'
-    },
-    {
       title: 'Pagos Clientes',
       icon: FaShoppingCart,
       color: 'cyan',
       onClick: () => navigate('/dashboard/client-payments'),
       count: '💳',
       description: 'Monitorear pagos'
+    },
+    {
+      title: 'Suscripciones',
+      icon: FaCalendarAlt,
+      color: 'pink',
+      onClick: () => navigate('/dashboard/subscriptions'),
+      count: '📅',
+      description: 'Gestionar suscripciones'
     },
     {
       title: 'Repartidores',

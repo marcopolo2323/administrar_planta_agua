@@ -62,8 +62,8 @@ const DashboardLayout = () => {
     { to: '/dashboard/clients', label: 'Clientes', icon: '👥' },
     { to: '/dashboard/orders', label: 'Pedidos', icon: '📦' },
     { to: '/dashboard/sales', label: 'Ventas', icon: '💰' },
-    { to: '/dashboard/vouchers', label: 'Vales', icon: '🎫' },
     { to: '/dashboard/client-payments', label: 'Pagos Clientes', icon: '💳', adminOnly: true },
+    { to: '/dashboard/subscriptions', label: 'Suscripciones', icon: '📅', adminOnly: true },
     { to: '/dashboard/delivery-fees', label: 'Tarifas de Envío', icon: '🚚', adminOnly: true },
     { to: '/dashboard/delivery-persons', label: 'Repartidores', icon: '👨‍💼', adminOnly: true },
     { to: '/dashboard/reports', label: 'Reportes', icon: '📊', adminOnly: true }

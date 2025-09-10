@@ -9,4 +9,7 @@ router.post('/', guestPaymentController.createGuestPayment);
 // Verificar estado de pago de un pedido de invitado
 router.get('/:orderId', guestPaymentController.getGuestPaymentStatus);
 
+// Generar PDF para pedidos de invitados
+router.post('/generate-pdf', guestPaymentController.generatePDF);
+
 module.exports = router;

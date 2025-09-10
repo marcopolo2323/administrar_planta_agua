@@ -30,8 +30,6 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { FaHome, FaDownload, FaPrint, FaWhatsapp, FaTruck } from 'react-icons/fa';
 import useOrderStore from '../stores/orderStore';
 import axios from '../utils/axios';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 
 const Receipt = () => {
   const navigate = useNavigate();
@@ -139,94 +137,93 @@ const Receipt = () => {
         isClosable: true,
       });
 
-      // Crear un nuevo PDF
-      const pdf = new jsPDF();
+      // Preparar datos para el backend
+      console.log('Datos del order original:', order);
+      console.log('Items del order:', order.items);
       
-      // Configurar el PDF
-      pdf.setFontSize(20);
-      pdf.setFont(undefined, 'bold');
-      pdf.text('PLANTA DE AGUA PURA', 20, 30);
+      const orderData = {
+        id: order.id,
+        customerName: order.client.name,
+        customerPhone: order.client.phone,
+        customerEmail: order.client.email || null,
+        deliveryAddress: order.client.address,
+        deliveryDistrict: order.client.district,
+        deliveryNotes: order.client.reference || null,
+        paymentMethod: order.paymentMethod || 'Efectivo',
+        // Usar orderDetails en lugar de items para que el generador lo reconozca
+        orderDetails: order.items.map(item => {
+          console.log('Mapeando item para orderDetails:', item);
+          return {
+            product: { name: item.name },
+            productName: item.name,
+            quantity: parseInt(item.quantity),
+            unitPrice: parseFloat(item.unitPrice),
+            subtotal: parseFloat(item.subtotal)
+          };
+        }),
+        // También mantener items por compatibilidad
+        items: order.items.map(item => {
+          console.log('Mapeando item para items:', item);
+          return {
+            product: { name: item.name },
+            productName: item.name,
+            quantity: parseInt(item.quantity),
+            unitPrice: parseFloat(item.unitPrice),
+            subtotal: parseFloat(item.subtotal)
+          };
+        }),
+        subtotal: parseFloat(order.subtotal),
+        deliveryFee: parseFloat(order.deliveryFee),
+        total: parseFloat(order.total),
+        status: order.status,
+        createdAt: order.createdAt
+      };
       
-      pdf.setFontSize(16);
-      pdf.setFont(undefined, 'normal');
-      pdf.text('Recibo de Pedido', 20, 45);
+      console.log('Datos finales enviados al backend:', orderData);
+
+      // Log de depuración
+      console.log('Datos del pedido que se envían al backend:', {
+        order: order,
+        orderData: orderData,
+        items: order.items,
+        subtotal: order.subtotal,
+        deliveryFee: order.deliveryFee,
+        total: order.total
+      });
+
+      // Llamar al endpoint del backend para generar el PDF
+      console.log('Llamando al endpoint del backend para generar PDF...');
+      console.log('URL:', '/api/guest-payments/generate-pdf');
+      console.log('Datos enviados:', { orderData, documentType: 'boleta' });
       
-      // Información del pedido
-      pdf.setFontSize(12);
-      pdf.text(`Pedido #${order.id}`, 20, 60);
-      pdf.text(`Fecha: ${new Date(order.createdAt).toLocaleDateString('es-ES')}`, 20, 70);
-      pdf.text(`Estado: ${getStatusText(order.status)}`, 20, 80);
-      
-      // Información del cliente
-      pdf.setFont(undefined, 'bold');
-      pdf.text('DATOS DEL CLIENTE:', 20, 95);
-      pdf.setFont(undefined, 'normal');
-      pdf.text(`Nombre: ${order.client.name}`, 20, 105);
-      pdf.text(`Teléfono: ${order.client.phone}`, 20, 115);
-      if (order.client.email) {
-        pdf.text(`Email: ${order.client.email}`, 20, 125);
-      }
-      pdf.text(`Dirección: ${order.client.address}`, 20, order.client.email ? 135 : 125);
-      pdf.text(`Distrito: ${order.client.district}`, 20, order.client.email ? 145 : 135);
-      
-      // Productos
-      let yPosition = order.client.email ? 160 : 150;
-      pdf.setFont(undefined, 'bold');
-      pdf.text('PRODUCTOS:', 20, yPosition);
-      yPosition += 10;
-      
-      pdf.setFontSize(10);
-      pdf.setFont(undefined, 'bold');
-      pdf.text('Producto', 20, yPosition);
-      pdf.text('Cant.', 100, yPosition);
-      pdf.text('Precio', 120, yPosition);
-      pdf.text('Subtotal', 150, yPosition);
-      yPosition += 5;
-      
-      // Línea separadora
-      pdf.line(20, yPosition, 190, yPosition);
-      yPosition += 10;
-      
-      pdf.setFont(undefined, 'normal');
-      order.items.forEach((item) => {
-        pdf.text(item.name, 20, yPosition);
-        pdf.text(item.quantity.toString(), 100, yPosition);
-        pdf.text(`S/ ${parseFloat(item.unitPrice).toFixed(2)}`, 120, yPosition);
-        pdf.text(`S/ ${parseFloat(item.subtotal).toFixed(2)}`, 150, yPosition);
-        yPosition += 8;
+      const response = await axios.post('/api/guest-payments/generate-pdf', {
+        orderData: orderData,
+        documentType: 'boleta'
+      }, {
+        responseType: 'blob'
       });
       
-      // Totales
-      yPosition += 10;
-      pdf.line(20, yPosition, 190, yPosition);
-      yPosition += 10;
-      
-      pdf.setFont(undefined, 'bold');
-      pdf.text('Subtotal:', 120, yPosition);
-      pdf.text(`S/ ${parseFloat(order.subtotal).toFixed(2)}`, 150, yPosition);
-      yPosition += 8;
-      
-      pdf.text('Flete:', 120, yPosition);
-      pdf.text(`S/ ${parseFloat(order.deliveryFee).toFixed(2)}`, 150, yPosition);
-      yPosition += 8;
-      
-      pdf.setFontSize(12);
-      pdf.text('TOTAL:', 120, yPosition);
-      pdf.text(`S/ ${parseFloat(order.total).toFixed(2)}`, 150, yPosition);
-      
-      // Pie de página
-      yPosition += 20;
-      pdf.setFontSize(8);
-      pdf.setFont(undefined, 'normal');
-      pdf.text('Gracias por su compra', 20, yPosition);
-      pdf.text('Planta de Agua Pura - Sistema de Gestión', 20, yPosition + 10);
-      
-      // Descargar el PDF
-      pdf.save(`pedido-${order.id}.pdf`);
+      console.log('Respuesta del backend:', {
+        status: response.status,
+        headers: response.headers,
+        dataType: typeof response.data,
+        dataLength: response.data.length
+      });
+
+      // Crear un blob y descargar el PDF
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `boleta_${order.id}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
       
       toast({
-        title: 'PDF Descargado',
-        description: 'El recibo se ha descargado correctamente',
+        title: 'PDF Generado',
+        description: 'El documento se ha descargado exitosamente',
         status: 'success',
         duration: 3000,
         isClosable: true,
@@ -235,7 +232,7 @@ const Receipt = () => {
       console.error('Error al generar PDF:', error);
       toast({
         title: 'Error',
-        description: 'No se pudo generar el PDF',
+        description: 'Error al generar el PDF',
         status: 'error',
         duration: 3000,
         isClosable: true,

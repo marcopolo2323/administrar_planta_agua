@@ -68,11 +68,6 @@ const ClientLayout = () => {
       icon: FaMoneyBillWave
     },
     {
-      name: 'Mis Vales',
-      path: '/client-dashboard/vouchers',
-      icon: FaGift
-    },
-    {
       name: 'Suscripciones',
       path: '/client-dashboard/subscriptions',
       icon: FaCalendarAlt

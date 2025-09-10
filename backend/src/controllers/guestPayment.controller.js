@@ -210,3 +210,45 @@ exports.getGuestPaymentStatus = async (req, res) => {
     return res.status(500).json({ message: 'Error al obtener estado de pago', error: error.message });
   }
 };
+
+// Generar PDF para pedidos de invitados
+exports.generatePDF = async (req, res) => {
+  try {
+    const { orderData, documentType } = req.body;
+    
+    if (!orderData) {
+      return res.status(400).json({ message: 'Datos del pedido requeridos' });
+    }
+    
+    // Importar el servicio de generación de documentos
+    const documentGeneratorService = require('../services/documentGenerator.service');
+    
+    // Generar el PDF
+    const pdfPath = await documentGeneratorService.generateDocumentPDF(orderData, documentType || 'boleta');
+    
+    // Leer el archivo PDF generado
+    const fs = require('fs');
+    const pdfBuffer = fs.readFileSync(pdfPath);
+    
+    // Configurar headers para la descarga
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="boleta_${orderData.id}.pdf"`);
+    res.setHeader('Content-Length', pdfBuffer.length);
+    
+    // Enviar el PDF
+    res.send(pdfBuffer);
+    
+    // Limpiar el archivo temporal después de enviarlo
+    setTimeout(() => {
+      try {
+        fs.unlinkSync(pdfPath);
+      } catch (cleanupError) {
+        console.error('Error al limpiar archivo temporal:', cleanupError);
+      }
+    }, 5000);
+    
+  } catch (error) {
+    console.error('Error al generar PDF:', error);
+    return res.status(500).json({ message: 'Error al generar PDF', error: error.message });
+  }
+};
