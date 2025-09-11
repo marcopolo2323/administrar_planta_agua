@@ -26,6 +26,7 @@ import {
 import { FaEye, FaEyeSlash, FaUser, FaGift } from 'react-icons/fa';
 import useAuthStore from '../stores/authStore';
 import AquaYaraLogo from '../components/AquaYaraLogo';
+import { TermsAndConditionsButton, PrivacyPolicyButton } from '../components/TermsAndConditions';
 
 const ClientLogin = () => {
   const [formData, setFormData] = useState({
@@ -202,6 +203,15 @@ const ClientLogin = () => {
                       Pedido Rápido
                     </ChakraLink>
                   </HStack>
+                </HStack>
+              </VStack>
+
+              {/* Términos y Condiciones */}
+              <VStack spacing={2} textAlign="center" pt={4}>
+                <HStack spacing={4}>
+                  <TermsAndConditionsButton />
+                  <Text color="gray.400">|</Text>
+                  <PrivacyPolicyButton />
                 </HStack>
               </VStack>
             </VStack>

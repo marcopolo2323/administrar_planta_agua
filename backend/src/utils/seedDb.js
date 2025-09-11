@@ -146,12 +146,12 @@ async function seedDatabase() {
     const repartidores = await DeliveryPerson.bulkCreate([
       {
         userId: repartidor.id,
-        name: 'Carlos Mendoza',
-        phone: '922222222',
-        email: 'carlos.mendoza@aguapura.com',
-        vehicleType: 'motorcycle',
-        vehiclePlate: 'ABC-123',
-        licenseNumber: 'LIC123456',
+        name: 'Branstone Dux Urbina Garcia',
+        phone: '924714321',
+        email: 'ubranstone@gmail.com',
+        vehicleType: 'motokar',
+        vehiclePlate: 'UCA-7U',
+        licenseNumber: 'Y-73892650',
         address: 'Av. Principal 123',
         status: 'available',
         notes: 'Experto en entregas rápidas'

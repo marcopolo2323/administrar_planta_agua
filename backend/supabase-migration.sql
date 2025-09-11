@@ -180,10 +180,10 @@ CREATE TABLE IF NOT EXISTS "MonthlyPayments" (
 
 -- Insertar datos iniciales
 INSERT INTO "Users" (username, email, password, role, phone) VALUES
-('admin', 'admin@aquayara.com', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin', '+51999999999'),
-('vendedor', 'vendedor@aquayara.com', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'vendedor', '+51999999998'),
-('repartidor', 'repartidor@aquayara.com', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'repartidor', '+51999999997'),
-('cliente1', 'cliente1@aquayara.com', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'cliente', '+51999999996');
+('admin', 'aguademesaaquayara@gmail.com', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin', '+51999999999'),
+('vendedor', 'aguademesaaquayara@gmail.com', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'vendedor', '+51999999998'),
+('repartidor', 'aguademesaaquayara@gmail.com', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'repartidor', '+51999999997'),
+('cliente1', 'aguademesaaquayara@gmail.com', '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'cliente', '+51999999996');
 
 INSERT INTO "Products" (name, description, price, wholesalePrice, minWholesaleQuantity, type, imageUrl) VALUES
 ('Bidón de Agua 20L', 'Bidón de agua purificada de 20 litros', 7.00, 5.00, 2, 'bidon', '/images/img_buyon.jpeg'),

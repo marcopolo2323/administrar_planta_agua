@@ -5,6 +5,7 @@ import TokenDebug from '../components/TokenDebug';
 import { useRole } from '../hooks/useRole';
 import AquaYaraLogo from '../components/AquaYaraLogo';
 import AdminContact from '../components/AdminContact';
+import Footer from '../components/Footer';
 import {
   Box,
   Flex,
@@ -241,6 +242,9 @@ const DashboardLayout = () => {
           <Outlet />
         </Box>
       </Box>
+
+      {/* Footer */}
+      <Footer />
       
       {/* Debug component solo en desarrollo */}
       {import.meta.env.DEV && <TokenDebug />}

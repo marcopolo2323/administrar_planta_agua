@@ -172,7 +172,7 @@ const createEmailTemplate = (client, credentials) => {
             <div class="contact-info">
                 <h4>📞 ¿Necesita ayuda?</h4>
                 <p><strong>Teléfono:</strong> +51 961 606 183</p>
-                <p><strong>Email:</strong> contacto@aquayara.com</p>
+                <p><strong>Email:</strong> aguademesaaquayara@gmail.com</p>
                 <p><strong>Horario de atención:</strong> Lunes a Sábado de 8:00 AM a 6:00 PM</p>
             </div>
             

@@ -32,7 +32,7 @@ Nos complace informarle que su cuenta de cliente frecuente ha sido creada exitos
 
 📞 *¿Necesita ayuda?*
 Teléfono: +51 961 606 183
-Email: contacto@aquayara.com
+Email: aguademesaaquayara@gmail.com
 Horario: Lunes a Sábado 8:00 AM - 6:00 PM
 
 ¡Gracias por elegir AquaYara! 💧

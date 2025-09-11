@@ -33,7 +33,7 @@ async function createClientAccounts() {
         // Crear usuario
           const user = await User.create({
             username: username,
-            email: client.email || `${username}@aquayara.com`,
+            email: client.email || `aguademesaaquayara@gmail.com`,
             password: hashedPassword,
             role: 'cliente',
             active: true

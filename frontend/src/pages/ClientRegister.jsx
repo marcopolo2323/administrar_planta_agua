@@ -29,6 +29,7 @@ import {
 import { FaEye, FaEyeSlash, FaUser, FaGift, FaMapMarkerAlt, FaPhone } from 'react-icons/fa';
 import axios from '../utils/axios';
 import AquaYaraLogo from '../components/AquaYaraLogo';
+import { TermsAndConditionsButton, PrivacyPolicyButton } from '../components/TermsAndConditions';
 
 const ClientRegister = () => {
   const [formData, setFormData] = useState({
@@ -48,6 +49,7 @@ const ClientRegister = () => {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [districts, setDistricts] = useState([]);
@@ -95,6 +97,18 @@ const ClientRegister = () => {
       toast({
         title: 'Error',
         description: 'Las contraseñas no coinciden',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+      setLoading(false);
+      return;
+    }
+
+    if (!termsAccepted) {
+      toast({
+        title: 'Error',
+        description: 'Debe aceptar los términos y condiciones',
         status: 'error',
         duration: 3000,
         isClosable: true,
@@ -517,6 +531,28 @@ const ClientRegister = () => {
                 </VStack>
               </Box>
 
+              {/* Términos y Condiciones */}
+              <Box>
+                <HStack spacing={2} mb={2}>
+                  <input
+                    type="checkbox"
+                    id="terms"
+                    checked={termsAccepted}
+                    onChange={(e) => setTermsAccepted(e.target.checked)}
+                    style={{ margin: 0 }}
+                  />
+                  <Text fontSize="sm" color="gray.600">
+                    Acepto los{' '}
+                    <TermsAndConditionsButton
+                      showAcceptButton={false}
+                      onAccept={() => setTermsAccepted(true)}
+                    />
+                    {' '}y la{' '}
+                    <PrivacyPolicyButton />
+                  </Text>
+                </HStack>
+              </Box>
+
               <Button
                 type="submit"
                 colorScheme="blue"
@@ -524,7 +560,7 @@ const ClientRegister = () => {
                 w="full"
                 isLoading={loading}
                 loadingText="Creando cuenta..."
-                isDisabled={success}
+                isDisabled={success || !termsAccepted}
               >
                 {success ? 'Cuenta Creada ✓' : 'Crear Cuenta'}
               </Button>

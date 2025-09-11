@@ -121,7 +121,7 @@ const sendTestMessage = async (phoneNumber) => {
 
 📞 *Contacto:*
 Teléfono: +51 961 606 183
-Email: contacto@aquayara.com
+Email: aguademesaaquayara@gmail.com
 
 ¡Gracias por elegir AquaYara! 💧
 

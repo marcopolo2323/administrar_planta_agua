@@ -1,5 +1,6 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import useAuthStore from '../stores/authStore';
+import Footer from '../components/Footer';
 import {
   Box,
   Flex,
@@ -224,6 +225,9 @@ const ClientLayout = () => {
           <Outlet />
         </Box>
       </Flex>
+
+      {/* Footer */}
+      <Footer />
     </Flex>
   );
 };

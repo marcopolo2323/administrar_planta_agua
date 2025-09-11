@@ -624,7 +624,7 @@ class DocumentGeneratorService {
        .font('Helvetica')
        .text('Este documento es un comprobante válido para efectos fiscales.', { align: 'center', y: footerY + 30 })
        .text('Para cualquier consulta, contáctenos al +51 961 606 183', { align: 'center', y: footerY + 45 })
-       .text('Email: admin@aquayara.com', { align: 'center', y: footerY + 60 })
+       .text('Email: aguademesaaquayara@gmail.com', { align: 'center', y: footerY + 60 })
        .moveDown(0.3);
     
     // Información de la empresa

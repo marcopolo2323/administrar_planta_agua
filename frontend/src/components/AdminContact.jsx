@@ -16,7 +16,7 @@ const AdminContact = ({ variant = 'button', size = 'sm' }) => {
   const toast = useToast();
   
   const adminPhone = '+51 961 606 183';
-  const adminEmail = 'admin@aquayara.com';
+  const adminEmail = 'aguademesaaquayara@gmail.com';
   
   const handleWhatsAppClick = () => {
     const message = encodeURIComponent('Hola, necesito ayuda con el sistema de AquaYara');

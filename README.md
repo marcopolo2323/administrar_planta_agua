@@ -197,7 +197,7 @@ node src/scripts/sendWhatsAppMessages.js send
 
 ## 📞 Soporte
 - **Teléfono**: +51 961 606 183
-- **Email**: contacto@aquayara.com
+- **Email**: aguademesaaquayara@gmail.com
 - **Horario**: Lunes a Sábado 8:00 AM - 6:00 PM
 
 ## 🎉 Estado del Proyecto
