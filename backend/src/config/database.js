@@ -7,7 +7,18 @@ const dbConfig = config[env];
 let sequelize;
 
 if (env === 'production' && process.env.DATABASE_URL) {
-  // Para producción, usar DATABASE_URL directamente
+  sequelize = new Sequelize(process.env.DATABASE_URL, {
+    dialect: 'postgres',
+    logging: false,
+    dialectOptions: {
+      ssl: {
+        require: true,
+        rejectUnauthorized: false
+      }
+    }
+  });
+} else if (process.env.DATABASE_URL) {
+  // Forzar SSL incluso si no está en production
   sequelize = new Sequelize(process.env.DATABASE_URL, {
     dialect: 'postgres',
     logging: false,
@@ -19,7 +30,7 @@ if (env === 'production' && process.env.DATABASE_URL) {
     }
   });
 } else {
-  // Para desarrollo, usar configuración tradicional
+  // Para desarrollo local
   sequelize = new Sequelize(
     dbConfig.database,
     dbConfig.username,
