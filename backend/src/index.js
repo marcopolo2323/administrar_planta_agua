@@ -4,18 +4,32 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 const { sequelize } = require('./models');
 
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
+// CORS debe ser el primer middleware
+const allowedOrigins = [
+  'https://plantaaguademesaaquayara.vercel.app',
+  'https://plantaaguademesaaquayara-git-main-lloyds-projects-25bc7492.vercel.app',
+  'http://localhost:3000'
+];
 app.use(cors({
-  origin: ['https://plantaaguademesaaquayara.vercel.app',
-  'https://plantaaguademesaaquayara-git-main-lloyds-projects-25bc7492.vercel.app', 'http://localhost:3000'],
+  origin: allowedOrigins,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
   exposedHeaders: ['Content-Disposition']
 }));
+// Manejar preflight OPTIONS para todos los endpoints
+app.options('*', cors({
+  origin: allowedOrigins,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+  exposedHeaders: ['Content-Disposition']
+}));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
