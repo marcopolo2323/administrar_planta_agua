@@ -141,7 +141,7 @@ const SubscriptionsManagement = () => {
     }
   };
 
-  const filteredSubscriptions = subscriptions.filter(subscription => {
+  const filteredSubscriptions = (Array.isArray(subscriptions) ? subscriptions : []).filter(subscription => {
     const matchesSearch = subscription.client?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          subscription.client?.email?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || subscription.status === statusFilter;
@@ -365,7 +365,7 @@ const SubscriptionsManagement = () => {
                     </Tr>
                   </Thead>
                   <Tbody>
-                    {filteredSubscriptions.map((subscription) => (
+                    {(Array.isArray(filteredSubscriptions) ? filteredSubscriptions : []).map((subscription) => (
                       <Tr key={subscription.id}>
                         <Td>
                           <VStack align="start" spacing={1}>
@@ -444,7 +444,7 @@ const SubscriptionsManagement = () => {
                     value={createForm.clientId}
                     onChange={(e) => setCreateForm({ ...createForm, clientId: e.target.value })}
                   >
-                    {clients.map(client => (
+                    {(Array.isArray(clients) ? clients : []).map(client => (
                       <option key={client.id} value={client.id}>
                         {client.name} - {client.email}
                       </option>
@@ -458,7 +458,7 @@ const SubscriptionsManagement = () => {
                     value={createForm.planId}
                     onChange={(e) => setCreateForm({ ...createForm, planId: e.target.value })}
                   >
-                    {subscriptionPlans.map(plan => (
+                    {(Array.isArray(subscriptionPlans) ? subscriptionPlans : []).map(plan => (
                       <option key={plan.id} value={plan.id}>
                         {plan.name} - S/ {plan.price} ({plan.bidonsQuantity} bidones)
                       </option>

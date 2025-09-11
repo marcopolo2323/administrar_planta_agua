@@ -72,7 +72,7 @@ const clientPaymentsRoutes = require('./routes/client.payments.routes');
 const subscriptionRoutes = require('./routes/subscription.routes');
 const monthlyPaymentRoutes = require('./routes/monthlyPayment.routes');
 const legalRoutes = require('./routes/legal.routes');
-const resetDatabase = require('./scripts/resetDatabase')
+const resetDatabase = require('./utils/seedDb')
 
 //temporal
 app.get('/run-seed', async (req, res) => {
