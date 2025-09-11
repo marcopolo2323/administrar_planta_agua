@@ -191,7 +191,7 @@ async function generateOrdersReport(startDate, endDate) {
         include: [
           {
             model: Product,
-            as: 'Product',
+            as: 'product',
             attributes: ['id', 'name', 'price']
           }
         ]
@@ -253,7 +253,7 @@ async function generateOrdersReport(startDate, endDate) {
         createdAt: order.createdAt,
         deliveryPerson: order.deliveryPerson?.username || 'N/A',
         products: order.orderDetails?.map(detail => ({
-          name: detail.Product?.name || 'N/A',
+          name: detail.product?.name || 'N/A',
           quantity: detail.quantity,
           price: parseFloat(detail.price || 0)
         })) || []
@@ -446,7 +446,7 @@ async function generateProductsReport(startDate, endDate) {
     include: [
       {
         model: Product,
-        as: 'Product',
+        as: 'product',
         attributes: ['id', 'name', 'price']
       },
       {
@@ -482,8 +482,8 @@ async function generateProductsReport(startDate, endDate) {
   const productStats = {};
   
   regularOrderDetails.forEach(detail => {
-    const productId = detail.Product?.id;
-    const productName = detail.Product?.name || 'Producto desconocido';
+    const productId = detail.product?.id;
+    const productName = detail.product?.name || 'Producto desconocido';
     const quantity = detail.quantity;
     const price = parseFloat(detail.price || 0);
     const total = quantity * price;

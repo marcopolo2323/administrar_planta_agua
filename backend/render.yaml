@@ -10,17 +10,39 @@ services:
         value: production
       - key: PORT
         value: 10000
-      - key: DATABASE_URL
+      - key: DB_HOST
         fromDatabase:
           name: aquayara-db
-          property: connectionString
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: aquayara-db
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: aquayara-db
+          property: database
+      - key: DB_USER
+        fromDatabase:
+          name: aquayara-db
+          property: user
+      - key: DB_PASS
+        fromDatabase:
+          name: aquayara-db
+          property: password
       - key: JWT_SECRET
         generateValue: true
-      - key: CORS_ORIGIN
-        value: https://aquayara.vercel.app
+      - key: EMAIL_USER
+        value: tu_email@gmail.com
+      - key: EMAIL_PASS
+        value: tu_contraseña_aplicacion
+      - key: WHATSAPP_ACCESS_TOKEN
+        value: tu_token_whatsapp
+      - key: WHATSAPP_PHONE_NUMBER_ID
+        value: tu_phone_number_id
 
 databases:
   - name: aquayara-db
     plan: free
-    databaseName: aquayara
+    databaseName: aquayara_db
     user: aquayara_user
