@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Configuración base de axios
 const instance = axios.create({
-  baseURL: 'https://placeholder.onrender.com',
+  baseURL: import.meta.env.VITE_API_URL || '/api',
   headers: {
     'Content-Type': 'application/json'
   },
