@@ -9,7 +9,8 @@ const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(cors({
-  origin: ['https://tu-app.vercel.app', 'http://localhost:5173', 'http://localhost:3000'],
+  origin: ['https://plantaaguademesaaquayara.vercel.app',
+  'https://plantaaguademesaaquayara-git-main-lloyds-projects-25bc7492.vercel.app', 'http://localhost:3000'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
