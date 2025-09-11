@@ -72,7 +72,35 @@ const clientPaymentsRoutes = require('./routes/client.payments.routes');
 const subscriptionRoutes = require('./routes/subscription.routes');
 const monthlyPaymentRoutes = require('./routes/monthlyPayment.routes');
 const legalRoutes = require('./routes/legal.routes');
+const resetDatabase = require('./scripts/resetDatabase')
 
+//temporal
+app.get('/run-seed', async (req, res) => {
+  try {
+    // Verificar si ya hay datos
+    const productCount = await Product.count();
+    if (productCount > 0) {
+      return res.json({ 
+        success: false, 
+        message: 'La base de datos ya tiene datos. Seed no ejecutado.'
+      });
+    }
+    
+    console.log('🌱 Base de datos vacía, ejecutando seed...');
+    await resetDatabase();
+    
+    res.json({ 
+      success: true, 
+      message: 'Database seeded successfully!'
+    });
+  } catch (error) {
+    console.error('❌ Error en seed:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message
+    });
+  }
+});
 // Rutas públicas (deben ir antes de las protegidas)
 app.get('/api/delivery-fees', async (req, res) => {
   try {
