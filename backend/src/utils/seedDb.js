@@ -43,8 +43,17 @@ async function seedDatabase() {
       email: 'repartidor@aguapura.com',
       password: 'repartidor123',
       role: 'repartidor',
-      name: 'Repartidor Principal',
-      phone: '977777777'
+      name: 'Branstone Dux Urbina Garcia',
+      phone: '924714321'
+    });
+
+    const repartidor2 = await User.create({
+      username: 'repartidor2',
+      email: 'ana.torres@aguapura.com',
+      password: 'repartidor123',
+      role: 'repartidor',
+      name: 'Ana Torres',
+      phone: '911111111'
     });
 
     // Cliente frecuente
@@ -157,6 +166,7 @@ async function seedDatabase() {
         notes: 'Experto en entregas rápidas'
       },
       {
+        userId: repartidor2.id,
         name: 'Ana Torres',
         phone: '911111111',
         email: 'ana.torres@aguapura.com',
@@ -184,6 +194,7 @@ async function seedDatabase() {
       notes: 'Entregar en horario de oficina',
       status: 'entregado',
       paymentStatus: 'pendiente',
+      subtotal: 10.00,
       deliveryFee: 3.00,
       total: 13.00
     });
@@ -195,6 +206,32 @@ async function seedDatabase() {
         quantity: 2,
         unitPrice: 5.00,
         subtotal: 10.00
+      }
+    ]);
+
+    // Crear un segundo pedido de cliente frecuente
+    const pedido2 = await Order.create({
+      clientId: clientes[0].id,
+      userId: clienteFrecuente.id,
+      deliveryAddress: 'Av. Los Pinos 123',
+      deliveryDistrict: 'San Isidro',
+      contactPhone: '966666666',
+      paymentMethod: 'credito',
+      notes: 'Pedido urgente',
+      status: 'pendiente',
+      paymentStatus: 'pendiente',
+      subtotal: 20.00,
+      deliveryFee: 3.00,
+      total: 23.00
+    });
+
+    await OrderDetail.bulkCreate([
+      {
+        orderId: pedido2.id,
+        productId: productos[1].id,
+        quantity: 2,
+        unitPrice: 10.00,
+        subtotal: 20.00
       }
     ]);
 
@@ -213,8 +250,9 @@ async function seedDatabase() {
       paymentMethod: 'cash',
       status: 'delivered',
       paymentStatus: 'paid',
+      subtotal: 10.00,
       deliveryFee: 4.00,
-      total: 14.00
+      totalAmount: 14.00
     });
 
     await GuestOrderProduct.bulkCreate([
@@ -224,6 +262,32 @@ async function seedDatabase() {
         quantity: 1,
         price: 10.00,
         subtotal: 10.00
+      }
+    ]);
+
+    // Crear un segundo pedido de invitado
+    const pedidoInvitado2 = await GuestOrder.create({
+      customerName: 'Carlos Mendoza',
+      customerPhone: '977777777',
+      customerEmail: 'carlos.mendoza@example.com',
+      deliveryAddress: 'Jr. Las Palmas 789',
+      deliveryDistrict: 'Lima',
+      deliveryNotes: 'Oficina en el piso 3',
+      paymentMethod: 'card',
+      status: 'pending',
+      paymentStatus: 'pending',
+      subtotal: 14.00,
+      deliveryFee: 2.00,
+      totalAmount: 16.00
+    });
+
+    await GuestOrderProduct.bulkCreate([
+      {
+        guestOrderId: pedidoInvitado2.id,
+        productId: productos[0].id,
+        quantity: 2,
+        price: 7.00,
+        subtotal: 14.00
       }
     ]);
 
@@ -248,20 +312,132 @@ async function seedDatabase() {
 
     console.log('✅ Vales creados correctamente');
 
+    // 8. GENERAR BOLETAS AUTOMÁTICAMENTE
+    console.log('📄 Generando boletas automáticamente...');
+    
+    try {
+      const { documentGeneratorService } = require('../services/documentGenerator.service');
+      
+      // Generar boleta para pedido regular #1
+      const order1Data = {
+        id: pedido1.id,
+        customerName: clientes[0].name,
+        customerPhone: clientes[0].phone,
+        customerEmail: clientes[0].email,
+        deliveryAddress: pedido1.deliveryAddress,
+        deliveryDistrict: pedido1.deliveryDistrict,
+        total: parseFloat(pedido1.total),
+        subtotal: parseFloat(pedido1.subtotal),
+        deliveryFee: parseFloat(pedido1.deliveryFee),
+        paymentMethod: pedido1.paymentMethod,
+        orderDetails: [
+          {
+            productName: productos[0].name,
+            quantity: 2,
+            unitPrice: 5.00,
+            subtotal: 10.00
+          }
+        ]
+      };
+      
+      const pdfPath1 = await documentGeneratorService.generateDocumentPDF(order1Data, 'boleta');
+      console.log(`✅ Boleta generada para pedido regular #${pedido1.id}: ${pdfPath1}`);
+      
+      // Generar boleta para pedido regular #2
+      const order2Data = {
+        id: pedido2.id,
+        customerName: clientes[0].name,
+        customerPhone: clientes[0].phone,
+        customerEmail: clientes[0].email,
+        deliveryAddress: pedido2.deliveryAddress,
+        deliveryDistrict: pedido2.deliveryDistrict,
+        total: parseFloat(pedido2.total),
+        subtotal: parseFloat(pedido2.subtotal),
+        deliveryFee: parseFloat(pedido2.deliveryFee),
+        paymentMethod: pedido2.paymentMethod,
+        orderDetails: [
+          {
+            productName: productos[1].name,
+            quantity: 2,
+            unitPrice: 10.00,
+            subtotal: 20.00
+          }
+        ]
+      };
+      
+      const pdfPath2 = await documentGeneratorService.generateDocumentPDF(order2Data, 'boleta');
+      console.log(`✅ Boleta generada para pedido regular #${pedido2.id}: ${pdfPath2}`);
+      
+      // Generar boleta para pedido de invitado #1
+      const guestOrder1Data = {
+        id: pedidoInvitado1.id,
+        customerName: pedidoInvitado1.customerName,
+        customerPhone: pedidoInvitado1.customerPhone,
+        customerEmail: pedidoInvitado1.customerEmail,
+        deliveryAddress: pedidoInvitado1.deliveryAddress,
+        deliveryDistrict: pedidoInvitado1.deliveryDistrict,
+        total: parseFloat(pedidoInvitado1.totalAmount),
+        subtotal: parseFloat(pedidoInvitado1.subtotal),
+        deliveryFee: parseFloat(pedidoInvitado1.deliveryFee),
+        paymentMethod: pedidoInvitado1.paymentMethod,
+        orderDetails: [
+          {
+            productName: productos[1].name,
+            quantity: 1,
+            unitPrice: 10.00,
+            subtotal: 10.00
+          }
+        ]
+      };
+      
+      const pdfPath3 = await documentGeneratorService.generateDocumentPDF(guestOrder1Data, 'boleta');
+      console.log(`✅ Boleta generada para pedido de invitado #${pedidoInvitado1.id}: ${pdfPath3}`);
+      
+      // Generar boleta para pedido de invitado #2
+      const guestOrder2Data = {
+        id: pedidoInvitado2.id,
+        customerName: pedidoInvitado2.customerName,
+        customerPhone: pedidoInvitado2.customerPhone,
+        customerEmail: pedidoInvitado2.customerEmail,
+        deliveryAddress: pedidoInvitado2.deliveryAddress,
+        deliveryDistrict: pedidoInvitado2.deliveryDistrict,
+        total: parseFloat(pedidoInvitado2.totalAmount),
+        subtotal: parseFloat(pedidoInvitado2.subtotal),
+        deliveryFee: parseFloat(pedidoInvitado2.deliveryFee),
+        paymentMethod: pedidoInvitado2.paymentMethod,
+        orderDetails: [
+          {
+            productName: productos[0].name,
+            quantity: 2,
+            unitPrice: 7.00,
+            subtotal: 14.00
+          }
+        ]
+      };
+      
+      const pdfPath4 = await documentGeneratorService.generateDocumentPDF(guestOrder2Data, 'boleta');
+      console.log(`✅ Boleta generada para pedido de invitado #${pedidoInvitado2.id}: ${pdfPath4}`);
+      
+    } catch (pdfError) {
+      console.error('❌ Error al generar boletas automáticamente:', pdfError);
+    }
+
     console.log('🎉 ¡Base de datos sembrada exitosamente!');
     console.log('\n📊 Resumen de datos creados:');
-    console.log(`👥 Usuarios: 4 (admin, vendedor, repartidor, cliente)`);
+    console.log(`👥 Usuarios: 5 (admin, vendedor, 2 repartidores, cliente)`);
     console.log(`👤 Clientes: ${clientes.length}`);
     console.log(`📦 Productos: ${productos.length}`);
     console.log(`🚚 Repartidores: ${repartidores.length}`);
-    console.log(`🛒 Pedidos regulares: 1`);
-    console.log(`👥 Pedidos de invitados: 1`);
+    console.log(`🛒 Pedidos regulares: 2`);
+    console.log(`👥 Pedidos de invitados: 2`);
     console.log(`🎫 Vales: ${vales.length}`);
+    console.log(`📄 Boletas generadas: 4`);
     
     console.log('\n🔑 Credenciales de acceso:');
     console.log('👨‍💼 Admin: admin / admin123');
     console.log('👨‍💼 Vendedor: vendedor / vendedor123');
-    console.log('🚚 Repartidor: repartidor / repartidor123');
+    console.log('🚚 Repartidor 1: repartidor / repartidor123');
+    console.log('🚚 Repartidor 2: repartidor2 / repartidor123');
     console.log('👤 Cliente: cliente1 / cliente123');
 
   } catch (error) {

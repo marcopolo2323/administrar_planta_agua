@@ -212,6 +212,67 @@ exports.createOrder = async (req, res) => {
       }
     }
 
+    // Generar boleta automáticamente para todos los pedidos (fuera de la transacción)
+    console.log(`🔄 Programando generación automática de boleta para pedido #${order.id}`);
+    
+    // Usar setImmediate para ejecutar después de que termine la respuesta
+    setImmediate(async () => {
+      try {
+        console.log(`🚀 Iniciando generación de boleta para pedido #${order.id}`);
+        const { documentGeneratorService } = require('../services/documentGenerator.service');
+        
+        // Obtener los detalles completos del pedido con productos para el PDF
+        const orderWithDetails = await Order.findByPk(order.id, {
+          include: [
+            { model: Client, attributes: ['id', 'name', 'phone', 'email'] },
+            { 
+              model: OrderDetail,
+              as: 'orderDetails',
+              include: [{ model: Product, attributes: ['id', 'name', 'unitPrice'] }]
+            }
+          ]
+        });
+        
+        if (!orderWithDetails) {
+          console.error('❌ No se pudo encontrar el pedido para generar boleta:', order.id);
+          return;
+        }
+        
+        console.log(`📋 Datos del pedido #${order.id}:`, {
+          clientName: orderWithDetails.Client?.name,
+          total: orderWithDetails.total,
+          detailsCount: orderWithDetails.orderDetails?.length || 0
+        });
+        
+        // Preparar los datos para el PDF
+        const orderData = {
+          id: orderWithDetails.id,
+          customerName: orderWithDetails.Client?.name || 'Cliente',
+          customerPhone: orderWithDetails.Client?.phone || 'N/A',
+          customerEmail: orderWithDetails.Client?.email || 'N/A',
+          deliveryAddress: orderWithDetails.deliveryAddress,
+          deliveryDistrict: orderWithDetails.deliveryDistrict,
+          total: parseFloat(orderWithDetails.total),
+          subtotal: parseFloat(orderWithDetails.subtotal),
+          deliveryFee: parseFloat(orderWithDetails.deliveryFee || 0),
+          paymentMethod: orderWithDetails.paymentMethod,
+          orderDetails: orderWithDetails.orderDetails.map(detail => ({
+            productName: detail.Product?.name || 'Producto',
+            quantity: detail.quantity,
+            unitPrice: parseFloat(detail.unitPrice),
+            subtotal: parseFloat(detail.subtotal)
+          }))
+        };
+        
+        const pdfPath = await documentGeneratorService.generateDocumentPDF(orderData, 'boleta');
+        console.log(`✅ Boleta generada automáticamente para el pedido #${order.id}: ${pdfPath}`);
+      } catch (pdfError) {
+        console.error('❌ Error al generar boleta automáticamente:', pdfError);
+        console.error('Detalles del error:', pdfError.message);
+        console.error('Stack trace:', pdfError.stack);
+      }
+    });
+
     return res.status(201).json({
       success: true,
       message: 'Pedido registrado correctamente',

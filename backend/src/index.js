@@ -87,6 +87,7 @@ const clientPaymentsRoutes = require('./routes/client.payments.routes');
 const subscriptionRoutes = require('./routes/subscription.routes');
 const monthlyPaymentRoutes = require('./routes/monthlyPayment.routes');
 const legalRoutes = require('./routes/legal.routes');
+const documentRoutes = require('./routes/document.routes');
 const resetDatabase = require('./utils/seedDb')
 
 //temporal
@@ -156,6 +157,7 @@ app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/monthly-payments', monthlyPaymentRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/legal', legalRoutes);
+app.use('/api/documents', documentRoutes);
 
 // Rutas de productos (mantener compatibilidad)
 app.get('/api/products', async (req, res) => {

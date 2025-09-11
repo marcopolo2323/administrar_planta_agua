@@ -2,7 +2,7 @@ const { Order, GuestOrder, Payment } = require('../models');
 const { sequelize } = require('../models');
 const path = require('path');
 const fs = require('fs-extra');
-const documentGeneratorService = require('../services/documentGenerator.service');
+const { documentGeneratorService } = require('../services/documentGenerator.service');
 
 // Crear directorio para documentos si no existe
 const documentsDir = path.join(__dirname, '..', '..', 'documents');
@@ -221,7 +221,7 @@ exports.generatePDF = async (req, res) => {
     }
     
     // Importar el servicio de generación de documentos
-    const documentGeneratorService = require('../services/documentGenerator.service');
+    const { documentGeneratorService } = require('../services/documentGenerator.service');
     
     // Generar el PDF
     const pdfPath = await documentGeneratorService.generateDocumentPDF(orderData, documentType || 'boleta');

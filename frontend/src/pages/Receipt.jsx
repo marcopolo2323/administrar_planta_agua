@@ -24,7 +24,10 @@ import {
   Divider,
   useToast,
   Badge,
-  SimpleGrid
+  SimpleGrid,
+  Select,
+  FormControl,
+  FormLabel
 } from '@chakra-ui/react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { FaHome, FaDownload, FaPrint, FaWhatsapp, FaTruck } from 'react-icons/fa';
@@ -43,6 +46,7 @@ const Receipt = () => {
   // Estados locales
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [documentType, setDocumentType] = useState('boleta');
 
   useEffect(() => {
     const loadOrder = async () => {
@@ -198,7 +202,7 @@ const Receipt = () => {
       
       const response = await axios.post('/api/guest-payments/generate-pdf', {
         orderData: orderData,
-        documentType: 'boleta'
+        documentType: documentType
       }, {
         responseType: 'blob'
       });
@@ -215,7 +219,7 @@ const Receipt = () => {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `boleta_${order.id}.pdf`;
+      link.download = `${documentType}_${order.id}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -246,7 +250,7 @@ const Receipt = () => {
 
   const handleWhatsApp = () => {
     const message = `Hola, tengo una consulta sobre mi pedido #${order?.id}`;
-    const whatsappUrl = `https://wa.me/51999888777?text=${encodeURIComponent(message)}`;
+    const whatsappUrl = `https://wa.me/51961606183?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
   };
 
@@ -477,6 +481,20 @@ const Receipt = () => {
                     <Text fontSize="sm">{order.client.notes}</Text>
                   </Box>
                 )}
+
+                {/* Selector de tipo de documento */}
+                <Box w="full" maxW="300px">
+                  <FormControl>
+                    <FormLabel>Tipo de Documento</FormLabel>
+                    <Select
+                      value={documentType}
+                      onChange={(e) => setDocumentType(e.target.value)}
+                    >
+                      <option value="boleta">Boleta</option>
+                      <option value="factura">Factura</option>
+                    </Select>
+                  </FormControl>
+                </Box>
 
                 {/* Botones de acción */}
                 <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} spacing={4} w="full">

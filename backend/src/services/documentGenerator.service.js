@@ -651,4 +651,4 @@ class DocumentGeneratorService {
   }
 }
 
-module.exports = new DocumentGeneratorService();
+module.exports = { documentGeneratorService: new DocumentGeneratorService() };

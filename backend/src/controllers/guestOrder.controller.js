@@ -145,6 +145,51 @@ exports.createGuestOrder = async (req, res) => {
     });
 
     console.log('Pedido completo creado:', completeOrder);
+
+    // Generar boleta automáticamente para todos los pedidos de invitados (fuera de la transacción)
+    console.log(`🔄 Programando generación automática de boleta para pedido de invitado #${completeOrder.id}`);
+    
+    // Usar setImmediate para ejecutar después de que termine la respuesta
+    setImmediate(async () => {
+      try {
+        console.log(`🚀 Iniciando generación de boleta para pedido de invitado #${completeOrder.id}`);
+        const { documentGeneratorService } = require('../services/documentGenerator.service');
+        
+        // Preparar los datos para el PDF
+        const orderData = {
+          id: completeOrder.id,
+          customerName: completeOrder.customerName,
+          customerPhone: completeOrder.customerPhone,
+          customerEmail: completeOrder.customerEmail,
+          deliveryAddress: completeOrder.deliveryAddress,
+          deliveryDistrict: completeOrder.deliveryDistrict,
+          total: parseFloat(completeOrder.totalAmount),
+          subtotal: parseFloat(completeOrder.subtotal),
+          deliveryFee: parseFloat(completeOrder.deliveryFee || 0),
+          paymentMethod: completeOrder.paymentMethod,
+          orderDetails: completeOrder.products.map(item => ({
+            productName: item.product?.name || 'Producto',
+            quantity: item.quantity,
+            unitPrice: parseFloat(item.price),
+            subtotal: parseFloat(item.subtotal)
+          }))
+        };
+        
+        console.log(`📋 Datos del pedido de invitado #${completeOrder.id}:`, {
+          customerName: completeOrder.customerName,
+          total: completeOrder.totalAmount,
+          productsCount: completeOrder.products?.length || 0,
+          orderDetails: orderData.orderDetails
+        });
+        
+        const pdfPath = await documentGeneratorService.generateDocumentPDF(orderData, 'boleta');
+        console.log(`✅ Boleta generada automáticamente para el pedido de invitado #${completeOrder.id}: ${pdfPath}`);
+      } catch (pdfError) {
+        console.error('❌ Error al generar boleta automáticamente para pedido de invitado:', pdfError);
+        console.error('Detalles del error:', pdfError.message);
+        console.error('Stack trace:', pdfError.stack);
+      }
+    });
     
     res.status(201).json({
       success: true,

@@ -18,7 +18,7 @@ import {
   Badge
 } from '@chakra-ui/react';
 import { useNavigate } from 'react-router-dom';
-import { FaBox, FaUsers, FaTruck, FaCreditCard, FaChartLine, FaDollarSign, FaShoppingCart, FaCalendarAlt } from 'react-icons/fa';
+import { FaBox, FaUsers, FaTruck, FaCreditCard, FaChartLine, FaDollarSign, FaShoppingCart, FaCalendarAlt, FaFilePdf } from 'react-icons/fa';
 import useProductStore from '../stores/productStore';
 import useClientStore from '../stores/clientStore';
 import useOrderStore from '../stores/orderStore';
@@ -112,6 +112,14 @@ const Dashboard = () => {
       onClick: () => navigate('/dashboard/delivery-persons'),
       count: '👨‍💼',
       description: 'Gestionar repartidores'
+    },
+    {
+      title: 'Documentos',
+      icon: FaFilePdf,
+      color: 'red',
+      onClick: () => navigate('/dashboard/documents'),
+      count: '📄',
+      description: 'Boletas y facturas'
     },
     {
       title: 'Reportes',

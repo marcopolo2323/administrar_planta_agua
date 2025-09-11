@@ -34,6 +34,7 @@ import ClientPaymentsAdmin from './pages/ClientPaymentsAdmin';
 import Subscriptions from './pages/Subscriptions';
 import SubscriptionOrder from './pages/SubscriptionOrder';
 import SubscriptionsManagement from './pages/SubscriptionsManagement';
+import Documents from './pages/Documents';
 
 const App = () => {
   const { token, checkAuth } = useAuthStore();
@@ -93,6 +94,7 @@ const App = () => {
           <Route path="delivery-persons" element={<ProtectedRoute requiredRoles={['admin']}><DeliveryPersonsManagement /></ProtectedRoute>} />
           <Route path="client-payments" element={<ProtectedRoute requiredRoles={['admin']}><ClientPaymentsAdmin /></ProtectedRoute>} />
           <Route path="subscriptions" element={<ProtectedRoute requiredRoles={['admin']}><SubscriptionsManagement /></ProtectedRoute>} />
+          <Route path="documents" element={<ProtectedRoute requiredRoles={['admin']}><Documents /></ProtectedRoute>} />
           <Route path="reports" element={<ProtectedRoute requiredRoles={['admin']}><Reports /></ProtectedRoute>} />
         </Route>
 

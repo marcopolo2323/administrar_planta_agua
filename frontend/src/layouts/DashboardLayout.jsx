@@ -65,6 +65,7 @@ const DashboardLayout = () => {
     { to: '/dashboard/sales', label: 'Ventas', icon: '💰' },
     { to: '/dashboard/client-payments', label: 'Pagos Clientes', icon: '💳', adminOnly: true },
     { to: '/dashboard/subscriptions', label: 'Suscripciones', icon: '📅', adminOnly: true },
+    { to: '/dashboard/documents', label: 'Documentos', icon: '📄', adminOnly: true },
     { to: '/dashboard/delivery-fees', label: 'Tarifas de Envío', icon: '🚚', adminOnly: true },
     { to: '/dashboard/delivery-persons', label: 'Repartidores', icon: '👨‍💼', adminOnly: true },
     { to: '/dashboard/reports', label: 'Reportes', icon: '📊', adminOnly: true }
@@ -241,10 +242,10 @@ const DashboardLayout = () => {
         <Box flex={1} p={{ base: 4, md: 6 }} overflowY="auto">
           <Outlet />
         </Box>
-      </Box>
 
-      {/* Footer */}
-      <Footer />
+        {/* Footer */}
+        <Footer />
+      </Box>
       
       {/* Debug component solo en desarrollo */}
       {import.meta.env.DEV && <TokenDebug />}
