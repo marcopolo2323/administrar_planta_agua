@@ -54,7 +54,8 @@ import {
   MenuButton,
   MenuList,
   MenuItem,
-  useColorModeValue
+  useColorModeValue,
+  StatArrow
 } from '@chakra-ui/react';
 import {
   FaSearch,
@@ -117,13 +118,13 @@ const SubscriptionsManagement = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [subscriptionsRes, clientsRes, plansRes] = await Promise.all([
-        axios.get('/api/subscriptions'),
+      const [clientsRes, plansRes] = await Promise.all([
         axios.get('/api/clients'),
-        axios.get('/api/subscription-plans')
+        axios.get('/api/subscriptions/plans')
       ]);
 
-      setSubscriptions(subscriptionsRes.data.data || []);
+      // Si tienes un endpoint para obtener todas las suscripciones, agrégalo aquí. Si no, deja el array vacío o implementa la lógica adecuada.
+      setSubscriptions([]); // <-- Cambia esto si tienes el endpoint correcto
       setClients(clientsRes.data.data || []);
       setSubscriptionPlans(plansRes.data.data || []);
     } catch (error) {
