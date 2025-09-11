@@ -149,7 +149,7 @@ async function seedDatabase() {
         name: 'Branstone Dux Urbina Garcia',
         phone: '924714321',
         email: 'ubranstone@gmail.com',
-        vehicleType: 'motokar',
+        vehicleType: 'motorcycle',
         vehiclePlate: 'UCA-7U',
         licenseNumber: 'Y-73892650',
         address: 'Av. Principal 123',

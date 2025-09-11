@@ -1,8 +1,8 @@
 const { sequelize } = require('../models');
 const initDatabase = require('./initDatabase');
-const migrateExcelClients = require('./migrateExcelClients');
+// const migrateExcelClients = require('./migrateExcelClients');
 const path = require('path');
-
+ 
 const resetDatabase = async (excelFilePath = null) => {
   try {
     console.log('🚀 Iniciando reset completo de la base de datos...');

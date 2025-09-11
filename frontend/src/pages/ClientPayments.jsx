@@ -53,7 +53,7 @@ import {
 } from 'react-icons/fa';
 import axios from '../utils/axios';
 import useAuthStore from '../stores/authStore';
-import { generateInvoice, generateInvoiceNumber } from '../utils/invoiceGenerator';
+// import { generateInvoice, generateInvoiceNumber } from '../utils/invoiceGenerator';
 import plinQR from '../assets/images/plin_qr.jpeg';
 
 const ClientPayments = () => {
