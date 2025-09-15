@@ -49,6 +49,9 @@ const App = () => {
     initAuth();
   }, [checkAuth]);
 
+  // Debug log
+  console.log('🚀 App component rendered, loading:', loading, 'token:', !!token);
+
   if (loading) {
     return (
       <div className="loading-container">

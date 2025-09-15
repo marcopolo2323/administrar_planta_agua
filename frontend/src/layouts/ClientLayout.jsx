@@ -224,10 +224,10 @@ const ClientLayout = () => {
         <Box flex={1} overflow="auto">
           <Outlet />
         </Box>
-      </Flex>
 
-      {/* Footer */}
-      <Footer />
+        {/* Footer */}
+        <Footer />
+      </Flex>
     </Flex>
   );
 };
