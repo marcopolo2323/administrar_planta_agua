@@ -100,6 +100,7 @@ const Login = () => {
                         onChange={handleChange}
                         placeholder="Ingresa tu usuario"
                         size="lg"
+                        autoComplete="username"
                       />
                     </FormControl>
 

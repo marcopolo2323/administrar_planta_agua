@@ -12,6 +12,7 @@ const PORT = process.env.PORT || 5000;
 const allowedOrigins = [
   'https://plantaaguademesaaquayara.vercel.app',
   'https://plantaaguademesaaquayara-git-main-lloyds-projects-25bc7492.vercel.app',
+  'https://aquayara.vercel.app',
   'http://localhost:3000'
 ];
 app.use(cors({
