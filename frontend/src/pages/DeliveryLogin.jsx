@@ -37,8 +37,6 @@ const DeliveryLogin = () => {
   const navigate = useNavigate();
   const toast = useToast();
 
-  // Debug log
-  console.log('🚚 DeliveryLogin component rendered');
 
   const handleChange = (e) => {
     setFormData({

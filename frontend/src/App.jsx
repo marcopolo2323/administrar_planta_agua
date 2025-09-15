@@ -15,6 +15,8 @@ import Products from './pages/Products';
 import Clients from './pages/Clients';
 import Sales from './pages/Sales';
 import Orders from './pages/Orders';
+import OrdersManagement from './pages/OrdersManagement';
+import GuestOrderNew from './pages/GuestOrderNew';
 import GuestOrder from './pages/GuestOrder';
 import DeliveryFeesManagement from './pages/DeliveryFeesManagement';
 import DeliveryPersonsManagement from './pages/DeliveryPersonsManagement';
@@ -23,7 +25,7 @@ import PaymentMethod from './pages/PaymentMethod';
 import PaymentProcess from './pages/PaymentProcess';
 import Receipt from './pages/Receipt';
 import TrackOrder from './pages/TrackOrder';
-import DeliveryDashboard from './pages/DeliveryDashboard';
+import DeliveryDashboardNew from './pages/DeliveryDashboardNew';
 import DeliveryLogin from './pages/DeliveryLogin';
 import ClientLogin from './pages/ClientLogin';
 import ClientRegister from './pages/ClientRegister';
@@ -35,6 +37,7 @@ import Subscriptions from './pages/Subscriptions';
 import SubscriptionOrder from './pages/SubscriptionOrder';
 import SubscriptionsManagement from './pages/SubscriptionsManagement';
 import Documents from './pages/Documents';
+import CreditsManagement from './pages/CreditsManagement';
 
 const App = () => {
   const { token, checkAuth } = useAuthStore();
@@ -49,8 +52,6 @@ const App = () => {
     initAuth();
   }, [checkAuth]);
 
-  // Debug log
-  console.log('🚀 App component rendered, loading:', loading, 'token:', !!token);
 
   if (loading) {
     return (
@@ -69,9 +70,10 @@ const App = () => {
         </Route>
 
         {/* Rutas de clientes visitantes */}
-        <Route path="/guest-order" element={<GuestOrder />} />
-        <Route path="/payment-method" element={<PaymentMethod />} />
-        <Route path="/payment-process" element={<PaymentProcess />} />
+        <Route path="/guest-order" element={<GuestOrderNew />} />
+        <Route path="/guest-order-old" element={<GuestOrder />} />
+        <Route path="/payment-method-old" element={<PaymentMethod />} />
+        <Route path="/payment-process-old" element={<PaymentProcess />} />
         <Route path="/receipt/:id" element={<Receipt />} />
         <Route path="/track/:id" element={<TrackOrder />} />
 
@@ -92,11 +94,13 @@ const App = () => {
           <Route path="clients" element={<ProtectedRoute requiredRoles={['admin', 'vendedor']}><Clients /></ProtectedRoute>} />
           <Route path="sales" element={<ProtectedRoute requiredRoles={['admin', 'vendedor']}><Sales /></ProtectedRoute>} />
           <Route path="orders" element={<ProtectedRoute requiredRoles={['admin', 'vendedor']}><Orders /></ProtectedRoute>} />
+          <Route path="orders-management" element={<ProtectedRoute requiredRoles={['admin']}><OrdersManagement /></ProtectedRoute>} />
           <Route path="guest-orders" element={<ProtectedRoute requiredRoles={['admin', 'vendedor']}><Orders /></ProtectedRoute>} />
           <Route path="delivery-fees" element={<ProtectedRoute requiredRoles={['admin']}><DeliveryFeesManagement /></ProtectedRoute>} />
           <Route path="delivery-persons" element={<ProtectedRoute requiredRoles={['admin']}><DeliveryPersonsManagement /></ProtectedRoute>} />
           <Route path="client-payments" element={<ProtectedRoute requiredRoles={['admin']}><ClientPaymentsAdmin /></ProtectedRoute>} />
           <Route path="subscriptions" element={<ProtectedRoute requiredRoles={['admin']}><SubscriptionsManagement /></ProtectedRoute>} />
+          <Route path="credits" element={<ProtectedRoute requiredRoles={['admin']}><CreditsManagement /></ProtectedRoute>} />
           <Route path="documents" element={<ProtectedRoute requiredRoles={['admin']}><Documents /></ProtectedRoute>} />
           <Route path="reports" element={<ProtectedRoute requiredRoles={['admin']}><Reports /></ProtectedRoute>} />
         </Route>
@@ -108,7 +112,7 @@ const App = () => {
             token ? <DashboardLayout /> : <Navigate to="/delivery-login" replace />
           }
         >
-          <Route index element={<ProtectedRoute requiredRoles={['repartidor']}><DeliveryDashboard /></ProtectedRoute>} />
+          <Route index element={<ProtectedRoute requiredRoles={['repartidor']}><DeliveryDashboardNew /></ProtectedRoute>} />
         </Route>
 
         {/* Ruta específica para clientes */}
