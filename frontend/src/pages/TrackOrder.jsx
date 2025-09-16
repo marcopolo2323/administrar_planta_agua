@@ -26,7 +26,6 @@ import {
 } from '@chakra-ui/react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { FaSearch, FaTruck, FaCheck, FaClock, FaTimes, FaHome } from 'react-icons/fa';
-import useOrderStore from '../stores/orderStore';
 
 const TrackOrder = () => {
   const navigate = useNavigate();
@@ -34,8 +33,7 @@ const TrackOrder = () => {
   const toast = useToast();
   const isMobile = useBreakpointValue({ base: true, md: false });
 
-  // Store
-  const { getOrderById, fetchOrders } = useOrderStore();
+  // No necesitamos store, usamos API directa
 
   // Estados locales
   const [order, setOrder] = useState(null);
@@ -54,14 +52,9 @@ const TrackOrder = () => {
     setNotFound(false);
     
     try {
-      // Primero intentar buscar en el store
-      let orderData = getOrderById(parseInt(orderId));
-      
-      if (!orderData) {
-        // Si no está en el store, cargar todos los pedidos
-        await fetchOrders();
-        orderData = getOrderById(parseInt(orderId));
-      }
+      // Buscar directamente en la API
+      const response = await axios.get(`/api/guest-orders/${orderId}`);
+      const orderData = response.data.success ? response.data.data : response.data;
       
       if (orderData) {
         setOrder(orderData);

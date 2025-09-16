@@ -13,6 +13,7 @@ import {
   Input,
   FormControl,
   FormLabel,
+  FormHelperText,
   NumberInput,
   NumberInputField,
   Select,
@@ -51,7 +52,8 @@ import {
   FaQrcode,
   FaWhatsapp,
   FaCreditCard,
-  FaCheckCircle
+  FaCheckCircle,
+  FaCalendarAlt
 } from 'react-icons/fa';
 import useProductStore from '../stores/productStore';
 import useDeliveryStore from '../stores/deliveryStore';
@@ -66,6 +68,13 @@ const GuestOrderNew = () => {
   const toast = useToast();
   const isMobile = useBreakpointValue({ base: true, md: false });
   const { isOpen: isPlinModalOpen, onOpen: onPlinModalOpen, onClose: onPlinModalClose } = useDisclosure();
+  
+  // Función personalizada para cerrar el modal PLIN
+  const handlePlinModalClose = () => {
+    onPlinModalClose();
+    setShowQR(false);
+    setWhatsappSent(false); // Resetear estado de WhatsApp
+  };
 
   // Stores
   const { products, fetchProducts, calculatePrice } = useProductStore();
@@ -76,9 +85,51 @@ const GuestOrderNew = () => {
   const [currentStep, setCurrentStep] = useState(1); // 1: DNI, 2: Datos, 3: Productos, 4: Modalidad, 5: Pago
   const [loading, setLoading] = useState(false);
   const [searchingDni, setSearchingDni] = useState(false);
+  
+  // Estados para suscripciones
+  const [clientSubscriptions, setClientSubscriptions] = useState([]);
+  const [isSubscriptionMode, setIsSubscriptionMode] = useState(false);
+  const [selectedSubscription, setSelectedSubscription] = useState(null);
+  const [selectedSubscriptionPlan, setSelectedSubscriptionPlan] = useState(null);
+  const [showSubscriptionPlans, setShowSubscriptionPlans] = useState(false);
+
+  // Planes de suscripción disponibles
+  const subscriptionPlans = [
+    {
+      id: 'basic',
+      name: 'Plan Básico',
+      bottles: 30,
+      price: 150,
+      bonus: 1,
+      description: '30 bidones + 1 bidón extra',
+      color: 'blue',
+      popular: false
+    },
+    {
+      id: 'standard',
+      name: 'Plan Estándar',
+      bottles: 50,
+      price: 250,
+      bonus: 2,
+      description: '50 bidones + 2 bidones extra',
+      color: 'green',
+      popular: true
+    },
+    {
+      id: 'premium',
+      name: 'Plan Premium',
+      bottles: 100,
+      price: 500,
+      bonus: 5,
+      description: '100 bidones + 5 bidones extra',
+      color: 'purple',
+      popular: false
+    }
+  ];
 
   // Datos del cliente
   const [dni, setDni] = useState('');
+  const [clientId, setClientId] = useState(null);
   const [clientData, setClientData] = useState({
     name: '',
     phone: '',
@@ -96,6 +147,10 @@ const GuestOrderNew = () => {
   // Modalidad de pago
   const [paymentMethod, setPaymentMethod] = useState('contraentrega'); // contraentrega, vale, suscripcion
   const [paymentType, setPaymentType] = useState('efectivo'); // efectivo, plin
+  const [showQR, setShowQR] = useState(false);
+  const [whatsappSent, setWhatsappSent] = useState(false);
+  const [preferencesApplied, setPreferencesApplied] = useState(false); // Para saber si se aplicaron preferencias
+  const [canChangePreference, setCanChangePreference] = useState(false); // Para permitir cambio de modalidad
 
   // Función para obtener la imagen del producto
   const getProductImage = (productName) => {
@@ -115,14 +170,33 @@ const GuestOrderNew = () => {
   }, [fetchProducts, fetchDeliveryFees, fetchDistricts]);
 
   // Función para buscar cliente por DNI
+  // Función para buscar suscripciones del cliente
+  const fetchClientSubscriptions = async (clientDni) => {
+    try {
+      const response = await axios.get(`/api/subscriptions/client/${clientDni}`);
+      if (response.data.success) {
+        setClientSubscriptions(response.data.data);
+        return response.data.data;
+      }
+      return [];
+    } catch (error) {
+      console.error('Error al buscar suscripciones:', error);
+      return [];
+    }
+  };
+
   const searchClientByDni = async (dniValue) => {
     setSearchingDni(true);
     
     try {
-      const response = await fetch(`/api/clients/document/${dniValue}`);
+      // Buscar cliente
+      const clientResponse = await fetch(`/api/clients/document/${dniValue}`);
       
-      if (response.ok) {
-        const client = await response.json();
+      if (clientResponse.ok) {
+        const client = await clientResponse.json();
+        
+        // Guardar el clientId
+        setClientId(client.id);
         
         setClientData({
           ...clientData,
@@ -134,6 +208,81 @@ const GuestOrderNew = () => {
           reference: '',
           notes: ''
         });
+        
+        // Buscar suscripciones del cliente
+        const subscriptions = await fetchClientSubscriptions(dniValue);
+        
+        // Buscar preferencias del cliente
+        try {
+          const preferencesResponse = await fetch(`/api/client-preferences/dni/${dniValue}`);
+          if (preferencesResponse.ok) {
+            const preferencesData = await preferencesResponse.json();
+            
+            if (preferencesData.success && preferencesData.data) {
+              const preferences = preferencesData.data;
+              
+              // Aplicar preferencias automáticamente
+              setPaymentMethod(preferences.preferredPaymentMethod);
+              setPreferencesApplied(true);
+              
+              // Verificar si la preferencia sigue activa (no ha expirado)
+              const now = new Date();
+              const validUntil = new Date(preferences.validUntil);
+              const isPreferenceActive = validUntil > now;
+              
+              if (isPreferenceActive) {
+                // La preferencia sigue activa - mostrar solo esa modalidad
+                setCanChangePreference(false);
+                
+                // Si es suscripción, verificar si tiene suscripciones activas
+                if (preferences.preferredPaymentMethod === 'suscripcion') {
+                  const activeSubscriptions = subscriptions.filter(sub => sub.status === 'active' && sub.remainingBottles > 0);
+                  if (activeSubscriptions.length > 0) {
+                    setIsSubscriptionMode(true);
+                    setSelectedSubscription(activeSubscriptions[0]);
+                    toast({
+                      title: 'Suscripción activa encontrada',
+                      description: `Tienes ${activeSubscriptions[0].remainingBottles} bidones disponibles de tu suscripción`,
+                      status: 'success',
+                      duration: 5000,
+                      isClosable: true,
+                    });
+                  } else {
+                    toast({
+                      title: 'Preferencia de suscripción activa',
+                      description: 'Puedes comprar una nueva suscripción',
+                      status: 'info',
+                      duration: 5000,
+                      isClosable: true,
+                    });
+                  }
+                } else {
+                  toast({
+                    title: 'Modalidad activa encontrada',
+                    description: `Tu modalidad de ${preferences.preferredPaymentMethod === 'vale' ? 'vale' : 'suscripción'} está activa hasta ${validUntil.toLocaleDateString()}`,
+                    status: 'info',
+                    duration: 5000,
+                    isClosable: true,
+                  });
+                }
+              } else {
+                // La preferencia expiró - mostrar todas las opciones
+                setPreferencesApplied(false);
+                setCanChangePreference(false);
+                
+                toast({
+                  title: 'Modalidad expirada',
+                  description: 'Tu modalidad anterior expiró. Elige una nueva modalidad de pago.',
+                  status: 'warning',
+                  duration: 5000,
+                  isClosable: true,
+                });
+              }
+            }
+          }
+        } catch (preferencesError) {
+          console.log('No se encontraron preferencias para este cliente');
+        }
         
         toast({
           title: 'Cliente encontrado',
@@ -147,9 +296,9 @@ const GuestOrderNew = () => {
       } else {
         toast({
           title: 'Cliente no encontrado',
-          description: 'Completa tus datos manualmente',
+          description: '¿Deseas registrarte como cliente frecuente?',
           status: 'info',
-          duration: 3000,
+          duration: 5000,
           isClosable: true,
         });
         setCurrentStep(2); // Ir a formulario manual
@@ -181,6 +330,68 @@ const GuestOrderNew = () => {
         duration: 3000,
         isClosable: true,
       });
+    }
+  };
+
+  // Función para registrar cliente
+  const handleRegisterClient = async () => {
+    try {
+      setLoading(true);
+      
+      // Validar que el DNI esté presente
+      if (!dni || dni.trim() === '') {
+        toast({
+          title: 'DNI requerido',
+          description: 'Debes ingresar tu DNI para registrarte',
+          status: 'warning',
+          duration: 3000,
+          isClosable: true,
+        });
+        return;
+      }
+      
+      const clientDataToRegister = {
+        name: clientData.name,
+        document: dni,
+        phone: clientData.phone,
+        email: clientData.email || '',
+        address: clientData.address,
+        district: clientData.district,
+        reference: clientData.reference || '',
+        notes: clientData.notes || '',
+        status: 'active'
+      };
+
+      const response = await axios.post('/api/clients', clientDataToRegister);
+      
+      if (response.data.success) {
+        // Guardar el ID del cliente recién creado
+        setClientId(response.data.data.id);
+        
+        toast({
+          title: '¡Cliente registrado exitosamente!',
+          description: 'Ahora puedes hacer pedidos más rápido y acceder a beneficios especiales',
+          status: 'success',
+          duration: 5000,
+          isClosable: true,
+        });
+        
+        // Continuar al siguiente paso
+        setCurrentStep(3);
+      } else {
+        throw new Error(response.data.message || 'Error al registrar cliente');
+      }
+    } catch (error) {
+      console.error('Error al registrar cliente:', error);
+      toast({
+        title: 'Error al registrar cliente',
+        description: error.response?.data?.message || 'No se pudo registrar el cliente',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -286,10 +497,23 @@ const GuestOrderNew = () => {
   };
 
   const handleFinalSubmit = async () => {
-    if (cart.length === 0) {
+    // Para suscripciones, no validar carrito
+    if (paymentMethod !== 'suscripcion' && cart.length === 0) {
       toast({
         title: 'Carrito vacío',
         description: 'Agrega al menos un producto al carrito',
+        status: 'warning',
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    // Para suscripciones, validar que se haya seleccionado un plan
+    if (paymentMethod === 'suscripcion' && !selectedSubscriptionPlan) {
+      toast({
+        title: 'Plan no seleccionado',
+        description: 'Selecciona un plan de suscripción',
         status: 'warning',
         duration: 3000,
         isClosable: true,
@@ -308,49 +532,180 @@ const GuestOrderNew = () => {
       return;
     }
 
+    // Para efectivo, crear el pedido directamente
+    await createOrder();
+  };
+
+  const createOrder = async () => {
     setLoading(true);
 
     try {
-      // Preparar datos del pedido
-      const orderData = {
-        customerName: clientData.name,
-        customerPhone: clientData.phone,
-        customerEmail: clientData.email || '',
-        deliveryAddress: clientData.address,
-        deliveryDistrict: clientData.district,
-        deliveryReference: clientData.reference || '',
-        deliveryNotes: clientData.notes || '',
-        products: cart.map(item => ({
-          productId: parseInt(item.id.toString().split('-')[0]), // Solo tomar la parte numérica del ID
-          quantity: item.quantity,
-          price: item.unitPrice
-        })),
-        subtotal: getSubtotal(),
-        deliveryFee: getDeliveryFee(),
-        totalAmount: getTotal(),
-        paymentMethod: paymentType,
-        paymentType: paymentMethod, // contraentrega, vale, suscripcion
-        clientId: dni ? await findClientByDni(dni) : null
-      };
+      // Si está en modo suscripción (usando bidones existentes)
+      if (isSubscriptionMode && selectedSubscription) {
+        // Verificar que hay suficientes bidones
+        const totalBottles = cart.reduce((sum, item) => sum + item.quantity, 0);
+        if (selectedSubscription.remainingBottles < totalBottles) {
+          toast({
+            title: 'Bidones insuficientes',
+            description: `Solo tienes ${selectedSubscription.remainingBottles} bidones disponibles. Necesitas ${totalBottles} bidones.`,
+            status: 'error',
+            duration: 5000,
+            isClosable: true,
+          });
+          return;
+        }
 
-      console.log('Enviando pedido:', orderData);
+        // Preparar datos del pedido (sin pago)
+        const orderData = {
+          customerName: clientData.name,
+          customerPhone: clientData.phone,
+          customerEmail: clientData.email || '',
+          deliveryAddress: clientData.address,
+          deliveryDistrict: clientData.district,
+          deliveryReference: clientData.reference || '',
+          deliveryNotes: clientData.notes || '',
+          products: cart.map(item => ({
+            productId: item.productId,
+            quantity: item.quantity,
+            price: item.unitPrice
+          })),
+          subtotal: getSubtotal(),
+          deliveryFee: getDeliveryFee(),
+          totalAmount: getTotal(),
+          paymentMethod: 'suscripcion',
+          paymentType: 'subscription',
+          clientId: clientId,
+          subscriptionId: selectedSubscription.id
+        };
 
-      // Crear el pedido
-      const response = await axios.post('/api/guest-orders', orderData);
-      
-      if (response.data.success) {
-        toast({
-          title: '¡Pedido creado exitosamente!',
-          description: `Pedido #${response.data.data.id} registrado correctamente`,
-          status: 'success',
-          duration: 5000,
-          isClosable: true,
-        });
+        console.log('Enviando pedido con suscripción:', orderData);
 
-        // Redirigir a la página de recibo
-        navigate(`/receipt/${response.data.data.id}`);
+        // Crear el pedido
+        const response = await axios.post('/api/guest-orders', orderData);
+        
+        if (response.data.success) {
+          // Usar bidones de la suscripción
+          await axios.post('/api/subscriptions/use-bottles', {
+            subscriptionId: selectedSubscription.id,
+            bottlesToUse: totalBottles
+          });
+
+          toast({
+            title: '¡Pedido creado exitosamente!',
+            description: `Pedido #${response.data.data.id} registrado. Se usaron ${totalBottles} bidones de tu suscripción.`,
+            status: 'success',
+            duration: 5000,
+            isClosable: true,
+          });
+
+          // Redirigir a la página de recibo
+          navigate(`/receipt/${response.data.data.id}`);
+        } else {
+          throw new Error(response.data.message || 'Error al crear el pedido');
+        }
       } else {
-        throw new Error(response.data.message || 'Error al crear el pedido');
+        // Flujo normal (compra de suscripción o pedido regular)
+        const orderData = {
+          customerName: clientData.name,
+          customerPhone: clientData.phone,
+          customerEmail: clientData.email || '',
+          deliveryAddress: clientData.address,
+          deliveryDistrict: clientData.district,
+          deliveryReference: clientData.reference || '',
+          deliveryNotes: clientData.notes || '',
+          products: paymentMethod === 'suscripcion' ? [] : cart.map(item => ({
+            productId: item.productId,
+            quantity: item.quantity,
+            price: item.unitPrice
+          })),
+          subtotal: paymentMethod === 'suscripcion' ? selectedSubscriptionPlan.price : getSubtotal(),
+          deliveryFee: paymentMethod === 'suscripcion' ? 0 : getDeliveryFee(),
+          totalAmount: paymentMethod === 'suscripcion' ? selectedSubscriptionPlan.price : getTotal(),
+          paymentMethod: paymentMethod,
+          paymentType: paymentMethod === 'suscripcion' ? 'cash' : (paymentType === 'efectivo' ? 'cash' : 'plin'),
+          clientId: clientId
+        };
+
+        console.log('Enviando pedido:', orderData);
+
+        // Crear el pedido
+        const response = await axios.post('/api/guest-orders', orderData);
+        
+        if (response.data.success) {
+          // Si es compra de suscripción, crear la suscripción
+          if (paymentMethod === 'suscripcion' && selectedSubscriptionPlan) {
+            try {
+              const subscriptionData = {
+                clientId: clientId,
+                clientDni: dni,
+                subscriptionType: selectedSubscriptionPlan.id,
+                totalBottles: selectedSubscriptionPlan.bottles + selectedSubscriptionPlan.bonus,
+                totalAmount: selectedSubscriptionPlan.price,
+                paidAmount: selectedSubscriptionPlan.price,
+                notes: `Suscripción ${selectedSubscriptionPlan.name} comprada`
+              };
+
+              const subscriptionResponse = await axios.post('/api/subscriptions', subscriptionData);
+              console.log('Suscripción creada:', subscriptionResponse.data);
+
+              toast({
+                title: 'Suscripción creada',
+                description: `Se creó tu suscripción ${selectedSubscriptionPlan.name} con ${subscriptionData.totalBottles} bidones (${selectedSubscriptionPlan.bottles} + ${selectedSubscriptionPlan.bonus} extra)`,
+                status: 'success',
+                duration: 5000,
+                isClosable: true,
+              });
+            } catch (subscriptionError) {
+              console.log('Error al crear suscripción:', subscriptionError);
+            }
+          }
+
+          // Guardar preferencias del cliente si eligió vale o suscripción
+          if (paymentMethod === 'vale' || paymentMethod === 'suscripcion') {
+            try {
+              if (clientId) {
+                const validUntil = new Date();
+                validUntil.setMonth(validUntil.getMonth() + 1);
+                
+                const preferencesData = {
+                  dni,
+                  clientId,
+                  preferredPaymentMethod: paymentMethod,
+                  subscriptionType: paymentMethod === 'suscripcion' ? 'basic' : null,
+                  subscriptionAmount: paymentMethod === 'suscripcion' ? getTotal() : null,
+                  subscriptionQuantity: paymentMethod === 'suscripcion' ? cart.reduce((sum, item) => sum + item.quantity, 0) : null,
+                  validUntil: validUntil.toISOString()
+                };
+                
+                await axios.post('/api/client-preferences', preferencesData);
+                console.log('Preferencias guardadas:', preferencesData);
+                
+                toast({
+                  title: 'Modalidad guardada',
+                  description: `Tu modalidad de ${paymentMethod === 'vale' ? 'vale' : 'suscripción'} estará activa hasta ${validUntil.toLocaleDateString()}`,
+                  status: 'success',
+                  duration: 4000,
+                  isClosable: true,
+                });
+              }
+            } catch (preferencesError) {
+              console.log('Error al guardar preferencias:', preferencesError);
+            }
+          }
+
+          toast({
+            title: '¡Pedido creado exitosamente!',
+            description: `Pedido #${response.data.data.id} registrado correctamente`,
+            status: 'success',
+            duration: 5000,
+            isClosable: true,
+          });
+
+          // Redirigir a la página de recibo
+          navigate(`/receipt/${response.data.data.id}`);
+        } else {
+          throw new Error(response.data.message || 'Error al crear el pedido');
+        }
       }
     } catch (error) {
       console.error('Error al crear pedido:', error);
@@ -364,6 +719,22 @@ const GuestOrderNew = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePLINPayment = () => {
+    // Mostrar el modal PLIN cuando se hace clic en "Pagar con PLIN"
+    setShowQR(true);
+    setWhatsappSent(false); // Resetear estado de WhatsApp
+    onPlinModalOpen();
+  };
+
+  const handleConfirmPLINPayment = async () => {
+    // Crear el pedido después de confirmar el pago PLIN
+    await createOrder();
+    // Cerrar el modal después de crear el pedido
+    onPlinModalClose();
+    setShowQR(false);
+    setWhatsappSent(false); // Resetear estado de WhatsApp
   };
 
   // Función auxiliar para buscar cliente por DNI
@@ -393,11 +764,20 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
 
 ✅ *PAGO REALIZADO VÍA PLIN*`;
     
-    const whatsappUrl = `https://wa.me/51987654321?text=${encodeURIComponent(message)}`;
+    const whatsappUrl = `https://wa.me/51961606183?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
     
-    // Continuar con el proceso
-    navigate('/payment-method');
+    // Marcar que se envió el comprobante
+    setWhatsappSent(true);
+    
+    // Mostrar mensaje de confirmación
+    toast({
+      title: 'WhatsApp abierto',
+      description: 'Envía el comprobante y luego confirma el pago',
+      status: 'info',
+      duration: 3000,
+      isClosable: true,
+    });
   };
 
   const getTypeColor = (type) => {
@@ -482,6 +862,17 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
       <CardBody>
         <VStack spacing={4}>
           <FormControl isRequired>
+            <FormLabel>DNI</FormLabel>
+            <Input
+              value={dni}
+              isDisabled
+              placeholder="Tu DNI"
+              bg="gray.100"
+            />
+            <FormHelperText>DNI ingresado en el paso anterior</FormHelperText>
+          </FormControl>
+
+          <FormControl isRequired>
             <FormLabel>Nombre Completo</FormLabel>
             <Input
               value={clientData.name}
@@ -543,15 +934,38 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
             />
           </FormControl>
 
-          <Button
-            colorScheme="blue"
-            size="lg"
-            w="full"
-            onClick={() => setCurrentStep(3)}
-            isDisabled={!clientData.name || !clientData.phone || !clientData.address || !clientData.district}
-          >
-            Continuar con Productos
-          </Button>
+          <VStack spacing={3} w="full">
+            <Button
+              colorScheme="blue"
+              size="lg"
+              w="full"
+              onClick={() => setCurrentStep(3)}
+              isDisabled={!clientData.name || !clientData.phone || !clientData.address || !clientData.district}
+            >
+              Continuar con Productos
+            </Button>
+            
+            <Alert status="info" borderRadius="md">
+              <AlertIcon />
+              <VStack align="start" spacing={2}>
+                <Text fontSize="sm" fontWeight="bold">
+                  ¿Quieres registrarte como cliente frecuente?
+                </Text>
+                <Text fontSize="xs">
+                  Al registrarte podrás hacer pedidos más rápido y acceder a beneficios especiales como vales y suscripciones.
+                </Text>
+                <Button
+                  size="sm"
+                  colorScheme="green"
+                  variant="outline"
+                  onClick={handleRegisterClient}
+                  isDisabled={!clientData.name || !clientData.phone || !clientData.address || !clientData.district}
+                >
+                  Registrarme como Cliente
+                </Button>
+              </VStack>
+            </Alert>
+          </VStack>
         </VStack>
       </CardBody>
     </Card>
@@ -736,118 +1150,485 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
   );
 
   // Renderizar paso 4: Modalidad de pago
-  const renderStep4 = () => (
-    <Card maxW="lg" mx="auto">
-      <CardHeader textAlign="center">
-        <VStack spacing={4}>
-          <Icon as={FaMoneyBillWave} boxSize={12} color="green.500" />
-          <Heading size="lg">Modalidad de Pago</Heading>
-          <Text color="gray.600" textAlign="center">
-            Selecciona cómo deseas pagar tu pedido
-          </Text>
-          <Alert status="info" size="sm" borderRadius="md">
-            <AlertIcon />
-            <Text fontSize="sm">
-              <strong>Contraentrega:</strong> Pagas cuando recibes el pedido<br/>
-              <strong>A Crédito:</strong> Se anota en tu vale y pagas al final del mes<br/>
-              <strong>Suscripción:</strong> Pedido recurrente mensual
-            </Text>
-          </Alert>
-        </VStack>
-      </CardHeader>
-      <CardBody>
-        <VStack spacing={6}>
-          <RadioGroup value={paymentMethod} onChange={setPaymentMethod}>
-            <Stack spacing={4}>
+  const renderStep4 = () => {
+    // Si está en modo suscripción (usando bidones existentes)
+    if (isSubscriptionMode && selectedSubscription) {
+      return (
+        <Card maxW="lg" mx="auto">
+          <CardHeader textAlign="center">
+            <VStack spacing={4}>
+              <Icon as={FaCalendarAlt} boxSize={12} color="purple.500" />
+              <Heading size="lg">Usar Suscripción</Heading>
+              <Text color="gray.600" textAlign="center">
+                Tienes bidones disponibles de tu suscripción
+              </Text>
+              <Alert status="success" size="sm" borderRadius="md">
+                <AlertIcon />
+                <Text fontSize="sm">
+                  <strong>Suscripción activa:</strong> {selectedSubscription.remainingBottles} bidones disponibles
+                </Text>
+              </Alert>
+            </VStack>
+          </CardHeader>
+          <CardBody>
+            <VStack spacing={6}>
+              {/* Mostrar información de la suscripción */}
               <Card 
-                variant={paymentMethod === 'contraentrega' ? 'filled' : 'outline'}
-                borderColor={paymentMethod === 'contraentrega' ? 'blue.500' : 'gray.200'}
-                cursor="pointer"
+                variant="filled"
+                borderColor="purple.500"
+                bg="purple.50"
+              >
+                <CardBody>
+                  <VStack spacing={3}>
+                    <HStack justify="space-between" w="full">
+                      <Text fontWeight="bold">Tipo de Suscripción:</Text>
+                      <Text>{selectedSubscription.subscriptionType}</Text>
+                    </HStack>
+                    <HStack justify="space-between" w="full">
+                      <Text fontWeight="bold">Bidones Totales:</Text>
+                      <Text>{selectedSubscription.totalBottles}</Text>
+                    </HStack>
+                    <HStack justify="space-between" w="full">
+                      <Text fontWeight="bold">Bidones Restantes:</Text>
+                      <Text color="green.600" fontWeight="bold">{selectedSubscription.remainingBottles}</Text>
+                    </HStack>
+                    <HStack justify="space-between" w="full">
+                      <Text fontWeight="bold">Total Pagado:</Text>
+                      <Text>S/ {selectedSubscription.totalAmount}</Text>
+                    </HStack>
+                  </VStack>
+                </CardBody>
+              </Card>
+
+              {/* Resumen del pedido actual */}
+              <Card variant="outline" w="full">
+                <CardBody>
+                  <VStack spacing={3}>
+                    <Text fontWeight="bold" fontSize="lg">Resumen del Pedido</Text>
+                    <VStack spacing={2} w="full">
+                      <HStack justify="space-between" w="full">
+                        <Text>Cliente:</Text>
+                        <Text fontWeight="bold">{clientData.name}</Text>
+                      </HStack>
+                      <VStack spacing={1} w="full" align="stretch">
+                        <Text>Productos:</Text>
+                        {cart.map((item, index) => (
+                          <HStack key={index} justify="space-between" w="full" pl={2}>
+                            <Text fontSize="sm" color="gray.600">
+                              • {item.name} x{item.quantity}
+                            </Text>
+                            <Text fontSize="sm" fontWeight="bold">
+                              S/ {parseFloat(item.subtotal).toFixed(2)}
+                            </Text>
+                          </HStack>
+                        ))}
+                      </VStack>
+                      <HStack justify="space-between" w="full">
+                        <Text>Total Bidones:</Text>
+                        <Text fontWeight="bold" color="purple.600">
+                          {cart.reduce((sum, item) => sum + item.quantity, 0)} bidones
+                        </Text>
+                      </HStack>
+                    </VStack>
+                  </VStack>
+                </CardBody>
+              </Card>
+
+              <Button
+                colorScheme="purple"
+                size="lg"
+                w="full"
+                onClick={() => setCurrentStep(5)}
+                leftIcon={<FaCheckCircle />}
+              >
+                Usar Suscripción (Sin Pago)
+              </Button>
+            </VStack>
+          </CardBody>
+        </Card>
+      );
+    }
+
+    // Si se aplicaron preferencias y está activa, mostrar solo la modalidad seleccionada
+    if (preferencesApplied && !canChangePreference) {
+      return (
+        <Card maxW="lg" mx="auto">
+          <CardHeader textAlign="center">
+            <VStack spacing={4}>
+              <Icon as={FaMoneyBillWave} boxSize={12} color="green.500" />
+              <Heading size="lg">Modalidad de Pago</Heading>
+              <Text color="gray.600" textAlign="center">
+                Tu modalidad de pago está activa este mes
+              </Text>
+              <Alert status="success" size="sm" borderRadius="md">
+                <AlertIcon />
+                <Text fontSize="sm">
+                  <strong>Modalidad activa:</strong> {paymentMethod === 'vale' ? 'A Crédito (Vale)' : paymentMethod === 'suscripcion' ? 'Suscripción Mensual' : 'Contraentrega'}
+                </Text>
+              </Alert>
+            </VStack>
+          </CardHeader>
+          <CardBody>
+            <VStack spacing={6}>
+              {/* Mostrar solo la modalidad seleccionada */}
+              <Card 
+                variant="filled"
+                borderColor="blue.500"
+                bg="blue.50"
+              >
+                <CardBody>
+                  <HStack spacing={4}>
+                    <Radio value={paymentMethod} isChecked={true} />
+                    <VStack align="start" spacing={1}>
+                      <Text fontWeight="bold">
+                        {paymentMethod === 'vale' ? 'A Crédito (Vale)' : 
+                         paymentMethod === 'suscripcion' ? 'Suscripción con Beneficios' : 
+                         'Contraentrega'}
+                      </Text>
+                      <Text fontSize="sm" color="gray.600">
+                        {paymentMethod === 'vale' ? 'Paga al final del mes - Se anota en tu vale' :
+                         paymentMethod === 'suscripcion' ? 'Pedido recurrente mensual con bidones extra' :
+                         'Pagas en efectivo o PLIN cuando recibes tu pedido'}
+                      </Text>
+                    </VStack>
+                  </HStack>
+                </CardBody>
+              </Card>
+
+              <Button
+                colorScheme="blue"
+                size="lg"
+                w="full"
+                onClick={() => setCurrentStep(5)}
+                leftIcon={<FaCreditCard />}
+              >
+                {paymentMethod === 'vale' ? 'Continuar (Sin Pago Inmediato)' : 'Continuar con Forma de Pago'}
+              </Button>
+            </VStack>
+          </CardBody>
+        </Card>
+      );
+    }
+
+    // Si se seleccionó suscripción, mostrar planes de suscripción
+    if (paymentMethod === 'suscripcion' && !selectedSubscriptionPlan) {
+      return (
+        <Card maxW="4xl" mx="auto">
+          <CardHeader textAlign="center">
+            <VStack spacing={4}>
+              <Icon as={FaCalendarAlt} boxSize={12} color="purple.500" />
+              <Heading size="lg">Elige tu Plan de Suscripción</Heading>
+              <Text color="gray.600" textAlign="center">
+                Selecciona el plan que mejor se adapte a tus necesidades
+              </Text>
+              <Alert status="info" size="sm" borderRadius="md">
+                <AlertIcon />
+                <Text fontSize="sm">
+                  <strong>Beneficios de la suscripción:</strong> Paga una vez al mes y recibe bidones extra gratis. 
+                  Después solo pides la cantidad que necesites sin pagar nada más.
+                </Text>
+              </Alert>
+            </VStack>
+          </CardHeader>
+          <CardBody>
+            <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6}>
+              {subscriptionPlans.map((plan) => (
+                <Card
+                  key={plan.id}
+                  variant={selectedSubscriptionPlan?.id === plan.id ? 'filled' : 'outline'}
+                  borderColor={selectedSubscriptionPlan?.id === plan.id ? `${plan.color}.500` : 'gray.200'}
+                  cursor="pointer"
+                  onClick={() => setSelectedSubscriptionPlan(plan)}
+                  position="relative"
+                  _hover={{ transform: 'translateY(-2px)', shadow: 'lg' }}
+                  transition="all 0.2s"
+                >
+                  {plan.popular && (
+                    <Badge
+                      position="absolute"
+                      top={-2}
+                      right={4}
+                      colorScheme={plan.color}
+                      variant="solid"
+                      borderRadius="full"
+                      px={3}
+                      py={1}
+                    >
+                      Más Popular
+                    </Badge>
+                  )}
+                  <CardBody textAlign="center">
+                    <VStack spacing={4}>
+                      <VStack spacing={2}>
+                        <Text fontWeight="bold" fontSize="xl" color={`${plan.color}.600`}>
+                          {plan.name}
+                        </Text>
+                        <Text fontSize="sm" color="gray.600">
+                          {plan.description}
+                        </Text>
+                      </VStack>
+                      
+                      <VStack spacing={1}>
+                        <Text fontSize="3xl" fontWeight="bold" color={`${plan.color}.500`}>
+                          S/ {plan.price}
+                        </Text>
+                        <Text fontSize="sm" color="gray.500">
+                          por mes
+                        </Text>
+                      </VStack>
+                      
+                      <VStack spacing={2} w="full">
+                        <HStack justify="space-between" w="full">
+                          <Text fontSize="sm">Bidones incluidos:</Text>
+                          <Text fontWeight="bold">{plan.bottles}</Text>
+                        </HStack>
+                        <HStack justify="space-between" w="full">
+                          <Text fontSize="sm">Bidones extra:</Text>
+                          <Text fontWeight="bold" color="green.600">+{plan.bonus}</Text>
+                        </HStack>
+                        <HStack justify="space-between" w="full">
+                          <Text fontSize="sm">Total bidones:</Text>
+                          <Text fontWeight="bold" color={`${plan.color}.600`}>
+                            {plan.bottles + plan.bonus}
+                          </Text>
+                        </HStack>
+                      </VStack>
+                      
+                      <Button
+                        colorScheme={plan.color}
+                        variant={selectedSubscriptionPlan?.id === plan.id ? 'solid' : 'outline'}
+                        w="full"
+                        size="sm"
+                      >
+                        {selectedSubscriptionPlan?.id === plan.id ? 'Seleccionado' : 'Seleccionar'}
+                      </Button>
+                    </VStack>
+                  </CardBody>
+                </Card>
+              ))}
+            </SimpleGrid>
+            
+            <VStack spacing={4} mt={6}>
+              <Button
+                colorScheme="purple"
+                size="lg"
+                w="full"
+                onClick={() => setCurrentStep(5)}
+                leftIcon={<FaCreditCard />}
+                isDisabled={!selectedSubscriptionPlan}
+              >
+                Continuar con Forma de Pago
+              </Button>
+              
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => setPaymentMethod('contraentrega')}
               >
-                <CardBody>
-                  <HStack spacing={4}>
-                    <Radio value="contraentrega" />
-                    <VStack align="start" spacing={1}>
-                      <Text fontWeight="bold">Contraentrega</Text>
-                      <Text fontSize="sm" color="gray.600">
-                        Pagas en efectivo o PLIN cuando recibes tu pedido
-                      </Text>
-                    </VStack>
-                  </HStack>
-                </CardBody>
-              </Card>
+                Cambiar a Contraentrega
+              </Button>
+            </VStack>
+          </CardBody>
+        </Card>
+      );
+    }
 
-              <Card 
-                variant={paymentMethod === 'vale' ? 'filled' : 'outline'}
-                borderColor={paymentMethod === 'vale' ? 'blue.500' : 'gray.200'}
-                cursor="pointer"
-                onClick={() => setPaymentMethod('vale')}
-              >
-                <CardBody>
-                  <HStack spacing={4}>
-                    <Radio value="vale" />
-                    <VStack align="start" spacing={1}>
-                      <Text fontWeight="bold">A Crédito (Vale)</Text>
-                      <Text fontSize="sm" color="gray.600">
-                        Paga al final del mes - Se anota en tu vale
-                      </Text>
-                    </VStack>
-                  </HStack>
-                </CardBody>
-              </Card>
-
-              <Card 
-                variant={paymentMethod === 'suscripcion' ? 'filled' : 'outline'}
-                borderColor={paymentMethod === 'suscripcion' ? 'blue.500' : 'gray.200'}
-                cursor="pointer"
-                onClick={() => setPaymentMethod('suscripcion')}
-              >
-                <CardBody>
-                  <HStack spacing={4}>
-                    <Radio value="suscripcion" />
-                    <VStack align="start" spacing={1}>
-                      <Text fontWeight="bold">Suscripción</Text>
-                      <Text fontSize="sm" color="gray.600">
-                        Pedido recurrente mensual - Se cobra automáticamente
-                      </Text>
-                    </VStack>
-                  </HStack>
-                </CardBody>
-              </Card>
-            </Stack>
-          </RadioGroup>
-
-          {paymentMethod === 'vale' && (
-            <Alert status="warning" borderRadius="md">
+    // Interfaz normal para cuando no hay preferencias aplicadas o expiraron
+    return (
+      <Card maxW="lg" mx="auto">
+        <CardHeader textAlign="center">
+          <VStack spacing={4}>
+            <Icon as={FaMoneyBillWave} boxSize={12} color="green.500" />
+            <Heading size="lg">Modalidad de Pago</Heading>
+            <Text color="gray.600" textAlign="center">
+              {preferencesApplied ? 'Tu modalidad anterior expiró. Elige una nueva modalidad:' : 'Selecciona cómo deseas pagar tu pedido'}
+            </Text>
+            <Alert status={preferencesApplied ? "warning" : "info"} size="sm" borderRadius="md">
               <AlertIcon />
-              <VStack align="start" spacing={1}>
-                <Text fontWeight="bold">Importante - Pago a Crédito:</Text>
-                <Text fontSize="sm">
-                  • Tu pedido se anotará en tu vale de crédito<br/>
-                  • Debes pagar todos los vales al final del mes<br/>
-                  • El repartidor no cobrará nada en el momento de la entrega
-                </Text>
-              </VStack>
+              <Text fontSize="sm">
+                {preferencesApplied ? (
+                  <>
+                    <strong>Modalidad expirada:</strong> Tu modalidad anterior ya no está activa. Elige una nueva modalidad de pago para este mes.
+                  </>
+                ) : (
+                  <>
+                    <strong>Contraentrega:</strong> Pagas cuando recibes el pedido<br/>
+                    <strong>A Crédito:</strong> Se anota en tu vale y pagas al final del mes<br/>
+                    <strong>Suscripción:</strong> Pedido recurrente mensual
+                  </>
+                )}
+              </Text>
             </Alert>
-          )}
+          </VStack>
+        </CardHeader>
+        <CardBody>
+          <VStack spacing={6}>
+            <RadioGroup value={paymentMethod} onChange={setPaymentMethod}>
+              <Stack spacing={4}>
+                <Card 
+                  variant={paymentMethod === 'contraentrega' ? 'filled' : 'outline'}
+                  borderColor={paymentMethod === 'contraentrega' ? 'blue.500' : 'gray.200'}
+                  cursor="pointer"
+                  onClick={() => setPaymentMethod('contraentrega')}
+                >
+                  <CardBody>
+                    <HStack spacing={4}>
+                      <Radio value="contraentrega" />
+                      <VStack align="start" spacing={1}>
+                        <Text fontWeight="bold">Contraentrega</Text>
+                        <Text fontSize="sm" color="gray.600">
+                          Pagas en efectivo o PLIN cuando recibes tu pedido
+                        </Text>
+                      </VStack>
+                    </HStack>
+                  </CardBody>
+                </Card>
 
-          <Button
-            colorScheme="blue"
-            size="lg"
-            w="full"
-            onClick={() => setCurrentStep(5)}
-            leftIcon={<FaCreditCard />}
-          >
-            {paymentMethod === 'vale' ? 'Continuar (Sin Pago Inmediato)' : 'Continuar con Forma de Pago'}
-          </Button>
-        </VStack>
-      </CardBody>
-    </Card>
-  );
+                <Card 
+                  variant={paymentMethod === 'vale' ? 'filled' : 'outline'}
+                  borderColor={paymentMethod === 'vale' ? 'blue.500' : 'gray.200'}
+                  cursor="pointer"
+                  onClick={() => setPaymentMethod('vale')}
+                >
+                  <CardBody>
+                    <HStack spacing={4}>
+                      <Radio value="vale" />
+                      <VStack align="start" spacing={1}>
+                        <Text fontWeight="bold">A Crédito (Vale)</Text>
+                        <Text fontSize="sm" color="gray.600">
+                          Paga al final del mes - Se anota en tu vale
+                        </Text>
+                      </VStack>
+                    </HStack>
+                  </CardBody>
+                </Card>
+
+                <Card 
+                  variant={paymentMethod === 'suscripcion' ? 'filled' : 'outline'}
+                  borderColor={paymentMethod === 'suscripcion' ? 'blue.500' : 'gray.200'}
+                  cursor="pointer"
+                  onClick={() => setPaymentMethod('suscripcion')}
+                >
+                  <CardBody>
+                    <HStack spacing={4}>
+                      <Radio value="suscripcion" />
+                      <VStack align="start" spacing={1}>
+                        <Text fontWeight="bold">Suscripción con Beneficios</Text>
+                        <Text fontSize="sm" color="gray.600">
+                          Pedido recurrente mensual con bidones extra
+                        </Text>
+                        <VStack spacing={1} align="start" fontSize="xs" color="green.600">
+                          <Text>• 150 por 30 bidones = +1 bidón extra</Text>
+                          <Text>• 250 por 50 bidones = +2 bidones extra</Text>
+                          <Text>• 500 por 100 bidones = +5 bidones extra</Text>
+                        </VStack>
+                      </VStack>
+                    </HStack>
+                  </CardBody>
+                </Card>
+              </Stack>
+            </RadioGroup>
+
+            <Button
+              colorScheme="blue"
+              size="lg"
+              w="full"
+              onClick={() => setCurrentStep(5)}
+              leftIcon={<FaCreditCard />}
+            >
+              {paymentMethod === 'vale' ? 'Continuar (Sin Pago Inmediato)' : 'Continuar con Forma de Pago'}
+            </Button>
+          </VStack>
+        </CardBody>
+      </Card>
+    );
+  };
 
   // Renderizar paso 5: Forma de pago
   const renderStep5 = () => {
+    // Si está en modo suscripción (usando bidones existentes)
+    if (isSubscriptionMode && selectedSubscription) {
+      return (
+        <Card maxW="lg" mx="auto">
+          <CardHeader textAlign="center">
+            <VStack spacing={4}>
+              <Icon as={FaCalendarAlt} boxSize={12} color="purple.500" />
+              <Heading size="lg">Confirmar Pedido con Suscripción</Heading>
+              <Text color="gray.600">
+                Usarás bidones de tu suscripción existente
+              </Text>
+            </VStack>
+          </CardHeader>
+          <CardBody>
+            <VStack spacing={6}>
+              <Alert status="info" borderRadius="md">
+                <AlertIcon />
+                <VStack align="start" spacing={2}>
+                  <Text fontWeight="bold">Cómo funciona con suscripción:</Text>
+                  <Text fontSize="sm">
+                    • Se descontarán {cart.reduce((sum, item) => sum + item.quantity, 0)} bidones de tu suscripción<br/>
+                    • El repartidor NO cobrará nada en la entrega<br/>
+                    • Los bidones se descontarán automáticamente<br/>
+                    • Quedarán {selectedSubscription.remainingBottles - cart.reduce((sum, item) => sum + item.quantity, 0)} bidones disponibles
+                  </Text>
+                </VStack>
+              </Alert>
+
+              {/* Resumen del pedido */}
+              <Card variant="outline" w="full">
+                <CardBody>
+                  <VStack spacing={3}>
+                    <Text fontWeight="bold" fontSize="lg">Resumen del Pedido</Text>
+                    <VStack spacing={2} w="full">
+                      <HStack justify="space-between" w="full">
+                        <Text>Cliente:</Text>
+                        <Text fontWeight="bold">{clientData.name}</Text>
+                      </HStack>
+                      <HStack justify="space-between" w="full">
+                        <Text>Modalidad:</Text>
+                        <Badge colorScheme="purple">Suscripción (Sin Pago)</Badge>
+                      </HStack>
+                      <VStack spacing={1} w="full" align="stretch">
+                        <Text>Productos:</Text>
+                        {cart.map((item, index) => (
+                          <HStack key={index} justify="space-between" w="full" pl={2}>
+                            <Text fontSize="sm" color="gray.600">
+                              • {item.name} x{item.quantity}
+                            </Text>
+                            <Text fontSize="sm" fontWeight="bold">
+                              S/ {parseFloat(item.subtotal).toFixed(2)}
+                            </Text>
+                          </HStack>
+                        ))}
+                      </VStack>
+                      <HStack justify="space-between" w="full">
+                        <Text>Bidones a usar:</Text>
+                        <Text fontWeight="bold" fontSize="lg" color="purple.600">
+                          {cart.reduce((sum, item) => sum + item.quantity, 0)} bidones
+                        </Text>
+                      </HStack>
+                    </VStack>
+                  </VStack>
+                </CardBody>
+              </Card>
+
+              <Button
+                colorScheme="purple"
+                size="lg"
+                w="full"
+                onClick={createOrder}
+                leftIcon={<FaCheckCircle />}
+                isLoading={loading}
+                loadingText="Creando pedido..."
+              >
+                Confirmar Pedido con Suscripción
+              </Button>
+            </VStack>
+          </CardBody>
+        </Card>
+      );
+    }
+
     // Si es pago a crédito (vale), mostrar interfaz diferente
     if (paymentMethod === 'vale') {
       return (
@@ -931,7 +1712,155 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
       );
     }
 
-    // Interfaz normal para contraentrega y suscripción
+    // Si es suscripción, mostrar interfaz específica
+    if (paymentMethod === 'suscripcion' && selectedSubscriptionPlan) {
+      return (
+        <Card maxW="lg" mx="auto">
+          <CardHeader textAlign="center">
+            <VStack spacing={4}>
+              <Icon as={FaCalendarAlt} boxSize={12} color="purple.500" />
+              <Heading size="lg">Confirmar Suscripción</Heading>
+              <Text color="gray.600">
+                Plan {selectedSubscriptionPlan.name} seleccionado
+              </Text>
+            </VStack>
+          </CardHeader>
+          <CardBody>
+            <VStack spacing={6}>
+              <Alert status="info" borderRadius="md">
+                <AlertIcon />
+                <VStack align="start" spacing={2}>
+                  <Text fontWeight="bold">Cómo funciona la suscripción:</Text>
+                  <Text fontSize="sm">
+                    • Pagas una vez al mes por adelantado<br/>
+                    • Recibes {selectedSubscriptionPlan.bottles + selectedSubscriptionPlan.bonus} bidones inmediatamente<br/>
+                    • Después solo pides la cantidad que necesites sin pagar<br/>
+                    • Los bidones se descuentan de tu suscripción
+                  </Text>
+                </VStack>
+              </Alert>
+
+              {/* Información del plan seleccionado */}
+              <Card variant="outline" w="full" borderColor="purple.200">
+                <CardBody>
+                  <VStack spacing={3}>
+                    <Text fontWeight="bold" fontSize="lg" color="purple.600">
+                      {selectedSubscriptionPlan.name}
+                    </Text>
+                    <VStack spacing={2} w="full">
+                      <HStack justify="space-between" w="full">
+                        <Text>Precio del plan:</Text>
+                        <Text fontWeight="bold" color="purple.600">
+                          S/ {selectedSubscriptionPlan.price}
+                        </Text>
+                      </HStack>
+                      <HStack justify="space-between" w="full">
+                        <Text>Bidones incluidos:</Text>
+                        <Text fontWeight="bold">{selectedSubscriptionPlan.bottles}</Text>
+                      </HStack>
+                      <HStack justify="space-between" w="full">
+                        <Text>Bidones extra:</Text>
+                        <Text fontWeight="bold" color="green.600">+{selectedSubscriptionPlan.bonus}</Text>
+                      </HStack>
+                      <HStack justify="space-between" w="full">
+                        <Text>Total bidones:</Text>
+                        <Text fontWeight="bold" fontSize="lg" color="purple.600">
+                          {selectedSubscriptionPlan.bottles + selectedSubscriptionPlan.bonus}
+                        </Text>
+                      </HStack>
+                    </VStack>
+                  </VStack>
+                </CardBody>
+              </Card>
+
+              {/* Resumen del pedido */}
+              <Card variant="outline" w="full">
+                <CardBody>
+                  <VStack spacing={3}>
+                    <Text fontWeight="bold" fontSize="lg">Resumen del Pedido</Text>
+                    <VStack spacing={2} w="full">
+                      <HStack justify="space-between" w="full">
+                        <Text>Cliente:</Text>
+                        <Text fontWeight="bold">{clientData.name}</Text>
+                      </HStack>
+                      <HStack justify="space-between" w="full">
+                        <Text>Modalidad:</Text>
+                        <Badge colorScheme="purple">Suscripción {selectedSubscriptionPlan.name}</Badge>
+                      </HStack>
+                      <HStack justify="space-between" w="full">
+                        <Text>Total a pagar:</Text>
+                        <Text fontWeight="bold" fontSize="lg" color="purple.600">
+                          S/ {selectedSubscriptionPlan.price}
+                        </Text>
+                      </HStack>
+                    </VStack>
+                  </VStack>
+                </CardBody>
+              </Card>
+
+              <VStack spacing={4} w="full">
+                <Text fontWeight="bold" fontSize="lg">¿Cómo deseas pagar?</Text>
+                <RadioGroup value={paymentType} onChange={setPaymentType}>
+                  <Stack spacing={4} w="full">
+                    <Card 
+                      variant={paymentType === 'efectivo' ? 'filled' : 'outline'}
+                      borderColor={paymentType === 'efectivo' ? 'blue.500' : 'gray.200'}
+                      cursor="pointer"
+                      onClick={() => setPaymentType('efectivo')}
+                    >
+                      <CardBody>
+                        <HStack spacing={4}>
+                          <Radio value="efectivo" />
+                          <VStack align="start" spacing={1}>
+                            <Text fontWeight="bold">Efectivo</Text>
+                            <Text fontSize="sm" color="gray.600">
+                              Paga en efectivo al repartidor
+                            </Text>
+                          </VStack>
+                        </HStack>
+                      </CardBody>
+                    </Card>
+
+                    <Card 
+                      variant={paymentType === 'plin' ? 'filled' : 'outline'}
+                      borderColor={paymentType === 'plin' ? 'blue.500' : 'gray.200'}
+                      cursor="pointer"
+                      onClick={() => setPaymentType('plin')}
+                    >
+                      <CardBody>
+                        <HStack spacing={4}>
+                          <Radio value="plin" />
+                          <VStack align="start" spacing={1}>
+                            <Text fontWeight="bold">PLIN</Text>
+                            <Text fontSize="sm" color="gray.600">
+                              Paga con PLIN al repartidor
+                            </Text>
+                          </VStack>
+                        </HStack>
+                      </CardBody>
+                    </Card>
+                  </Stack>
+                </RadioGroup>
+
+                <Button
+                  colorScheme="purple"
+                  size="lg"
+                  w="full"
+                  onClick={handleFinalSubmit}
+                  leftIcon={<FaCheckCircle />}
+                  isLoading={loading}
+                  loadingText="Creando suscripción..."
+                >
+                  Confirmar Suscripción
+                </Button>
+              </VStack>
+            </VStack>
+          </CardBody>
+        </Card>
+      );
+    }
+
+    // Interfaz normal solo para contraentrega
     return (
       <Card maxW="lg" mx="auto">
         <CardHeader textAlign="center">
@@ -1032,7 +1961,7 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
               colorScheme="green"
               size="lg"
               w="full"
-              onClick={handleFinalSubmit}
+              onClick={paymentType === 'efectivo' ? handleFinalSubmit : handlePLINPayment}
               leftIcon={<FaCheckCircle />}
               isLoading={loading}
               loadingText="Creando pedido..."
@@ -1047,7 +1976,7 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
 
   // Modal para pago PLIN
   const renderPlinModal = () => (
-    <Modal isOpen={isPlinModalOpen} onClose={onPlinModalClose} size="md">
+    <Modal isOpen={isPlinModalOpen} onClose={handlePlinModalClose} size="md">
       <ModalOverlay />
       <ModalContent>
         <ModalHeader textAlign="center">
@@ -1083,22 +2012,41 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
               </Text>
             </VStack>
 
-            <Alert status="warning">
+            <Alert status={whatsappSent ? "success" : "warning"}>
               <AlertIcon />
               <Text fontSize="sm">
-                Después de pagar, envía el comprobante por WhatsApp
+                {whatsappSent 
+                  ? "✅ Comprobante enviado por WhatsApp. Ahora puedes confirmar el pago."
+                  : "Después de pagar, envía el comprobante por WhatsApp"
+                }
               </Text>
             </Alert>
 
-            <Button
-              colorScheme="green"
-              size="lg"
-              w="full"
-              leftIcon={<FaWhatsapp />}
-              onClick={handleWhatsAppSend}
-            >
-              Enviar Comprobante por WhatsApp
-            </Button>
+            <VStack spacing={3} w="full">
+              <Button
+                colorScheme="green"
+                size="lg"
+                w="full"
+                leftIcon={<FaWhatsapp />}
+                onClick={handleWhatsAppSend}
+              >
+                Enviar Comprobante por WhatsApp
+              </Button>
+              
+              <Button
+                colorScheme="purple"
+                size="lg"
+                w="full"
+                leftIcon={<FaCheckCircle />}
+                onClick={handleConfirmPLINPayment}
+                isLoading={loading}
+                loadingText="Creando pedido..."
+                isDisabled={!whatsappSent}
+                opacity={whatsappSent ? 1 : 0.5}
+              >
+                {whatsappSent ? 'Confirmar Pago y Crear Pedido' : 'Primero envía el comprobante por WhatsApp'}
+              </Button>
+            </VStack>
           </VStack>
         </ModalBody>
       </ModalContent>

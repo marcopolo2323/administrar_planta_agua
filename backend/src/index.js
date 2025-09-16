@@ -53,7 +53,7 @@ if (process.env.MONGODB_URI) {
 }
 
 // Importar modelos
-const { Product, GuestOrder, GuestOrderProduct, District, DeliveryFee } = require('./models');
+const { Product, GuestOrder, GuestOrderProduct, District, DeliveryFee, User } = require('./models');
 
 // Rutas básicas
 app.get('/', (req, res) => {
@@ -65,27 +65,23 @@ const authRoutes = require('./routes/auth.routes');
 const clientAuthRoutes = require('./routes/client.auth.routes');
 const productRoutes = require('./routes/product.routes');
 const clientRoutes = require('./routes/client.routes');
-const orderRoutes = require('./routes/order.routes');
-const saleRoutes = require('./routes/sale.routes');
-const creditRoutes = require('./routes/credit.routes');
-const paymentRoutes = require('./routes/payment.routes');
-const inventoryRoutes = require('./routes/inventory.routes');
 const reportRoutes = require('./routes/report.routes');
-const notificationRoutes = require('./routes/notification.routes');
 const deliveryFeeRoutes = require('./routes/deliveryFee.routes');
 const deliveryPersonRoutes = require('./routes/deliveryPerson.routes');
 const districtRoutes = require('./routes/district.routes');
-const cashRegisterRoutes = require('./routes/cashRegister.routes');
-const electronicInvoiceRoutes = require('./routes/electronicInvoice.routes');
 const guestOrderRoutes = require('./routes/guestOrder.routes');
-const guestPaymentRoutes = require('./routes/guestPayment.routes');
 const deliveryOrdersRoutes = require('./routes/delivery.orders.routes');
 const deliveryAuthRoutes = require('./routes/delivery.auth.routes');
 const deliveryAssignedRoutes = require('./routes/delivery.assigned.routes');
 const voucherRoutes = require('./routes/voucher.routes');
+const valeRoutes = require('./routes/vale.routes');
+const clientPreferenceRoutes = require('./routes/clientPreference.routes');
+const alertRoutes = require('./routes/alert.routes');
+const valePaymentRoutes = require('./routes/valePayment.routes');
+const guestPaymentRoutes = require('./routes/guestPayment.routes');
+const subscriptionRoutes = require('./routes/subscription.routes');
 const userRoutes = require('./routes/user.routes');
 const clientPaymentsRoutes = require('./routes/client.payments.routes');
-const subscriptionRoutes = require('./routes/subscription.routes');
 const monthlyPaymentRoutes = require('./routes/monthlyPayment.routes');
 const legalRoutes = require('./routes/legal.routes');
 const documentRoutes = require('./routes/document.routes');
@@ -134,29 +130,24 @@ app.use('/api/auth', authRoutes);
 app.use('/api/client', clientAuthRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/clients', clientRoutes);
-app.use('/api/orders', orderRoutes);
-app.use('/api/sales', saleRoutes);
-app.use('/api/credits', creditRoutes);
-app.use('/api/payments', paymentRoutes);
-app.use('/api/inventory', inventoryRoutes);
 app.use('/api/reports', reportRoutes);
-app.use('/api/notifications', notificationRoutes);
 app.use('/api/delivery-fees', deliveryFeeRoutes);
 app.use('/api/delivery-persons', deliveryPersonRoutes);
 app.use('/api/districts', districtRoutes);
-app.use('/api/cash-register', cashRegisterRoutes);
-app.use('/api/electronic-invoices', electronicInvoiceRoutes);
 app.use('/api/guest-orders', guestOrderRoutes);
-app.use('/api/guest-payments', guestPaymentRoutes);
 app.use('/api/delivery-orders', deliveryOrdersRoutes);
 app.use('/api/delivery-auth', deliveryAuthRoutes);
 app.use('/api/delivery', deliveryAssignedRoutes);
 app.use('/api/vouchers', voucherRoutes);
+app.use('/api/vales', valeRoutes);
+app.use('/api/client-preferences', clientPreferenceRoutes);
+app.use('/api/alerts', alertRoutes);
+app.use('/api/vale-payments', valePaymentRoutes);
+app.use('/api/guest-payments', guestPaymentRoutes);
+app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/client-payments', clientPaymentsRoutes);
-app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/monthly-payments', monthlyPaymentRoutes);
-app.use('/api/reports', reportRoutes);
 app.use('/api/legal', legalRoutes);
 app.use('/api/documents', documentRoutes);
 
@@ -273,6 +264,8 @@ app.post('/api/guest-orders', async (req, res) => {
 // Ruta para obtener pedidos de invitados (mantener compatibilidad)
 app.get('/api/guest-orders', async (req, res) => {
   try {
+    console.log('🔍 Obteniendo pedidos de visitantes...');
+    
     const orders = await GuestOrder.findAll({
       include: [
         {
@@ -285,14 +278,44 @@ app.get('/api/guest-orders', async (req, res) => {
               attributes: ['id', 'name', 'unitPrice']
             }
           ]
+        },
+        {
+          model: User,
+          as: 'deliveryPerson',
+          attributes: ['id', 'username', 'phone'],
+          required: false
         }
       ],
       order: [['createdAt', 'DESC']]
     });
 
+    console.log(`🔍 Pedidos de visitantes encontrados: ${orders.length}`);
+
+    // Formatear los datos para incluir información del cliente directamente
+    const formattedOrders = orders.map(order => {
+      const formatted = {
+        ...order.toJSON(),
+        clientName: order.customerName,
+        clientPhone: order.customerPhone,
+        clientEmail: order.customerEmail,
+        clientAddress: order.deliveryAddress,
+        clientDistrict: order.deliveryDistrict
+      };
+      
+      console.log(`🔍 Pedido visitante ${order.id}:`, {
+        clientName: formatted.clientName,
+        clientPhone: formatted.clientPhone,
+        customerName: order.customerName,
+        customerPhone: order.customerPhone
+      });
+      
+      return formatted;
+    });
+
+    console.log('🔍 Enviando pedidos de visitantes formateados:', formattedOrders.length);
     res.json({
       success: true,
-      data: orders
+      data: formattedOrders
     });
   } catch (error) {
     console.error('Error al obtener pedidos:', error);

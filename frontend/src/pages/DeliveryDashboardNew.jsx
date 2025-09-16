@@ -60,7 +60,8 @@ import {
   FaPlay,
   FaStop,
   FaDirections,
-  FaWhatsapp
+  FaWhatsapp,
+  FaPlus
 } from 'react-icons/fa';
 import axios from '../utils/axios';
 import useAuthStore from '../stores/authStore';
@@ -85,7 +86,7 @@ const DeliveryDashboardNew = () => {
   const [statusNotes, setStatusNotes] = useState('');
   const [newStatus, setNewStatus] = useState('');
   
-  // Estados para vales
+  // Estados para datos básicos
   const [vouchers, setVouchers] = useState([]);
   const [voucherForm, setVoucherForm] = useState({
     clientId: '',
@@ -109,16 +110,30 @@ const DeliveryDashboardNew = () => {
 
   const fetchOrders = async () => {
     try {
-      const response = await axios.get('/api/orders');
-      const guestResponse = await axios.get('/api/guest-orders');
+      console.log('🔍 DeliveryDashboard - Usuario actual:', user);
+      console.log('🔍 DeliveryDashboard - ID del usuario:', user?.id);
       
-      // Combinar pedidos regulares y de visitantes asignados al repartidor actual
-      const allOrders = [
-        ...response.data.filter(order => order.deliveryPersonId === user.id),
-        ...guestResponse.data.filter(order => order.deliveryPersonId === user.id)
-      ];
+      // Usar la ruta específica para repartidores
+      const response = await axios.get('/api/delivery-orders/orders');
       
-      setOrders(allOrders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
+      console.log('🔍 DeliveryDashboard - Respuesta del servidor:', response.data);
+      
+      if (response.data.success) {
+        const allOrders = response.data.data || [];
+        console.log('🔍 DeliveryDashboard - Pedidos recibidos:', allOrders.length);
+        allOrders.forEach(order => {
+          console.log(`🔍 DeliveryDashboard - Pedido ${order.id}:`, {
+            id: order.id,
+            status: order.status,
+            deliveryPersonId: order.deliveryPersonId,
+            customerName: order.customerName
+          });
+        });
+        setOrders(allOrders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
+      } else {
+        console.log('🔍 DeliveryDashboard - No hay pedidos o error en respuesta');
+        setOrders([]);
+      }
     } catch (error) {
       console.error('Error al cargar pedidos:', error);
       toast({
@@ -135,7 +150,7 @@ const DeliveryDashboardNew = () => {
 
   const fetchVouchers = async () => {
     try {
-      const response = await axios.get('/api/vouchers/delivery-person');
+      const response = await axios.get(`/api/vouchers/delivery-person/${user.id}`);
       setVouchers(response.data.data || []);
     } catch (error) {
       console.error('Error al cargar vales:', error);
@@ -168,15 +183,22 @@ const DeliveryDashboardNew = () => {
   // Estadísticas
   const stats = {
     total: orders.length,
-    asignados: orders.filter(o => o.status === 'asignado').length,
-    en_camino: orders.filter(o => o.status === 'en_camino').length,
-    entregados: orders.filter(o => o.status === 'entregado').length
+    asignados: orders.filter(o => o.status === 'confirmed').length,
+    preparando: orders.filter(o => o.status === 'preparing').length,
+    listos: orders.filter(o => o.status === 'ready').length,
+    entregados: orders.filter(o => o.status === 'delivered').length
   };
 
   const getStatusColor = (status) => {
     switch (status) {
+      case 'pending': return 'orange';
+      case 'confirmed': return 'blue';
+      case 'preparing': return 'yellow';
+      case 'ready': return 'purple';
+      case 'delivered': return 'green';
+      case 'cancelled': return 'red';
+      // Compatibilidad con status en español
       case 'asignado': return 'blue';
-      case 'en_camino': return 'purple';
       case 'entregado': return 'green';
       case 'cancelado': return 'red';
       default: return 'gray';
@@ -185,8 +207,14 @@ const DeliveryDashboardNew = () => {
 
   const getStatusText = (status) => {
     switch (status) {
+      case 'pending': return 'Pendiente';
+      case 'confirmed': return 'Asignado';
+      case 'preparing': return 'Preparando';
+      case 'ready': return 'Listo para Entrega';
+      case 'delivered': return 'Entregado';
+      case 'cancelled': return 'Cancelado';
+      // Compatibilidad con status en español
       case 'asignado': return 'Asignado';
-      case 'en_camino': return 'En Camino';
       case 'entregado': return 'Entregado';
       case 'cancelado': return 'Cancelado';
       default: return status;
@@ -232,25 +260,13 @@ const DeliveryDashboardNew = () => {
     }
   };
 
-  const openStatusModal = (order, status) => {
-    setSelectedOrder(order);
-    setNewStatus(status);
-    setStatusNotes('');
-    onStatusOpen();
-  };
-
-  const openDetailModal = (order) => {
-    setSelectedOrder(order);
-    onDetailOpen();
-  };
-
   const handleCreateVoucher = async () => {
     try {
       const response = await axios.post('/api/vouchers', voucherForm);
       
       toast({
         title: 'Vale creado',
-        description: 'El vale se ha creado correctamente',
+        description: 'El vale ha sido creado exitosamente',
         status: 'success',
         duration: 3000,
         isClosable: true,
@@ -283,7 +299,7 @@ const DeliveryDashboardNew = () => {
       
       toast({
         title: 'Estado actualizado',
-        description: `El vale ahora está ${newStatus === 'delivered' ? 'entregado' : 'pagado'}`,
+        description: 'El estado del vale ha sido actualizado',
         status: 'success',
         duration: 3000,
         isClosable: true,
@@ -299,6 +315,18 @@ const DeliveryDashboardNew = () => {
         isClosable: true,
       });
     }
+  };
+
+  const openStatusModal = (order, status) => {
+    setSelectedOrder(order);
+    setNewStatus(status);
+    setStatusNotes('');
+    onStatusOpen();
+  };
+
+  const openDetailModal = (order) => {
+    setSelectedOrder(order);
+    onDetailOpen();
   };
 
   const openDirections = (address) => {
@@ -382,6 +410,8 @@ const DeliveryDashboardNew = () => {
               <Icon as={getPaymentIcon(order.paymentType)} size={14} />
               <Text fontSize="sm">
                 {order.paymentMethod === 'vale' ? 'A Crédito (Vale)' :
+                 order.paymentMethod === 'suscripcion' ? 'Suscripción' :
+                 order.paymentMethod === 'contraentrega' ? 'Contraentrega' :
                  order.paymentType === 'efectivo' ? 'Efectivo' : 'PLIN'}
               </Text>
             </HStack>
@@ -389,6 +419,26 @@ const DeliveryDashboardNew = () => {
               {order.paymentMethod === 'vale' ? 'Sin cobro' : `S/ ${parseFloat(order.total || order.totalAmount || 0).toFixed(2)}`}
             </Text>
           </HStack>
+
+          {/* Productos del pedido */}
+          {order.products && order.products.length > 0 && (
+            <VStack spacing={1} align="stretch">
+              <Text fontSize="xs" fontWeight="bold" color="gray.600">Productos:</Text>
+              {order.products.map((product, index) => (
+                <HStack key={index} justify="space-between" fontSize="xs">
+                  <Text noOfLines={1} flex={1}>
+                    {product.name || product.productName}
+                  </Text>
+                  <Text fontWeight="bold" color="blue.600">
+                    x{product.quantity}
+                  </Text>
+                  <Text color="green.600" minW="50px" textAlign="right">
+                    S/ {parseFloat(product.unitPrice || product.price || 0).toFixed(2)}
+                  </Text>
+                </HStack>
+              ))}
+            </VStack>
+          )}
 
           {/* Notas especiales */}
           {order.paymentMethod === 'vale' && (
@@ -416,23 +466,34 @@ const DeliveryDashboardNew = () => {
               />
             </Tooltip>
             
-            {order.status === 'asignado' && (
+            {order.status === 'confirmed' && (
               <Button
                 size="sm"
                 colorScheme="purple"
                 leftIcon={<FaPlay />}
-                onClick={() => openStatusModal(order, 'en_camino')}
+                onClick={() => openStatusModal(order, 'preparing')}
               >
-                Iniciar Entrega
+                Iniciar Preparación
               </Button>
             )}
             
-            {order.status === 'en_camino' && (
+            {order.status === 'preparing' && (
+              <Button
+                size="sm"
+                colorScheme="blue"
+                leftIcon={<FaTruck />}
+                onClick={() => openStatusModal(order, 'ready')}
+              >
+                Listo para Entrega
+              </Button>
+            )}
+            
+            {order.status === 'ready' && (
               <Button
                 size="sm"
                 colorScheme="green"
                 leftIcon={<FaCheckCircle />}
-                onClick={() => openStatusModal(order, 'entregado')}
+                onClick={() => openStatusModal(order, 'delivered')}
               >
                 Marcar Entregado
               </Button>
@@ -595,6 +656,8 @@ const DeliveryDashboardNew = () => {
                         <Icon as={getPaymentIcon(selectedOrder.paymentType)} size={16} />
                         <Text>
                           {selectedOrder.paymentMethod === 'vale' ? 'A Crédito (Vale)' :
+                           selectedOrder.paymentMethod === 'suscripcion' ? 'Suscripción' :
+                           selectedOrder.paymentMethod === 'contraentrega' ? 'Contraentrega' :
                            selectedOrder.paymentType === 'efectivo' ? 'Efectivo' : 'PLIN'}
                         </Text>
                       </HStack>
@@ -677,6 +740,122 @@ const DeliveryDashboardNew = () => {
     </Modal>
   );
 
+  // Modal para crear vale
+  const renderVoucherModal = () => (
+    <Modal isOpen={isVoucherOpen} onClose={onVoucherClose} size="md">
+      <ModalOverlay />
+      <ModalContent>
+        <ModalHeader>Crear Nuevo Vale</ModalHeader>
+        <ModalCloseButton />
+        <ModalBody>
+          <VStack spacing={4}>
+            <FormControl isRequired>
+              <FormLabel>Cliente</FormLabel>
+              <Select
+                value={voucherForm.clientId}
+                onChange={(e) => setVoucherForm({ ...voucherForm, clientId: e.target.value })}
+                placeholder="Selecciona un cliente"
+              >
+                {clients.map((client) => (
+                  <option key={client.id} value={client.id}>
+                    {client.name} - {client.phone}
+                  </option>
+                ))}
+              </Select>
+            </FormControl>
+
+            <FormControl isRequired>
+              <FormLabel>Producto</FormLabel>
+              <Select
+                value={voucherForm.productId}
+                onChange={(e) => {
+                  const product = products.find(p => p.id === parseInt(e.target.value));
+                  setVoucherForm({ 
+                    ...voucherForm, 
+                    productId: e.target.value,
+                    unitPrice: product ? parseFloat(product.unitPrice) : 0
+                  });
+                }}
+                placeholder="Selecciona un producto"
+              >
+                {products.map((product) => (
+                  <option key={product.id} value={product.id}>
+                    {product.name} - S/ {parseFloat(product.unitPrice).toFixed(2)}
+                  </option>
+                ))}
+              </Select>
+            </FormControl>
+
+            <FormControl isRequired>
+              <FormLabel>Cantidad</FormLabel>
+              <Input
+                type="number"
+                value={voucherForm.quantity}
+                onChange={(e) => setVoucherForm({ ...voucherForm, quantity: parseInt(e.target.value) })}
+                min="1"
+              />
+            </FormControl>
+
+            <FormControl isRequired>
+              <FormLabel>Precio Unitario</FormLabel>
+              <Input
+                type="number"
+                value={voucherForm.unitPrice}
+                onChange={(e) => setVoucherForm({ ...voucherForm, unitPrice: parseFloat(e.target.value) })}
+                step="0.01"
+                min="0"
+              />
+            </FormControl>
+
+            <FormControl>
+              <FormLabel>Notas (opcional)</FormLabel>
+              <Textarea
+                value={voucherForm.notes}
+                onChange={(e) => setVoucherForm({ ...voucherForm, notes: e.target.value })}
+                placeholder="Observaciones sobre el vale..."
+                rows={3}
+              />
+            </FormControl>
+
+            <Card variant="outline" w="full">
+              <CardBody>
+                <VStack spacing={2}>
+                  <HStack justify="space-between" w="full">
+                    <Text>Cantidad:</Text>
+                    <Text fontWeight="bold">{voucherForm.quantity}</Text>
+                  </HStack>
+                  <HStack justify="space-between" w="full">
+                    <Text>Precio unitario:</Text>
+                    <Text fontWeight="bold">S/ {voucherForm.unitPrice.toFixed(2)}</Text>
+                  </HStack>
+                  <Divider />
+                  <HStack justify="space-between" w="full">
+                    <Text fontWeight="bold">Total:</Text>
+                    <Text fontWeight="bold" color="green.600">
+                      S/ {(voucherForm.quantity * voucherForm.unitPrice).toFixed(2)}
+                    </Text>
+                  </HStack>
+                </VStack>
+              </CardBody>
+            </Card>
+          </VStack>
+        </ModalBody>
+        <ModalFooter>
+          <Button variant="outline" mr={3} onClick={onVoucherClose}>
+            Cancelar
+          </Button>
+          <Button 
+            colorScheme="blue" 
+            onClick={handleCreateVoucher}
+            isDisabled={!voucherForm.clientId || !voucherForm.productId || voucherForm.quantity <= 0 || voucherForm.unitPrice <= 0}
+          >
+            Crear Vale
+          </Button>
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
+  );
+
   if (loading) {
     return (
       <Center h="400px">
@@ -727,15 +906,21 @@ const DeliveryDashboardNew = () => {
           </Stat>
           
           <Stat>
-            <StatLabel>Pendientes</StatLabel>
+            <StatLabel>Asignados</StatLabel>
             <StatNumber color="blue.500">{stats.asignados}</StatNumber>
-            <StatHelpText>Por entregar</StatHelpText>
+            <StatHelpText>Confirmados</StatHelpText>
           </Stat>
           
           <Stat>
-            <StatLabel>En Camino</StatLabel>
-            <StatNumber color="purple.500">{stats.en_camino}</StatNumber>
-            <StatHelpText>En proceso</StatHelpText>
+            <StatLabel>Preparando</StatLabel>
+            <StatNumber color="yellow.500">{stats.preparando}</StatNumber>
+            <StatHelpText>En preparación</StatHelpText>
+          </Stat>
+          
+          <Stat>
+            <StatLabel>Listos</StatLabel>
+            <StatNumber color="purple.500">{stats.listos}</StatNumber>
+            <StatHelpText>Para entregar</StatHelpText>
           </Stat>
           
           <Stat>
@@ -924,121 +1109,6 @@ const DeliveryDashboardNew = () => {
     </Box>
   );
 
-  // Modal para crear vale
-  const renderVoucherModal = () => (
-    <Modal isOpen={isVoucherOpen} onClose={onVoucherClose} size="md">
-      <ModalOverlay />
-      <ModalContent>
-        <ModalHeader>Crear Nuevo Vale</ModalHeader>
-        <ModalCloseButton />
-        <ModalBody>
-          <VStack spacing={4}>
-            <FormControl isRequired>
-              <FormLabel>Cliente</FormLabel>
-              <Select
-                value={voucherForm.clientId}
-                onChange={(e) => setVoucherForm({ ...voucherForm, clientId: e.target.value })}
-                placeholder="Selecciona un cliente"
-              >
-                {clients.map((client) => (
-                  <option key={client.id} value={client.id}>
-                    {client.name} - {client.phone}
-                  </option>
-                ))}
-              </Select>
-            </FormControl>
-
-            <FormControl isRequired>
-              <FormLabel>Producto</FormLabel>
-              <Select
-                value={voucherForm.productId}
-                onChange={(e) => {
-                  const product = products.find(p => p.id === parseInt(e.target.value));
-                  setVoucherForm({ 
-                    ...voucherForm, 
-                    productId: e.target.value,
-                    unitPrice: product ? parseFloat(product.unitPrice) : 0
-                  });
-                }}
-                placeholder="Selecciona un producto"
-              >
-                {products.map((product) => (
-                  <option key={product.id} value={product.id}>
-                    {product.name} - S/ {parseFloat(product.unitPrice).toFixed(2)}
-                  </option>
-                ))}
-              </Select>
-            </FormControl>
-
-            <FormControl isRequired>
-              <FormLabel>Cantidad</FormLabel>
-              <Input
-                type="number"
-                value={voucherForm.quantity}
-                onChange={(e) => setVoucherForm({ ...voucherForm, quantity: parseInt(e.target.value) })}
-                min="1"
-              />
-            </FormControl>
-
-            <FormControl isRequired>
-              <FormLabel>Precio Unitario</FormLabel>
-              <Input
-                type="number"
-                value={voucherForm.unitPrice}
-                onChange={(e) => setVoucherForm({ ...voucherForm, unitPrice: parseFloat(e.target.value) })}
-                step="0.01"
-                min="0"
-              />
-            </FormControl>
-
-            <FormControl>
-              <FormLabel>Notas (opcional)</FormLabel>
-              <Textarea
-                value={voucherForm.notes}
-                onChange={(e) => setVoucherForm({ ...voucherForm, notes: e.target.value })}
-                placeholder="Observaciones sobre el vale..."
-                rows={3}
-              />
-            </FormControl>
-
-            <Card variant="outline" w="full">
-              <CardBody>
-                <VStack spacing={2}>
-                  <HStack justify="space-between" w="full">
-                    <Text>Cantidad:</Text>
-                    <Text fontWeight="bold">{voucherForm.quantity}</Text>
-                  </HStack>
-                  <HStack justify="space-between" w="full">
-                    <Text>Precio unitario:</Text>
-                    <Text fontWeight="bold">S/ {voucherForm.unitPrice.toFixed(2)}</Text>
-                  </HStack>
-                  <Divider />
-                  <HStack justify="space-between" w="full">
-                    <Text fontWeight="bold">Total:</Text>
-                    <Text fontWeight="bold" color="green.600">
-                      S/ {(voucherForm.quantity * voucherForm.unitPrice).toFixed(2)}
-                    </Text>
-                  </HStack>
-                </VStack>
-              </CardBody>
-            </Card>
-          </VStack>
-        </ModalBody>
-        <ModalFooter>
-          <Button variant="outline" mr={3} onClick={onVoucherClose}>
-            Cancelar
-          </Button>
-          <Button 
-            colorScheme="blue" 
-            onClick={handleCreateVoucher}
-            isDisabled={!voucherForm.clientId || !voucherForm.productId || voucherForm.quantity <= 0 || voucherForm.unitPrice <= 0}
-          >
-            Crear Vale
-          </Button>
-        </ModalFooter>
-      </ModalContent>
-    </Modal>
-  );
 };
 
 export default DeliveryDashboardNew;

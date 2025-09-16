@@ -1,7 +1,6 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import useAuthStore from '../stores/authStore';
 import useAutoRefresh from '../hooks/useAutoRefresh';
-import TokenDebug from '../components/TokenDebug';
 import { useRole } from '../hooks/useRole';
 import AquaYaraLogo from '../components/AquaYaraLogo';
 import AdminContact from '../components/AdminContact';
@@ -58,19 +57,32 @@ const DashboardLayout = () => {
 
   // Menú para administradores y vendedores
   const adminMenuItems = [
+    // Dashboard principal
     { to: '/dashboard', label: 'Dashboard', icon: '🏠' },
-    { to: '/dashboard/products', label: 'Productos', icon: '💧' },
-    { to: '/dashboard/clients', label: 'Clientes', icon: '👥' },
-    { to: '/dashboard/orders', label: 'Pedidos', icon: '📦' },
-    { to: '/dashboard/orders-management', label: 'Gestión de Pedidos', icon: '🚚', adminOnly: true },
-    { to: '/dashboard/sales', label: 'Ventas', icon: '💰' },
+    
+    // Gestión de pedidos (unificado)
+    { to: '/dashboard/orders-management', label: 'Gestión de Pedidos', icon: '📦', adminOnly: true },
+    
+    // Clientes
+    { to: '/dashboard/clients', label: 'Clientes', icon: '👥', adminOnly: true },
+    
+    // Pagos
     { to: '/dashboard/client-payments', label: 'Pagos Clientes', icon: '💳', adminOnly: true },
+    
+    // Créditos y suscripciones
+    { to: '/dashboard/credits', label: 'Créditos y Vales', icon: '🎫', adminOnly: true },
+    { to: '/dashboard/vales', label: 'Gestión de Vales', icon: '🎫', adminOnly: true },
+    { to: '/dashboard/alerts', label: 'Centro de Alertas', icon: '🚨', adminOnly: true },
+    { to: '/dashboard/vale-payment', label: 'Pago de Vales', icon: '💳', adminOnly: true },
     { to: '/dashboard/subscriptions', label: 'Suscripciones', icon: '📅', adminOnly: true },
-    { to: '/dashboard/credits', label: 'Gestión de Créditos', icon: '💳', adminOnly: true },
+    
+    // Documentos y reportes
     { to: '/dashboard/documents', label: 'Documentos', icon: '📄', adminOnly: true },
+    { to: '/dashboard/reports', label: 'Reportes', icon: '📊', adminOnly: true },
+    
+    // Configuración del sistema
     { to: '/dashboard/delivery-fees', label: 'Tarifas de Envío', icon: '🚚', adminOnly: true },
-    { to: '/dashboard/delivery-persons', label: 'Repartidores', icon: '👨‍💼', adminOnly: true },
-    { to: '/dashboard/reports', label: 'Reportes', icon: '📊', adminOnly: true }
+    { to: '/dashboard/delivery-persons', label: 'Repartidores', icon: '👨‍💼', adminOnly: true }
   ];
 
   // Menú para repartidores
@@ -249,8 +261,6 @@ const DashboardLayout = () => {
         <Footer />
       </Box>
       
-      {/* Debug component solo en desarrollo */}
-      {import.meta.env.DEV && <TokenDebug />}
     </Flex>
   );
 };

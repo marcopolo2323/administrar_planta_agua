@@ -45,7 +45,8 @@ import {
   Avatar,
   Tag,
   TagLabel,
-  TagLeftIcon
+  TagLeftIcon,
+  Icon
 } from '@chakra-ui/react';
 import { 
   SearchIcon, 
@@ -63,19 +64,11 @@ import {
   FaClock,
   FaExclamationTriangle
 } from 'react-icons/fa';
-import useOrderStore from '../stores/orderStore';
 import useGuestOrderStore from '../stores/guestOrderStore';
 import useDeliveryStore from '../stores/deliveryStore';
 
 const OrdersManagement = () => {
-  // Stores
-  const {
-    orders,
-    loading: ordersLoading,
-    fetchOrders,
-    updateOrder
-  } = useOrderStore();
-
+  // Stores - Solo usar guest orders
   const {
     orders: guestOrders,
     loading: guestOrdersLoading,
@@ -94,6 +87,7 @@ const OrdersManagement = () => {
   const [paymentFilter, setPaymentFilter] = useState('all');
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [selectedDeliveryPerson, setSelectedDeliveryPerson] = useState('');
+  const [lastUpdate, setLastUpdate] = useState(new Date());
   const [notes, setNotes] = useState('');
   
   // Modales
@@ -103,19 +97,83 @@ const OrdersManagement = () => {
   const toast = useToast();
 
   useEffect(() => {
-    fetchOrders();
     fetchGuestOrders();
     fetchDeliveryPersons();
-  }, [fetchOrders, fetchGuestOrders, fetchDeliveryPersons]);
+    
+    // Actualizar cada 30 segundos para mantener sincronización
+    const interval = setInterval(() => {
+      fetchGuestOrders();
+      setLastUpdate(new Date());
+    }, 30000);
+    
+    return () => clearInterval(interval);
+  }, [fetchGuestOrders, fetchDeliveryPersons]);
 
-  // Combinar pedidos regulares y de visitantes
-  const allOrders = [
-    ...orders.map(order => ({ ...order, type: 'regular', orderNumber: order.orderNumber || `REG-${order.id}` })),
-    ...guestOrders.map(order => ({ ...order, type: 'guest', orderNumber: order.orderNumber || `GUEST-${order.id}` }))
-  ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  // Solo usar guest orders (sistema simplificado)
+  const allOrders = guestOrders.map(order => ({ 
+    ...order, 
+    type: 'guest',
+    orderNumber: order.orderNumber || `PED-${order.id}`,
+    // Asegurar que tenemos los datos del cliente
+    clientName: order.clientName || order.customerName,
+    clientPhone: order.clientPhone || order.customerPhone,
+    clientAddress: order.clientAddress || order.deliveryAddress,
+    clientDistrict: order.clientDistrict || order.deliveryDistrict
+  })).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+  // Debug: Mostrar información de los pedidos
+  console.log('🔍 Pedidos cargados:', allOrders.length);
+  console.log('🔍 Repartidores cargados:', deliveryPersons.length);
+  console.log('🔍 Primer pedido completo:', allOrders[0]);
+  console.log('🔍 Estructura del cliente:', allOrders[0]?.Client);
+  console.log('🔍 Datos del cliente:', {
+    clientName: allOrders[0]?.clientName,
+    clientPhone: allOrders[0]?.clientPhone,
+    clientAddress: allOrders[0]?.clientAddress,
+    Client: allOrders[0]?.Client,
+    deliveryAddress: allOrders[0]?.deliveryAddress,
+    deliveryDistrict: allOrders[0]?.deliveryDistrict
+  });
+  
+  // Log de pedidos con deliveryPersonId
+  const assignedOrders = allOrders.filter(order => order.deliveryPersonId);
+  console.log('🔍 Pedidos asignados:', assignedOrders.length);
+  assignedOrders.forEach(order => {
+    console.log(`🔍 Pedido ${order.id} asignado a repartidor ${order.deliveryPersonId}:`, {
+      id: order.id,
+      status: order.status,
+      deliveryPersonId: order.deliveryPersonId,
+      deliveryPerson: order.deliveryPerson
+    });
+  });
+  
+  // Debug de repartidores
+  console.log('🔍 Repartidores disponibles:', deliveryPersons.map(dp => ({
+    id: dp.id,
+    name: dp.name,
+    type: typeof dp.id
+  })));
+  
+  // Debug específico para cada pedido
+  allOrders.forEach((order, index) => {
+    if (index < 3) { // Solo los primeros 3 para no saturar
+      console.log(`🔍 Pedido ${index + 1}:`, {
+        id: order.id,
+        type: order.type,
+        clientName: order.clientName,
+        clientPhone: order.clientPhone,
+        Client: order.Client,
+        customerName: order.customerName,
+        customerPhone: order.customerPhone,
+        deliveryAddress: order.deliveryAddress,
+        products: order.products,
+        orderDetails: order.orderDetails
+      });
+    }
+  });
 
   // Filtrar pedidos
-  const filteredOrders = allOrders.filter(order => {
+  const filteredOrders = (allOrders || []).filter(order => {
     const matchesSearch = order.orderNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          order.clientName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          order.client?.name?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -124,22 +182,33 @@ const OrdersManagement = () => {
     
     const matchesPayment = paymentFilter === 'all' || 
                           (paymentFilter === 'efectivo' && order.paymentType === 'efectivo') ||
-                          (paymentFilter === 'plin' && order.paymentType === 'plin');
+                          (paymentFilter === 'plin' && order.paymentType === 'plin') ||
+                          (paymentFilter === 'vale' && order.paymentMethod === 'vale') ||
+                          (paymentFilter === 'suscripcion' && order.paymentMethod === 'suscripcion') ||
+                          (paymentFilter === 'contraentrega' && order.paymentMethod === 'contraentrega');
 
     return matchesSearch && matchesStatus && matchesPayment;
   });
 
   // Agrupar pedidos por estado
   const ordersByStatus = {
-    pendiente: filteredOrders.filter(order => order.status === 'pendiente'),
-    asignado: filteredOrders.filter(order => order.status === 'asignado'),
-    en_camino: filteredOrders.filter(order => order.status === 'en_camino'),
-    entregado: filteredOrders.filter(order => order.status === 'entregado'),
-    cancelado: filteredOrders.filter(order => order.status === 'cancelado')
+    pending: filteredOrders.filter(order => order.status === 'pending') || [],
+    confirmed: filteredOrders.filter(order => order.status === 'confirmed') || [],
+    preparing: filteredOrders.filter(order => order.status === 'preparing') || [],
+    ready: filteredOrders.filter(order => order.status === 'ready') || [],
+    delivered: filteredOrders.filter(order => order.status === 'delivered') || [],
+    cancelled: filteredOrders.filter(order => order.status === 'cancelled') || []
   };
 
   const getStatusColor = (status) => {
     switch (status) {
+      case 'pending': return 'orange';
+      case 'confirmed': return 'blue';
+      case 'preparing': return 'yellow';
+      case 'ready': return 'purple';
+      case 'delivered': return 'green';
+      case 'cancelled': return 'red';
+      // Compatibilidad con status en español
       case 'pendiente': return 'orange';
       case 'asignado': return 'blue';
       case 'en_camino': return 'purple';
@@ -151,6 +220,13 @@ const OrdersManagement = () => {
 
   const getStatusText = (status) => {
     switch (status) {
+      case 'pending': return 'Pendiente';
+      case 'confirmed': return 'Asignado';
+      case 'preparing': return 'Preparando';
+      case 'ready': return 'Listo';
+      case 'delivered': return 'Entregado';
+      case 'cancelled': return 'Cancelado';
+      // Compatibilidad con status en español
       case 'pendiente': return 'Pendiente';
       case 'asignado': return 'Asignado';
       case 'en_camino': return 'En Camino';
@@ -168,6 +244,55 @@ const OrdersManagement = () => {
     }
   };
 
+  // Función para renderizar productos del pedido
+  const renderOrderProducts = (order) => {
+    let products = [];
+    
+    // Para pedidos regulares
+    if (order.type === 'regular' && order.orderDetails) {
+      products = order.orderDetails.map(detail => ({
+        name: detail.product?.name || detail.Product?.name || 'Producto',
+        quantity: detail.quantity || 0,
+        price: detail.unitPrice || detail.price || 0
+      }));
+    }
+    
+    // Para pedidos de visitantes
+    if (order.type === 'guest' && order.products) {
+      products = order.products.map(product => ({
+        name: product.product?.name || product.name || 'Producto',
+        quantity: product.quantity || 0,
+        price: product.price || product.unitPrice || 0
+      }));
+    }
+
+    if (products.length === 0) {
+      return (
+        <Text fontSize="xs" color="gray.500" fontStyle="italic">
+          Sin productos
+        </Text>
+      );
+    }
+
+    return (
+      <VStack spacing={1} align="start" w="full">
+        {products.map((product, index) => (
+          <HStack key={index} justify="space-between" w="full" fontSize="xs">
+            <Text noOfLines={1} flex={1}>
+              {product.name}
+            </Text>
+            <Text color="gray.600" minW="fit-content">
+              x{product.quantity}
+            </Text>
+            <Text color="green.600" fontWeight="medium" minW="fit-content">
+              S/ {(product.price * product.quantity).toFixed(2)}
+            </Text>
+          </HStack>
+        ))}
+      </VStack>
+    );
+  };
+
   const handleAssignDelivery = async () => {
     if (!selectedOrder || !selectedDeliveryPerson) {
       toast({
@@ -182,16 +307,20 @@ const OrdersManagement = () => {
 
     try {
       const updateData = {
-        status: 'asignado',
+        status: 'confirmed',
         deliveryPersonId: selectedDeliveryPerson,
         notes: notes
       };
 
-      if (selectedOrder.type === 'regular') {
-        await updateOrder(selectedOrder.id, updateData);
-      } else {
-        await updateGuestOrder(selectedOrder.id, updateData);
-      }
+      console.log('🔍 Asignando repartidor:', {
+        orderId: selectedOrder.id,
+        deliveryPersonId: selectedDeliveryPerson,
+        updateData
+      });
+
+      const result = await updateGuestOrder(selectedOrder.id, updateData);
+      
+      console.log('🔍 Resultado de la asignación:', result);
 
       toast({
         title: 'Repartidor asignado',
@@ -201,6 +330,9 @@ const OrdersManagement = () => {
         isClosable: true,
       });
 
+      // Actualizar la lista de pedidos
+      fetchGuestOrders();
+      
       onAssignClose();
       setSelectedOrder(null);
       setSelectedDeliveryPerson('');
@@ -220,11 +352,7 @@ const OrdersManagement = () => {
     try {
       const updateData = { status: newStatus };
 
-      if (order.type === 'regular') {
-        await updateOrder(order.id, updateData);
-      } else {
-        await updateGuestOrder(order.id, updateData);
-      }
+      await updateGuestOrder(order.id, updateData);
 
       toast({
         title: 'Estado actualizado',
@@ -281,23 +409,43 @@ const OrdersManagement = () => {
             <HStack spacing={2}>
               <FaUserIcon size={12} color="#718096" />
               <Text fontSize="sm" fontWeight="medium">
-                {order.clientName || order.client?.name || 'Sin nombre'}
+                {order.clientName || 'Sin nombre'}
               </Text>
             </HStack>
             
             <HStack spacing={2}>
               <FaPhoneIcon size={12} color="#718096" />
               <Text fontSize="sm">
-                {order.clientPhone || order.client?.phone || 'Sin teléfono'}
+                {order.clientPhone || 'Sin teléfono'}
               </Text>
             </HStack>
             
             <HStack spacing={2}>
               <FaMapIcon size={12} color="#718096" />
-              <Text fontSize="sm" noOfLines={2}>
-                {order.clientAddress || order.client?.address || 'Sin dirección'}
-              </Text>
+              <VStack align="start" spacing={0}>
+                <Text fontSize="sm" noOfLines={2}>
+                  {order.clientAddress || order.deliveryAddress || 'Sin dirección'}
+                </Text>
+                {order.clientDistrict && (
+                  <Text fontSize="xs" color="gray.500">
+                    📍 {order.clientDistrict}
+                  </Text>
+                )}
+                {order.deliveryReference && (
+                  <Text fontSize="xs" color="gray.500">
+                    🔗 {order.deliveryReference}
+                  </Text>
+                )}
+              </VStack>
             </HStack>
+          </VStack>
+
+          {/* Productos del pedido */}
+          <VStack spacing={2} align="stretch">
+            <Text fontSize="sm" fontWeight="medium" color="gray.700">
+              🛒 Productos:
+            </Text>
+            {renderOrderProducts(order)}
           </VStack>
 
           {/* Información de pago */}
@@ -305,7 +453,10 @@ const OrdersManagement = () => {
             <HStack spacing={2}>
               <Icon as={getPaymentIcon(order.paymentType)} size={14} />
               <Text fontSize="sm">
-                {order.paymentType === 'efectivo' ? 'Efectivo' : 'PLIN'}
+                {order.paymentMethod === 'vale' ? 'A Crédito (Vale)' :
+                 order.paymentMethod === 'suscripcion' ? 'Suscripción' :
+                 order.paymentMethod === 'contraentrega' ? 'Contraentrega' :
+                 order.paymentType === 'efectivo' ? 'Efectivo' : 'PLIN'}
               </Text>
             </HStack>
             <Text fontWeight="bold" fontSize="sm" color="green.600">
@@ -318,7 +469,16 @@ const OrdersManagement = () => {
             <HStack spacing={2}>
               <FaTruckIcon size={12} color="#3182CE" />
               <Text fontSize="sm">
-                {deliveryPersons.find(dp => dp.id === order.deliveryPersonId)?.name || 'Repartidor asignado'}
+                {(() => {
+                  const foundDeliveryPerson = deliveryPersons.find(dp => dp.id === order.deliveryPersonId);
+                  console.log(`🔍 Buscando repartidor para pedido ${order.id}:`, {
+                    deliveryPersonId: order.deliveryPersonId,
+                    type: typeof order.deliveryPersonId,
+                    foundDeliveryPerson,
+                    allDeliveryPersons: deliveryPersons.map(dp => ({ id: dp.id, type: typeof dp.id }))
+                  });
+                  return foundDeliveryPerson?.name || 'Repartidor asignado';
+                })()}
               </Text>
             </HStack>
           )}
@@ -334,7 +494,7 @@ const OrdersManagement = () => {
               />
             </Tooltip>
             
-            {order.status === 'pendiente' && (
+            {(!order.deliveryPersonId || order.status === 'pendiente') && (
               <Tooltip label="Asignar repartidor">
                 <IconButton
                   size="sm"
@@ -508,7 +668,12 @@ const OrdersManagement = () => {
                       <Text fontWeight="bold">Método:</Text>
                       <HStack>
                         <Icon as={getPaymentIcon(selectedOrder.paymentType)} size={16} />
-                        <Text>{selectedOrder.paymentType === 'efectivo' ? 'Efectivo' : 'PLIN'}</Text>
+                        <Text>
+                          {selectedOrder.paymentMethod === 'vale' ? 'A Crédito (Vale)' :
+                           selectedOrder.paymentMethod === 'suscripcion' ? 'Suscripción' :
+                           selectedOrder.paymentMethod === 'contraentrega' ? 'Contraentrega' :
+                           selectedOrder.paymentType === 'efectivo' ? 'Efectivo' : 'PLIN'}
+                        </Text>
                       </HStack>
                     </HStack>
                     
@@ -565,7 +730,7 @@ const OrdersManagement = () => {
     </Modal>
   );
 
-  if (ordersLoading || guestOrdersLoading) {
+  if (guestOrdersLoading) {
     return (
       <Center h="400px">
         <Spinner size="xl" />
@@ -577,14 +742,31 @@ const OrdersManagement = () => {
     <Box p={6}>
       <VStack spacing={6} align="stretch">
         {/* Header */}
-        <Box>
-          <Heading size="lg" mb={2}>
-            Gestión de Pedidos
-          </Heading>
-          <Text color="gray.600">
-            Administra y asigna repartidores a los pedidos
-          </Text>
-        </Box>
+        <Flex justify="space-between" align="center">
+          <Box>
+            <Heading size="lg" mb={2}>
+              Gestión de Pedidos
+            </Heading>
+            <Text color="gray.600">
+              Administra y asigna repartidores a los pedidos
+            </Text>
+            <Text color="gray.400" fontSize="xs">
+              Última actualización: {lastUpdate.toLocaleTimeString()}
+            </Text>
+          </Box>
+          <Button
+            size="sm"
+            colorScheme="blue"
+            variant="outline"
+            onClick={() => {
+              fetchGuestOrders();
+              setLastUpdate(new Date());
+            }}
+            isLoading={guestOrdersLoading}
+          >
+            Actualizar
+          </Button>
+        </Flex>
 
         {/* Filtros */}
         <Card>
@@ -611,11 +793,12 @@ const OrdersManagement = () => {
                   onChange={(e) => setStatusFilter(e.target.value)}
                 >
                   <option value="all">Todos los estados</option>
-                  <option value="pendiente">Pendiente</option>
-                  <option value="asignado">Asignado</option>
-                  <option value="en_camino">En Camino</option>
-                  <option value="entregado">Entregado</option>
-                  <option value="cancelado">Cancelado</option>
+                  <option value="pending">Pendiente</option>
+                  <option value="confirmed">Asignado</option>
+                  <option value="preparing">Preparando</option>
+                  <option value="ready">Listo</option>
+                  <option value="delivered">Entregado</option>
+                  <option value="cancelled">Cancelado</option>
                 </Select>
               </FormControl>
 
@@ -626,6 +809,9 @@ const OrdersManagement = () => {
                   onChange={(e) => setPaymentFilter(e.target.value)}
                 >
                   <option value="all">Todos los pagos</option>
+                  <option value="contraentrega">Contraentrega</option>
+                  <option value="vale">A Crédito (Vale)</option>
+                  <option value="suscripcion">Suscripción</option>
                   <option value="efectivo">Efectivo</option>
                   <option value="plin">PLIN</option>
                 </Select>
@@ -640,7 +826,7 @@ const OrdersManagement = () => {
                   </HStack>
                   <HStack justify="space-between" w="full">
                     <Text fontSize="sm">Pendientes:</Text>
-                    <Badge colorScheme="orange">{ordersByStatus.pendiente.length}</Badge>
+                    <Badge colorScheme="orange">{ordersByStatus.pending.length}</Badge>
                   </HStack>
                 </VStack>
               </FormControl>

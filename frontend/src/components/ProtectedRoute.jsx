@@ -13,11 +13,17 @@ const ProtectedRoute = ({
 
   // Si no hay usuario autenticado, redirigir al login
   if (!user) {
+    console.log('🔍 ProtectedRoute: No hay usuario autenticado, redirigiendo al login');
     return <Navigate to={fallbackPath} replace />;
   }
 
   // Si el usuario no tiene los roles requeridos
   if (!canAccess(requiredRoles)) {
+    console.log('🔍 ProtectedRoute: Usuario no tiene permisos', {
+      userRole: user.role,
+      requiredRoles,
+      canAccess: canAccess(requiredRoles)
+    });
     if (!showAccessDenied) {
       return <Navigate to="/dashboard" replace />;
     }

@@ -2,8 +2,6 @@ const { sequelize } = require('../models');
 const User = require('../models/user.model');
 const Product = require('../models/product.model');
 const Client = require('../models/client.model');
-const Order = require('../models/order.model');
-const OrderDetail = require('../models/orderDetail.model');
 const GuestOrder = require('../models/guestOrder.model');
 const GuestOrderProduct = require('../models/guestOrderProduct.model');
 const Voucher = require('../models/voucher.model');
@@ -181,65 +179,9 @@ async function seedDatabase() {
 
     console.log('✅ Repartidores creados correctamente');
 
-    // 5. CREAR PEDIDOS DE CLIENTES FRECUENTES
-    console.log('🛒 Creando pedidos de clientes frecuentes...');
-    
-    const pedido1 = await Order.create({
-      clientId: clientes[0].id,
-      userId: clienteFrecuente.id,
-      deliveryAddress: 'Av. Los Pinos 123',
-      deliveryDistrict: 'San Isidro',
-      contactPhone: '966666666',
-      paymentMethod: 'credito',
-      notes: 'Entregar en horario de oficina',
-      status: 'entregado',
-      paymentStatus: 'pendiente',
-      subtotal: 10.00,
-      deliveryFee: 3.00,
-      total: 13.00
-    });
-
-    await OrderDetail.bulkCreate([
-      {
-        orderId: pedido1.id,
-        productId: productos[0].id,
-        quantity: 2,
-        unitPrice: 5.00,
-        subtotal: 10.00
-      }
-    ]);
-
-    // Crear un segundo pedido de cliente frecuente
-    const pedido2 = await Order.create({
-      clientId: clientes[0].id,
-      userId: clienteFrecuente.id,
-      deliveryAddress: 'Av. Los Pinos 123',
-      deliveryDistrict: 'San Isidro',
-      contactPhone: '966666666',
-      paymentMethod: 'credito',
-      notes: 'Pedido urgente',
-      status: 'pendiente',
-      paymentStatus: 'pendiente',
-      subtotal: 20.00,
-      deliveryFee: 3.00,
-      total: 23.00
-    });
-
-    await OrderDetail.bulkCreate([
-      {
-        orderId: pedido2.id,
-        productId: productos[1].id,
-        quantity: 2,
-        unitPrice: 10.00,
-        subtotal: 20.00
-      }
-    ]);
-
-    console.log('✅ Pedidos de clientes frecuentes creados correctamente');
-
-    // 6. CREAR PEDIDOS DE INVITADOS
+    // 5. CREAR PEDIDOS DE INVITADOS (reemplaza pedidos regulares)
     console.log('👥 Creando pedidos de invitados...');
-    
+
     const pedidoInvitado1 = await GuestOrder.create({
       customerName: 'Roberto Silva',
       customerPhone: '988888888',
@@ -312,61 +254,11 @@ async function seedDatabase() {
 
     console.log('✅ Vales creados correctamente');
 
-    // 8. GENERAR BOLETAS AUTOMÁTICAMENTE
+    // 6. GENERAR BOLETAS AUTOMÁTICAMENTE
     console.log('📄 Generando boletas automáticamente...');
     
     try {
       const { documentGeneratorService } = require('../services/documentGenerator.service');
-      
-      // Generar boleta para pedido regular #1
-      const order1Data = {
-        id: pedido1.id,
-        customerName: clientes[0].name,
-        customerPhone: clientes[0].phone,
-        customerEmail: clientes[0].email,
-        deliveryAddress: pedido1.deliveryAddress,
-        deliveryDistrict: pedido1.deliveryDistrict,
-        total: parseFloat(pedido1.total),
-        subtotal: parseFloat(pedido1.subtotal),
-        deliveryFee: parseFloat(pedido1.deliveryFee),
-        paymentMethod: pedido1.paymentMethod,
-        orderDetails: [
-          {
-            productName: productos[0].name,
-            quantity: 2,
-            unitPrice: 5.00,
-            subtotal: 10.00
-          }
-        ]
-      };
-      
-      const pdfPath1 = await documentGeneratorService.generateDocumentPDF(order1Data, 'boleta');
-      console.log(`✅ Boleta generada para pedido regular #${pedido1.id}: ${pdfPath1}`);
-      
-      // Generar boleta para pedido regular #2
-      const order2Data = {
-        id: pedido2.id,
-        customerName: clientes[0].name,
-        customerPhone: clientes[0].phone,
-        customerEmail: clientes[0].email,
-        deliveryAddress: pedido2.deliveryAddress,
-        deliveryDistrict: pedido2.deliveryDistrict,
-        total: parseFloat(pedido2.total),
-        subtotal: parseFloat(pedido2.subtotal),
-        deliveryFee: parseFloat(pedido2.deliveryFee),
-        paymentMethod: pedido2.paymentMethod,
-        orderDetails: [
-          {
-            productName: productos[1].name,
-            quantity: 2,
-            unitPrice: 10.00,
-            subtotal: 20.00
-          }
-        ]
-      };
-      
-      const pdfPath2 = await documentGeneratorService.generateDocumentPDF(order2Data, 'boleta');
-      console.log(`✅ Boleta generada para pedido regular #${pedido2.id}: ${pdfPath2}`);
       
       // Generar boleta para pedido de invitado #1
       const guestOrder1Data = {
@@ -390,8 +282,8 @@ async function seedDatabase() {
         ]
       };
       
-      const pdfPath3 = await documentGeneratorService.generateDocumentPDF(guestOrder1Data, 'boleta');
-      console.log(`✅ Boleta generada para pedido de invitado #${pedidoInvitado1.id}: ${pdfPath3}`);
+      const pdfPath1 = await documentGeneratorService.generateDocumentPDF(guestOrder1Data, 'boleta');
+      console.log(`✅ Boleta generada para pedido de invitado #${pedidoInvitado1.id}: ${pdfPath1}`);
       
       // Generar boleta para pedido de invitado #2
       const guestOrder2Data = {
@@ -415,8 +307,8 @@ async function seedDatabase() {
         ]
       };
       
-      const pdfPath4 = await documentGeneratorService.generateDocumentPDF(guestOrder2Data, 'boleta');
-      console.log(`✅ Boleta generada para pedido de invitado #${pedidoInvitado2.id}: ${pdfPath4}`);
+      const pdfPath2 = await documentGeneratorService.generateDocumentPDF(guestOrder2Data, 'boleta');
+      console.log(`✅ Boleta generada para pedido de invitado #${pedidoInvitado2.id}: ${pdfPath2}`);
       
     } catch (pdfError) {
       console.error('❌ Error al generar boletas automáticamente:', pdfError);
@@ -428,10 +320,9 @@ async function seedDatabase() {
     console.log(`👤 Clientes: ${clientes.length}`);
     console.log(`📦 Productos: ${productos.length}`);
     console.log(`🚚 Repartidores: ${repartidores.length}`);
-    console.log(`🛒 Pedidos regulares: 2`);
     console.log(`👥 Pedidos de invitados: 2`);
     console.log(`🎫 Vales: ${vales.length}`);
-    console.log(`📄 Boletas generadas: 4`);
+    console.log(`📄 Boletas generadas: 2`);
     
     console.log('\n🔑 Credenciales de acceso:');
     console.log('👨‍💼 Admin: admin / admin123');

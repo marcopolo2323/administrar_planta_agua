@@ -15,6 +15,7 @@ router.get('/stats', requireRole(['admin', 'vendedor']), voucherController.getVo
 // Rutas para repartidores - crear vales
 router.post('/', requireRole(['repartidor']), voucherController.createVoucher);
 router.get('/delivery', requireRole(['repartidor']), voucherController.getDeliveryVouchers);
+router.get('/delivery-person/:id', requireRole(['repartidor']), voucherController.getDeliveryVouchers);
 router.get('/delivery/stats', requireRole(['repartidor']), voucherController.getVoucherStats);
 
 // Rutas para clientes - ver sus vales

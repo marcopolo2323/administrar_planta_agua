@@ -5,13 +5,18 @@ const { authMiddleware } = require('../middlewares/auth.middleware');
 
 // Middleware para verificar que es un repartidor
 const verifyDeliveryPerson = (req, res, next) => {
+  console.log('🔍 verifyDeliveryPerson - req.userRole:', req.userRole);
+  console.log('🔍 verifyDeliveryPerson - req.userId:', req.userId);
+  
   if (req.userRole !== 'repartidor') {
+    console.log('🔍 verifyDeliveryPerson - Acceso denegado, rol:', req.userRole);
     return res.status(403).json({ 
       success: false,
       message: 'Acceso denegado. Solo repartidores pueden acceder a esta funcionalidad.' 
     });
   }
   req.deliveryPersonId = req.deliveryPersonId || req.userId;
+  console.log('🔍 verifyDeliveryPerson - deliveryPersonId establecido:', req.deliveryPersonId);
   next();
 };
 

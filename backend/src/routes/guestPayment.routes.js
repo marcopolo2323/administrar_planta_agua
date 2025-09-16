@@ -1,15 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const guestPaymentController = require('../controllers/guestPayment.controller');
+const { generatePDF } = require('../controllers/guestPayment.controller');
 
-// Rutas públicas (sin autenticación)
-// Crear un pago para un pedido de invitado
-router.post('/', guestPaymentController.createGuestPayment);
-
-// Verificar estado de pago de un pedido de invitado
-router.get('/:orderId', guestPaymentController.getGuestPaymentStatus);
-
-// Generar PDF para pedidos de invitados
-router.post('/generate-pdf', guestPaymentController.generatePDF);
+// Ruta para generar PDF de pedidos de invitados
+router.post('/generate-pdf', generatePDF);
 
 module.exports = router;

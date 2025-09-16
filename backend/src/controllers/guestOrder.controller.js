@@ -81,7 +81,8 @@ exports.createGuestOrder = async (req, res) => {
       status: 'pending',
       paymentMethod: paymentMethod,
       paymentStatus: paymentMethod === 'voucher' ? 'pending' : 'pending',
-      clientId: clientId || null
+      clientId: clientId || null,
+      subscriptionId: req.body.subscriptionId || null
     });
     
     console.log('Pedido creado con ID:', guestOrder.id);
@@ -478,7 +479,10 @@ exports.updateGuestOrder = async (req, res) => {
     const { id } = req.params;
     const updateData = req.body;
 
-    console.log('Actualizando pedido de invitado:', id, updateData);
+    console.log('🔍 updateGuestOrder - Iniciando actualización:');
+    console.log('🔍 ID del pedido:', id);
+    console.log('🔍 Datos de actualización:', updateData);
+    console.log('🔍 Headers de autorización:', req.headers.authorization);
 
     // Buscar el pedido
     const guestOrder = await GuestOrder.findByPk(id);
@@ -490,7 +494,9 @@ exports.updateGuestOrder = async (req, res) => {
     }
 
     // Actualizar el pedido
+    console.log('🔍 Actualizando pedido en la base de datos...');
     await guestOrder.update(updateData);
+    console.log('🔍 Pedido actualizado exitosamente');
 
     // Obtener el pedido actualizado con sus relaciones
     const updatedOrder = await GuestOrder.findByPk(id, {
@@ -509,6 +515,13 @@ exports.updateGuestOrder = async (req, res) => {
           attributes: ['id', 'username', 'email']
         }
       ]
+    });
+
+    console.log('🔍 Pedido actualizado con relaciones:', {
+      id: updatedOrder.id,
+      status: updatedOrder.status,
+      deliveryPersonId: updatedOrder.deliveryPersonId,
+      deliveryPerson: updatedOrder.DeliveryPerson
     });
 
     res.json({

@@ -84,8 +84,17 @@ const useGuestOrderStore = create((set, get) => ({
   updateGuestOrder: async (orderId, updateData) => {
     set({ loading: true, error: null });
     try {
+      console.log('🔍 updateGuestOrder - Enviando petición:', {
+        url: `/api/guest-orders/${orderId}`,
+        data: updateData,
+        headers: axios.defaults.headers.common
+      });
+      
       const response = await axios.put(`/api/guest-orders/${orderId}`, updateData);
       const updatedOrder = response.data;
+      
+      console.log('🔍 updateGuestOrder - Respuesta recibida:', response.data);
+      console.log('🔍 updateGuestOrder - updatedOrder:', updatedOrder);
       
       set(state => ({
         orders: Array.isArray(state.orders) ? state.orders.map(order => 
@@ -93,6 +102,10 @@ const useGuestOrderStore = create((set, get) => ({
         ) : [],
         loading: false
       }));
+      
+      console.log('🔍 updateGuestOrder - Estado actualizado, pedido modificado:', 
+        Array.isArray(get().orders) ? get().orders.find(order => order.id === orderId) : 'No encontrado'
+      );
       
       return { success: true, data: updatedOrder };
     } catch (error) {
@@ -113,6 +126,27 @@ const useGuestOrderStore = create((set, get) => ({
   getOrdersByStatus: (status) => {
     const { orders } = get();
     return Array.isArray(orders) ? orders.filter(order => order.status === status) : [];
+  },
+
+  getOrderStats: () => {
+    const { orders } = get();
+    if (!Array.isArray(orders)) {
+      return {
+        total: 0,
+        pending: 0,
+        inProgress: 0,
+        delivered: 0,
+        cancelled: 0
+      };
+    }
+
+    return {
+      total: orders.length,
+      pending: orders.filter(order => order.status === 'pendiente').length,
+      inProgress: orders.filter(order => order.status === 'en_camino').length,
+      delivered: orders.filter(order => order.status === 'entregado').length,
+      cancelled: orders.filter(order => order.status === 'cancelado').length
+    };
   },
 
   clearError: () => set({ error: null })

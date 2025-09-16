@@ -1,11 +1,15 @@
-const { Order, OrderDetail, Product, Client, GuestOrder, DeliveryPerson, Voucher } = require('../models');
+const { GuestOrder, GuestOrderProduct, Product } = require('../models');
 const { Op } = require('sequelize');
 
-// Obtener pedidos asignados a un repartidor
+// Obtener pedidos asignados a un repartidor (solo guest orders)
 exports.getDeliveryOrders = async (req, res) => {
   try {
+    console.log('🔍 getDeliveryOrders - Iniciando...');
     const deliveryPersonId = req.deliveryPersonId;
     const { status } = req.query;
+    
+    console.log('🔍 deliveryPersonId:', deliveryPersonId);
+    console.log('🔍 status:', status);
 
     // Construir filtros
     const whereClause = {
@@ -16,87 +20,68 @@ exports.getDeliveryOrders = async (req, res) => {
       whereClause.status = status;
     }
 
-    // Obtener pedidos con detalles
-    const orders = await Order.findAll({
+    // Obtener pedidos de visitantes asignados al repartidor
+    console.log('🔍 Buscando pedidos con whereClause:', whereClause);
+    const guestOrders = await GuestOrder.findAll({
       where: whereClause,
-      include: [
-        {
-          model: OrderDetail,
-          as: 'orderDetails',
-          include: [Product]
-        },
-        {
-          model: Client,
-          attributes: ['id', 'name', 'phone', 'email', 'address', 'district']
-        },
-        {
-          model: GuestOrder,
-          attributes: ['guestName', 'guestPhone', 'guestEmail']
-        }
-      ],
-      order: [['orderDate', 'DESC']]
+      order: [['createdAt', 'DESC']]
     });
+    console.log('🔍 Pedidos encontrados:', guestOrders.length);
 
-    // Obtener vales pendientes y total a pagar para cada cliente frecuente
-    const clientIds = orders
-      .filter(order => order.Client)
-      .map(order => order.Client.id);
-    
-    const pendingVouchers = {};
-    const totalToPay = {};
-    
-    if (clientIds.length > 0) {
-      const vouchers = await Voucher.findAll({
-        where: {
-          clientId: clientIds,
-          status: 'pending'
-        },
-        attributes: [
-          'clientId', 
-          [Voucher.sequelize.fn('COUNT', Voucher.sequelize.col('id')), 'count'],
-          [Voucher.sequelize.fn('SUM', Voucher.sequelize.col('totalAmount')), 'total']
-        ],
-        group: ['clientId']
-      });
-      
-      vouchers.forEach(voucher => {
-        pendingVouchers[voucher.clientId] = parseInt(voucher.dataValues.count);
-        totalToPay[voucher.clientId] = parseFloat(voucher.dataValues.total || 0);
-      });
+    // Obtener productos para cada pedido por separado (con manejo de errores)
+    for (let order of guestOrders) {
+      try {
+        const products = await GuestOrderProduct.findAll({
+          where: { guestOrderId: order.id },
+          include: [{
+            model: Product,
+            as: 'product'
+          }]
+        });
+        order.dataValues.products = products;
+      } catch (productError) {
+        console.error(`Error al cargar productos para pedido ${order.id}:`, productError);
+        order.dataValues.products = [];
+      }
     }
 
     // Formatear respuesta
-    const formattedOrders = orders.map(order => ({
+    const formattedOrders = guestOrders.map(order => ({
       id: order.id,
       orderNumber: `PED-${order.id.toString().padStart(3, '0')}`,
-      type: order.Client ? 'regular' : 'guest',
-      customerName: order.Client ? order.Client.name : order.GuestOrder?.guestName,
-      customerPhone: order.Client ? order.Client.phone : order.GuestOrder?.guestPhone,
-      customerEmail: order.Client ? order.Client.email : order.GuestOrder?.guestEmail,
+      type: 'guest',
+      // Datos del cliente (compatibilidad con frontend)
+      clientName: order.customerName,
+      clientPhone: order.customerPhone,
+      clientEmail: order.customerEmail,
+      clientAddress: order.deliveryAddress,
+      clientDistrict: order.deliveryDistrict,
+      // Datos originales (mantener para compatibilidad)
+      customerName: order.customerName,
+      customerPhone: order.customerPhone,
+      customerEmail: order.customerEmail,
       deliveryAddress: order.deliveryAddress,
       deliveryDistrict: order.deliveryDistrict,
       deliveryReference: order.deliveryReference,
-      products: order.orderDetails.map(detail => ({
-        name: detail.Product.name,
-        quantity: detail.quantity,
-        unitPrice: detail.unitPrice,
-        subtotal: detail.subtotal
-      })),
-      total: order.total,
-      totalAmount: order.total,
+      products: order.dataValues.products?.map(product => ({
+        name: product.product?.name || product.productName,
+        quantity: product.quantity,
+        unitPrice: product.price || product.unitPrice,
+        price: product.price,
+        subtotal: product.subtotal
+      })) || [],
+      total: order.totalAmount,
+      totalAmount: order.totalAmount,
       subtotal: order.subtotal,
       deliveryFee: order.deliveryFee,
       status: order.status,
-      orderDate: order.orderDate,
+      paymentMethod: order.paymentMethod,
+      paymentType: order.paymentMethod === 'cash' ? 'efectivo' : 'plin',
+      orderDate: order.createdAt,
       deliveryDate: order.deliveryDate,
       notes: order.notes,
       createdAt: order.createdAt,
-      Client: order.Client ? {
-        ...order.Client.toJSON(),
-        pendingVouchers: pendingVouchers[order.Client.id] || 0,
-        totalToPay: totalToPay[order.Client.id] || 0
-      } : null,
-      isGuestOrder: !!order.GuestOrder
+      isGuestOrder: true
     }));
 
     res.status(200).json({
@@ -120,7 +105,7 @@ exports.updateOrderStatus = async (req, res) => {
     const deliveryPersonId = req.deliveryPersonId;
 
     // Verificar que el pedido existe y está asignado al repartidor
-    const order = await Order.findOne({
+    const order = await GuestOrder.findOne({
       where: {
         id: orderId,
         deliveryPersonId: deliveryPersonId
@@ -165,18 +150,18 @@ exports.getDeliveryStats = async (req, res) => {
     const deliveryPersonId = req.deliveryPersonId;
 
     // Obtener estadísticas de pedidos
-    const totalOrders = await Order.count({
+    const totalOrders = await GuestOrder.count({
       where: { deliveryPersonId }
     });
 
-    const pendingOrders = await Order.count({
+    const pendingOrders = await GuestOrder.count({
       where: { 
         deliveryPersonId,
         status: 'en_camino'
       }
     });
 
-    const deliveredOrders = await Order.count({
+    const deliveredOrders = await GuestOrder.count({
       where: { 
         deliveryPersonId,
         status: 'entregado'
@@ -186,10 +171,10 @@ exports.getDeliveryStats = async (req, res) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    const todayOrders = await Order.count({
+    const todayOrders = await GuestOrder.count({
       where: { 
         deliveryPersonId,
-        orderDate: {
+        createdAt: {
           [Op.gte]: today
         }
       }

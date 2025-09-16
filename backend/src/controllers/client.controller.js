@@ -8,10 +8,16 @@ exports.getAllClients = async (req, res) => {
       order: [['name', 'ASC']]
     });
 
-    return res.status(200).json(clients);
+    return res.status(200).json({
+      success: true,
+      data: clients
+    });
   } catch (error) {
     console.error('Error al obtener clientes:', error);
-    return res.status(500).json({ message: 'Error en el servidor' });
+    return res.status(500).json({ 
+      success: false,
+      message: 'Error en el servidor' 
+    });
   }
 };
 
@@ -21,7 +27,10 @@ exports.findClientByDocument = async (req, res) => {
     const { documentNumber } = req.params;
     
     if (!documentNumber) {
-      return res.status(400).json({ message: 'El número de documento es requerido' });
+      return res.status(400).json({ 
+        success: false,
+        message: 'El número de documento es requerido' 
+      });
     }
     
     const client = await Client.findOne({
@@ -29,13 +38,22 @@ exports.findClientByDocument = async (req, res) => {
     });
     
     if (!client) {
-      return res.status(404).json({ message: 'Cliente no encontrado' });
+      return res.status(404).json({ 
+        success: false,
+        message: 'Cliente no encontrado' 
+      });
     }
     
-    return res.status(200).json(client);
+    return res.status(200).json({
+      success: true,
+      data: client
+    });
   } catch (error) {
     console.error('Error al buscar cliente:', error);
-    return res.status(500).json({ message: 'Error en el servidor' });
+    return res.status(500).json({ 
+      success: false,
+      message: 'Error en el servidor' 
+    });
   }
 };
 
@@ -61,23 +79,34 @@ exports.createClient = async (req, res) => {
   try {
     const { 
       name, 
-      documentType, 
-      documentNumber, 
+      document, 
+      documentType = 'DNI', 
       address, 
       district, 
       phone, 
       email, 
-      isCompany, 
-      hasCredit,
-      clientStatus,
-      recommendations,
-      notes
+      reference,
+      notes,
+      status = 'active'
     } = req.body;
+
+    // Usar 'document' como documentNumber si no se proporciona documentNumber
+    const documentNumber = document || req.body.documentNumber;
+
+    if (!name || !documentNumber || !phone || !address || !district) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Los campos nombre, documento, teléfono, dirección y distrito son requeridos' 
+      });
+    }
 
     // Verificar si ya existe un cliente con el mismo número de documento
     const existingClient = await Client.findOne({ where: { documentNumber } });
     if (existingClient) {
-      return res.status(400).json({ message: 'Ya existe un cliente con este número de documento' });
+      return res.status(400).json({ 
+        success: false,
+        message: 'Ya existe un cliente con este número de documento' 
+      });
     }
 
     const client = await Client.create({
@@ -87,21 +116,25 @@ exports.createClient = async (req, res) => {
       address,
       district,
       phone,
-      email,
-      isCompany,
-      hasCredit,
-      clientStatus: clientStatus || 'nuevo',
-      recommendations,
-      notes
+      email: email || null,
+      reference: reference || null,
+      notes: notes || null,
+      active: status === 'active',
+      clientStatus: 'nuevo'
     });
 
     return res.status(201).json({
+      success: true,
       message: 'Cliente creado correctamente',
-      client
+      data: client
     });
   } catch (error) {
     console.error('Error al crear cliente:', error);
-    return res.status(500).json({ message: 'Error en el servidor' });
+    return res.status(500).json({ 
+      success: false,
+      message: 'Error en el servidor',
+      error: error.message 
+    });
   }
 };
 

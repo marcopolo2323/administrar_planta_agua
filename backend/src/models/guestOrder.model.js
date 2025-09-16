@@ -51,7 +51,7 @@ const GuestOrder = sequelize.define('GuestOrder', {
     defaultValue: 0
   },
   paymentMethod: {
-    type: DataTypes.ENUM('cash', 'card', 'transfer', 'yape', 'plin'),
+    type: DataTypes.ENUM('cash', 'card', 'transfer', 'yape', 'plin', 'vale', 'suscripcion', 'contraentrega'),
     defaultValue: 'cash'
   },
   paymentStatus: {
@@ -75,6 +75,10 @@ const GuestOrder = sequelize.define('GuestOrder', {
     allowNull: true
   },
   districtId: {
+    type: DataTypes.INTEGER,
+    allowNull: true
+  },
+  subscriptionId: {
     type: DataTypes.INTEGER,
     allowNull: true
   }

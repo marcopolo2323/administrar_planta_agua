@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Box,
   Stat,
@@ -21,7 +21,6 @@ import { useNavigate } from 'react-router-dom';
 import { FaBox, FaUsers, FaTruck, FaCreditCard, FaChartLine, FaDollarSign, FaShoppingCart, FaCalendarAlt, FaFilePdf } from 'react-icons/fa';
 import useProductStore from '../stores/productStore';
 import useClientStore from '../stores/clientStore';
-import useOrderStore from '../stores/orderStore';
 import useDeliveryStore from '../stores/deliveryStore';
 import useGuestOrderStore from '../stores/guestOrderStore';
 import AquaYaraLogo from '../components/AquaYaraLogo';
@@ -31,37 +30,50 @@ const Dashboard = () => {
   const cardBg = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.600');
   const isMobile = useBreakpointValue({ base: true, md: false });
+  const [lastUpdate, setLastUpdate] = useState(new Date());
 
   // Stores
   const { products, fetchProducts } = useProductStore();
   const { clients, fetchClients } = useClientStore();
-  const { orders: regularOrders, fetchOrders: fetchRegularOrders, getOrderStats } = useOrderStore();
   const { getDeliveryStats, fetchDeliveryPersons, fetchDeliveryFees } = useDeliveryStore();
-  const { orders: guestOrders, fetchOrders: fetchGuestOrders } = useGuestOrderStore();
+  const { orders: guestOrders, fetchOrders: fetchGuestOrders, getOrderStats } = useGuestOrderStore();
 
   useEffect(() => {
     fetchProducts();
     fetchClients();
     fetchDeliveryPersons();
     fetchDeliveryFees();
-    fetchRegularOrders();
     fetchGuestOrders();
-  }, [fetchProducts, fetchClients, fetchDeliveryPersons, fetchDeliveryFees, fetchRegularOrders, fetchGuestOrders]);
+    
+    // Actualizar cada 30 segundos para mantener sincronización
+    const interval = setInterval(() => {
+      fetchGuestOrders();
+      setLastUpdate(new Date());
+    }, 30000);
+    
+    return () => clearInterval(interval);
+  }, [fetchProducts, fetchClients, fetchDeliveryPersons, fetchDeliveryFees, fetchGuestOrders]);
 
   const orderStats = getOrderStats();
   const deliveryStats = getDeliveryStats();
   
-  // Calcular estadísticas totales de pedidos
-  const totalOrders = (regularOrders?.length || 0) + (guestOrders?.length || 0);
-  const pendingOrders = (regularOrders?.filter(order => order.status === 'pendiente')?.length || 0) + 
-                       (guestOrders?.filter(order => order.status === 'pendiente')?.length || 0);
+  // Calcular estadísticas totales de pedidos (solo guest orders)
+  const totalOrders = guestOrders?.length || 0;
+  const pendingOrders = guestOrders?.filter(order => order.status === 'pending')?.length || 0;
+  const deliveredOrders = guestOrders?.filter(order => order.status === 'delivered')?.length || 0;
+  const confirmedOrders = guestOrders?.filter(order => order.status === 'confirmed')?.length || 0;
+  const preparingOrders = guestOrders?.filter(order => order.status === 'preparing')?.length || 0;
+  const readyOrders = guestOrders?.filter(order => order.status === 'ready')?.length || 0;
 
   const quickActions = [
     {
       title: 'Productos',
       icon: FaBox,
       color: 'blue',
-      onClick: () => navigate('/dashboard/products'),
+      onClick: () => {
+        console.log('🔍 Navegando a productos...');
+        navigate('/dashboard/products');
+      },
       count: products.length,
       description: 'Gestionar inventario'
     },
@@ -74,43 +86,27 @@ const Dashboard = () => {
       description: 'Clientes frecuentes'
     },
     {
-      title: 'Pedidos',
+      title: 'Gestión de Pedidos',
       icon: FaTruck,
       color: 'orange',
-      onClick: () => navigate('/dashboard/orders'),
+      onClick: () => navigate('/dashboard/orders-management'),
       count: totalOrders,
       description: 'Gestionar pedidos'
     },
     {
-      title: 'Ventas',
-      icon: FaDollarSign,
+      title: 'Créditos y Vales',
+      icon: FaCreditCard,
       color: 'purple',
-      onClick: () => navigate('/dashboard/sales'),
-      count: '💰',
-      description: 'Ver ventas del día'
-    },
-    {
-      title: 'Pagos Clientes',
-      icon: FaShoppingCart,
-      color: 'cyan',
-      onClick: () => navigate('/dashboard/client-payments'),
+      onClick: () => navigate('/dashboard/credits'),
       count: '💳',
-      description: 'Monitorear pagos'
-    },
-    {
-      title: 'Suscripciones',
-      icon: FaCalendarAlt,
-      color: 'pink',
-      onClick: () => navigate('/dashboard/subscriptions'),
-      count: '📅',
-      description: 'Gestionar suscripciones'
+      description: 'Gestionar créditos'
     },
     {
       title: 'Repartidores',
       icon: FaUsers,
       color: 'indigo',
       onClick: () => navigate('/dashboard/delivery-persons'),
-      count: '👨‍💼',
+      count: deliveryStats?.total || 0,
       description: 'Gestionar repartidores'
     },
     {
@@ -155,21 +151,37 @@ const Dashboard = () => {
           <Text color="gray.500" fontSize="sm" textAlign={{ base: 'center', md: 'left' }}>
             Gestión completa del negocio
           </Text>
+          <Text color="gray.400" fontSize="xs" textAlign={{ base: 'center', md: 'left' }}>
+            Última actualización: {lastUpdate.toLocaleTimeString()}
+          </Text>
         </VStack>
-        <Badge colorScheme="green" variant="subtle" mt={{ base: 2, md: 0 }}>
-          Sistema Activo
-        </Badge>
+        <VStack spacing={2} align={{ base: 'center', md: 'flex-end' }}>
+          <Badge colorScheme="green" variant="subtle">
+            Sistema Activo
+          </Badge>
+          <Button
+            size="xs"
+            colorScheme="blue"
+            variant="outline"
+            onClick={() => {
+              fetchGuestOrders();
+              setLastUpdate(new Date());
+            }}
+          >
+            Actualizar
+          </Button>
+        </VStack>
       </Flex>
 
       {/* Estadísticas principales */}
-      <SimpleGrid columns={{ base: 1, sm: 2, lg: 4 }} spacing={4} mb={8} maxW="100%">
+      <SimpleGrid columns={{ base: 1, sm: 2, lg: 5 }} spacing={4} mb={8} maxW="100%">
         <Card bg={cardBg} borderColor={borderColor} boxShadow="sm">
           <CardBody>
             <Stat>
               <StatLabel color="orange.600">📦 Pedidos Pendientes</StatLabel>
-              <StatNumber color="orange.500" fontSize="2xl">{orderStats.pendingOrders}</StatNumber>
+              <StatNumber color="orange.500" fontSize="2xl">{pendingOrders}</StatNumber>
               <StatHelpText>
-                {orderStats.confirmedOrders} confirmados
+                {confirmedOrders} confirmados
               </StatHelpText>
             </Stat>
           </CardBody>
@@ -202,10 +214,22 @@ const Dashboard = () => {
         <Card bg={cardBg} borderColor={borderColor} boxShadow="sm">
           <CardBody>
             <Stat>
-              <StatLabel color="purple.600">🚚 Entregas</StatLabel>
-              <StatNumber color="purple.500" fontSize="2xl">{deliveryStats.completedDeliveries || 0}</StatNumber>
+              <StatLabel color="purple.600">✅ Pedidos Entregados</StatLabel>
+              <StatNumber color="purple.500" fontSize="2xl">{deliveredOrders}</StatNumber>
               <StatHelpText>
-                Completadas hoy
+                {readyOrders} listos para entregar
+              </StatHelpText>
+            </Stat>
+          </CardBody>
+        </Card>
+
+        <Card bg={cardBg} borderColor={borderColor} boxShadow="sm">
+          <CardBody>
+            <Stat>
+              <StatLabel color="yellow.600">⏳ En Preparación</StatLabel>
+              <StatNumber color="yellow.500" fontSize="2xl">{preparingOrders}</StatNumber>
+              <StatHelpText>
+                {totalOrders} total de pedidos
               </StatHelpText>
             </Stat>
           </CardBody>

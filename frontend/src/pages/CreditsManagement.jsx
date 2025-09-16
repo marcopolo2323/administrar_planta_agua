@@ -116,7 +116,7 @@ const CreditsManagement = () => {
 
   const fetchSubscriptions = async () => {
     try {
-      const response = await axios.get('/api/subscriptions');
+      const response = await axios.get('/api/subscriptions/plans');
       setSubscriptions(response.data || []);
     } catch (error) {
       console.error('Error al cargar suscripciones:', error);

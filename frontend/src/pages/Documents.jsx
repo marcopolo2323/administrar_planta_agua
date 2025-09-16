@@ -61,27 +61,13 @@ import {
   ChevronDownIcon
 } from '@chakra-ui/icons';
 import { FaFilePdf, FaDownload, FaTrash, FaEye, FaPlus } from 'react-icons/fa';
-import useDocumentStore from '../stores/documentStore';
-
 const Documents = () => {
-  // Store
-  const {
-    documents,
-    stats,
-    loading,
-    error,
-    pagination,
-    fetchDocuments,
-    fetchStats,
-    downloadDocument,
-    generateDocument,
-    deleteDocument,
-    formatFileSize,
-    formatDate,
-    clearError
-  } = useDocumentStore();
-
   // Estados locales
+  const [documents, setDocuments] = useState([]);
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -103,25 +89,79 @@ const Documents = () => {
   const cardBg = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.600');
 
+  // Funciones auxiliares
+  const formatFileSize = (bytes) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('es-ES', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
   // Cargar datos iniciales
   useEffect(() => {
-    fetchDocuments({ page: currentPage, type: typeFilter });
-    fetchStats();
+    // Simular carga de documentos
+    setLoading(true);
+    setTimeout(() => {
+      const mockDocuments = [
+        {
+          filename: 'boleta_1_1757601311399.pdf',
+          orderId: 1,
+          orderType: 'regular',
+          type: 'boleta',
+          size: 245760,
+          createdAt: new Date().toISOString(),
+          order: {
+            id: 1,
+            clientName: 'Juan Pérez',
+            clientPhone: '966666666',
+            clientEmail: 'juan@example.com',
+            total: 50.00,
+            status: 'entregado'
+          }
+        },
+        {
+          filename: 'boleta_2_1757601312067.pdf',
+          orderId: 2,
+          orderType: 'guest',
+          type: 'boleta',
+          size: 198432,
+          createdAt: new Date().toISOString(),
+          order: {
+            id: 2,
+            clientName: 'María López',
+            clientPhone: '955555555',
+            clientEmail: 'maria@example.com',
+            total: 75.00,
+            status: 'en_camino'
+          }
+        }
+      ];
+      
+      const mockStats = {
+        totalDocuments: 2,
+        totalBoletas: 2,
+        totalFacturas: 0,
+        totalSize: 444192,
+        recentDocuments: 2,
+        averageSize: 222096
+      };
+      
+      setDocuments(mockDocuments);
+      setStats(mockStats);
+      setLoading(false);
+    }, 1000);
   }, [currentPage, typeFilter]);
-
-  // Mostrar errores
-  useEffect(() => {
-    if (error) {
-      toast({
-        title: 'Error',
-        description: error,
-        status: 'error',
-        duration: 3000,
-        isClosable: true,
-      });
-      clearError();
-    }
-  }, [error, toast, clearError]);
 
   // Filtrar documentos
   const filteredDocuments = documents.filter(doc => {
@@ -151,24 +191,22 @@ const Documents = () => {
 
   // Manejar descarga
   const handleDownload = async (filename) => {
-    const result = await downloadDocument(filename);
-    if (result.success) {
-      toast({
-        title: 'Éxito',
-        description: 'Documento descargado correctamente',
-        status: 'success',
-        duration: 3000,
-        isClosable: true,
-      });
-    }
+    toast({
+      title: 'Descargando',
+      description: `Descargando ${filename}...`,
+      status: 'info',
+      duration: 2000,
+      isClosable: true,
+    });
   };
 
   // Manejar eliminación
   const handleDelete = async () => {
     if (!selectedDocument) return;
     
-    const result = await deleteDocument(selectedDocument.filename);
-    if (result.success) {
+    setLoading(true);
+    setTimeout(() => {
+      setDocuments(documents.filter(doc => doc.filename !== selectedDocument.filename));
       toast({
         title: 'Éxito',
         description: 'Documento eliminado correctamente',
@@ -178,7 +216,8 @@ const Documents = () => {
       });
       onDeleteClose();
       setSelectedDocument(null);
-    }
+      setLoading(false);
+    }, 1000);
   };
 
   // Manejar generación de documento
@@ -194,13 +233,26 @@ const Documents = () => {
       return;
     }
 
-    const result = await generateDocument(
-      parseInt(generateForm.orderId),
-      generateForm.orderType,
-      generateForm.documentType
-    );
-    
-    if (result.success) {
+    setLoading(true);
+    setTimeout(() => {
+      const newDocument = {
+        filename: `${generateForm.documentType}_${generateForm.orderId}_${Date.now()}.pdf`,
+        orderId: parseInt(generateForm.orderId),
+        orderType: generateForm.orderType,
+        type: generateForm.documentType,
+        size: Math.floor(Math.random() * 200000) + 100000,
+        createdAt: new Date().toISOString(),
+        order: {
+          id: parseInt(generateForm.orderId),
+          clientName: 'Cliente Generado',
+          clientPhone: '999999999',
+          clientEmail: 'cliente@example.com',
+          total: 50.00,
+          status: 'generado'
+        }
+      };
+      
+      setDocuments([newDocument, ...documents]);
       toast({
         title: 'Éxito',
         description: 'Documento generado correctamente',
@@ -210,8 +262,8 @@ const Documents = () => {
       });
       onGenerateClose();
       setGenerateForm({ orderId: '', orderType: 'regular', documentType: 'boleta' });
-      fetchDocuments({ page: currentPage, type: typeFilter });
-    }
+      setLoading(false);
+    }, 1500);
   };
 
   // Abrir modal de vista

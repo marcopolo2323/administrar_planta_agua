@@ -31,7 +31,6 @@ import {
 } from '@chakra-ui/react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { FaHome, FaDownload, FaPrint, FaWhatsapp, FaTruck } from 'react-icons/fa';
-import useOrderStore from '../stores/orderStore';
 import axios from '../utils/axios';
 
 const Receipt = () => {
@@ -40,8 +39,7 @@ const Receipt = () => {
   const toast = useToast();
   const isMobile = useBreakpointValue({ base: true, md: false });
 
-  // Store
-  const { getOrderById } = useOrderStore();
+  // No necesitamos store, usamos API directa
 
   // Estados locales
   const [order, setOrder] = useState(null);
@@ -127,7 +125,7 @@ const Receipt = () => {
     };
 
     loadOrder();
-  }, [id, getOrderById, toast]);
+  }, [id, toast]);
 
   const handleDownloadPDF = async () => {
     if (!order) return;

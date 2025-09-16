@@ -10,86 +10,64 @@ const Subscription = sequelize.define('Subscription', {
   clientId: {
     type: DataTypes.INTEGER,
     allowNull: false,
-    references: {
-      model: 'Clients',
-      key: 'id'
-    }
+    field: 'client_id'
   },
-  planName: {
-    type: DataTypes.STRING,
+  clientDni: {
+    type: DataTypes.STRING(20),
     allowNull: false,
-    comment: 'Nombre del plan (ej: Plan 50 Bidones)'
+    field: 'client_dni'
+  },
+  subscriptionType: {
+    type: DataTypes.STRING(50),
+    allowNull: false,
+    field: 'subscription_type'
   },
   totalBottles: {
     type: DataTypes.INTEGER,
     allowNull: false,
-    comment: 'Total de bidones incluidos en el plan'
+    field: 'total_bottles'
   },
-  bonusBottles: {
+  remainingBottles: {
     type: DataTypes.INTEGER,
     allowNull: false,
     defaultValue: 0,
-    comment: 'Bidones de bonificación (gratis)'
+    field: 'remaining_bottles'
   },
-  totalBottlesWithBonus: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
-    comment: 'Total de bidones incluyendo bonificaciones'
-  },
-  monthlyPrice: {
+  totalAmount: {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: false,
-    comment: 'Precio mensual del plan'
+    field: 'total_amount'
   },
-  pricePerBottle: {
+  paidAmount: {
     type: DataTypes.DECIMAL(10, 2),
-    allowNull: false,
-    comment: 'Precio por bidón (calculado)'
-  },
-  bottlesDelivered: {
-    type: DataTypes.INTEGER,
     allowNull: false,
     defaultValue: 0,
-    comment: 'Bidones ya entregados'
-  },
-  bottlesRemaining: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
-    comment: 'Bidones restantes por entregar'
-  },
-  startDate: {
-    type: DataTypes.DATE,
-    allowNull: false,
-    comment: 'Fecha de inicio del plan'
-  },
-  endDate: {
-    type: DataTypes.DATE,
-    allowNull: false,
-    comment: 'Fecha de vencimiento del plan'
+    field: 'paid_amount'
   },
   status: {
-    type: DataTypes.ENUM('active', 'paused', 'completed', 'cancelled', 'expired'),
+    type: DataTypes.ENUM('active', 'completed', 'cancelled'),
     allowNull: false,
     defaultValue: 'active'
   },
-  maxDailyDelivery: {
-    type: DataTypes.INTEGER,
+  purchaseDate: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    field: 'purchase_date'
+  },
+  expiryDate: {
+    type: DataTypes.DATE,
     allowNull: true,
-    comment: 'Máximo de bidones por día (opcional)'
+    field: 'expiry_date'
   },
   notes: {
     type: DataTypes.TEXT,
-    allowNull: true,
-    comment: 'Notas adicionales del plan'
-  },
-  isActive: {
-    type: DataTypes.BOOLEAN,
-    allowNull: false,
-    defaultValue: true
+    allowNull: true
   }
 }, {
+  tableName: 'subscriptions',
   timestamps: true,
-  tableName: 'Subscriptions'
+  createdAt: 'created_at',
+  updatedAt: 'updated_at'
 });
 
 module.exports = Subscription;
