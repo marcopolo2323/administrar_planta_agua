@@ -9,7 +9,7 @@ const Vale = sequelize.define('Vale', {
   },
   clientId: {
     type: DataTypes.INTEGER,
-    allowNull: false,
+    allowNull: true,
     references: {
       model: 'Clients',
       key: 'id'

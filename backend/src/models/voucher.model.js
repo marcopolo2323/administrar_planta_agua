@@ -9,9 +9,9 @@ const Voucher = sequelize.define('Voucher', {
   },
   clientId: {
     type: DataTypes.INTEGER,
-    allowNull: false,
+    allowNull: true,
     references: {
-      model: 'Users',
+      model: 'Clients',
       key: 'id'
     }
   },

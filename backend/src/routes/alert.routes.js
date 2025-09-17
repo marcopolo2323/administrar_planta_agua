@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const alertController = require('../controllers/alert.controller');
-const { checkRole } = require('../middlewares/role.middleware');
+const { authMiddleware, requireAdmin, requireDelivery } = require('../middlewares/auth.middleware');
 
 // Rutas protegidas (solo admin)
-router.get('/admin', checkRole(['admin']), alertController.getAdminAlerts);
-router.get('/client/:clientId/vales', checkRole(['admin', 'repartidor']), alertController.getClientValesForPayment);
+router.get('/admin', authMiddleware, requireAdmin, alertController.getAdminAlerts);
+router.get('/client/:clientId/vales', authMiddleware, requireDelivery, alertController.getClientValesForPayment);
 
 module.exports = router;

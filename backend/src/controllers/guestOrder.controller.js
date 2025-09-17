@@ -1,4 +1,4 @@
-const { GuestOrder, Product, GuestOrderProduct, User, Voucher } = require('../models');
+const { GuestOrder, Product, GuestOrderProduct, User, Voucher, Vale } = require('../models');
 
 // Crear un nuevo pedido de invitado o cliente frecuente
 exports.createGuestOrder = async (req, res) => {
@@ -39,10 +39,18 @@ exports.createGuestOrder = async (req, res) => {
     const finalDeliveryFee = deliveryFee || 0;
 
     // Validar datos requeridos
-    if (!finalCustomerName || !finalCustomerPhone || !deliveryAddress || !deliveryDistrict || !finalProducts || !Array.isArray(finalProducts) || finalProducts.length === 0) {
+    if (!finalCustomerName || !finalCustomerPhone || !deliveryAddress || !deliveryDistrict) {
       return res.status(400).json({
         success: false,
         message: 'Datos requeridos faltantes'
+      });
+    }
+
+    // Para pedidos normales, validar que haya productos
+    if (paymentMethod !== 'suscripcion' && (!finalProducts || !Array.isArray(finalProducts) || finalProducts.length === 0)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Debe seleccionar al menos un producto'
       });
     }
 
@@ -126,6 +134,26 @@ exports.createGuestOrder = async (req, res) => {
       );
 
       console.log('Vales creados:', vouchers.filter(v => v !== null).length);
+    }
+
+    // Si el método de pago es 'vale', crear un vale en la tabla Vales
+    if (paymentMethod === 'vale') {
+      console.log('Creando vale para pedido con modalidad vale:', guestOrder.id);
+      
+      try {
+        const vale = await Vale.create({
+          clientId: clientId || null,
+          amount: calculatedTotalAmount,
+          description: `Vale generado para pedido #${guestOrder.id}`,
+          dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 días desde hoy
+          status: 'active'
+        });
+        
+        console.log('Vale creado con ID:', vale.id);
+      } catch (valeError) {
+        console.error('Error al crear vale:', valeError);
+        // No fallar el pedido si no se puede crear el vale
+      }
     }
 
     // Obtener el pedido completo con productos
@@ -530,6 +558,37 @@ exports.updateGuestOrder = async (req, res) => {
     });
   } catch (error) {
     console.error('Error al actualizar pedido de invitado:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+};
+
+// Actualizar un pedido existente
+exports.updateGuestOrder = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateData = req.body;
+
+    const order = await GuestOrder.findByPk(id);
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Pedido no encontrado'
+      });
+    }
+
+    await order.update(updateData);
+
+    res.json({
+      success: true,
+      data: order,
+      message: 'Pedido actualizado correctamente'
+    });
+  } catch (error) {
+    console.error('Error al actualizar pedido:', error);
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor',

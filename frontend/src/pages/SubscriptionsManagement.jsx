@@ -16,6 +16,7 @@ import {
   InputGroup,
   InputLeftElement,
   Table,
+  TableContainer,
   Thead,
   Tbody,
   Tr,
@@ -118,15 +119,41 @@ const SubscriptionsManagement = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [clientsRes, plansRes] = await Promise.all([
+      const [clientsRes, subscriptionsRes] = await Promise.all([
         axios.get('/api/clients'),
-        axios.get('/api/subscriptions/plans')
+        axios.get('/api/subscriptions') // Usar el endpoint directo de suscripciones
       ]);
 
-      // Si tienes un endpoint para obtener todas las suscripciones, agrégalo aquí. Si no, deja el array vacío o implementa la lógica adecuada.
-      setSubscriptions([]); // <-- Cambia esto si tienes el endpoint correcto
+      setSubscriptions(subscriptionsRes.data.data || []);
       setClients(clientsRes.data.data || []);
-      setSubscriptionPlans(plansRes.data.data || []);
+      
+      // Definir planes de suscripción estáticos (como en el frontend)
+      setSubscriptionPlans([
+        {
+          id: 1,
+          name: 'Plan Básico',
+          bottles: 20,
+          bonus: 2,
+          price: 100,
+          description: '20 bidones + 2 extra'
+        },
+        {
+          id: 2,
+          name: 'Plan Intermedio',
+          bottles: 30,
+          bonus: 5,
+          price: 150,
+          description: '30 bidones + 5 extra'
+        },
+        {
+          id: 3,
+          name: 'Plan Premium',
+          bottles: 50,
+          bonus: 10,
+          price: 250,
+          description: '50 bidones + 10 extra'
+        }
+      ]);
     } catch (error) {
       console.error('Error al cargar datos:', error);
       toast({

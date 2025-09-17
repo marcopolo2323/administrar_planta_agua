@@ -10,7 +10,7 @@ router.get('/search', authMiddleware, clientController.searchClients);
 router.get('/:id', authMiddleware, clientController.getClientById);
 
 // Rutas protegidas (requieren rol de admin)
-router.post('/', authMiddleware, clientController.createClient);
+router.post('/', clientController.createClient); // Ruta pública para registro de clientes
 router.put('/:id', authMiddleware, clientController.updateClient);
 router.delete('/:id', [authMiddleware, requireAdmin], clientController.deleteClient);
 

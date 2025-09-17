@@ -60,21 +60,18 @@ const DashboardLayout = () => {
     // Dashboard principal
     { to: '/dashboard', label: 'Dashboard', icon: '🏠' },
     
-    // Gestión de pedidos (unificado)
+    // Gestión de pedidos y clientes
     { to: '/dashboard/orders-management', label: 'Gestión de Pedidos', icon: '📦', adminOnly: true },
-    
-    // Clientes
     { to: '/dashboard/clients', label: 'Clientes', icon: '👥', adminOnly: true },
     
-    // Pagos
-    { to: '/dashboard/client-payments', label: 'Pagos Clientes', icon: '💳', adminOnly: true },
-    
-    // Créditos y suscripciones
-    { to: '/dashboard/credits', label: 'Créditos y Vales', icon: '🎫', adminOnly: true },
+    // Pagos y créditos
     { to: '/dashboard/vales', label: 'Gestión de Vales', icon: '🎫', adminOnly: true },
-    { to: '/dashboard/alerts', label: 'Centro de Alertas', icon: '🚨', adminOnly: true },
-    { to: '/dashboard/vale-payment', label: 'Pago de Vales', icon: '💳', adminOnly: true },
+    
+    // Suscripciones
     { to: '/dashboard/subscriptions', label: 'Suscripciones', icon: '📅', adminOnly: true },
+    
+    // Alertas y notificaciones
+    { to: '/dashboard/alerts', label: 'Centro de Alertas', icon: '🚨', adminOnly: true },
     
     // Documentos y reportes
     { to: '/dashboard/documents', label: 'Documentos', icon: '📄', adminOnly: true },

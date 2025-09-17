@@ -13,7 +13,8 @@ const Client = sequelize.define('Client', {
   },
   documentType: {
     type: DataTypes.ENUM('DNI', 'RUC'),
-    allowNull: false
+    allowNull: false,
+    defaultValue: 'DNI'
   },
   documentNumber: {
     type: DataTypes.STRING,
@@ -22,63 +23,31 @@ const Client = sequelize.define('Client', {
   },
   address: {
     type: DataTypes.STRING,
-    allowNull: true
+    allowNull: false
   },
   district: {
     type: DataTypes.STRING,
-    allowNull: true
+    allowNull: false
   },
   phone: {
     type: DataTypes.STRING,
-    allowNull: true
+    allowNull: false
   },
   email: {
     type: DataTypes.STRING,
     allowNull: true,
     validate: {
-      isEmail: true
+      isValidEmail(value) {
+        if (value && value.trim() !== '') {
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!emailRegex.test(value)) {
+            throw new Error('Debe ser un email válido');
+          }
+        }
+      }
     }
   },
-  isCompany: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: false
-  },
-  hasCredit: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: false
-  },
-  creditLimit: {
-    type: DataTypes.DECIMAL(10, 2),
-    allowNull: true,
-    defaultValue: 0
-  },
-  currentDebt: {
-    type: DataTypes.DECIMAL(10, 2),
-    allowNull: true,
-    defaultValue: 0
-  },
-  paymentDueDay: {
-    type: DataTypes.INTEGER,
-    allowNull: true,
-    validate: {
-      min: 1,
-      max: 31
-    }
-  },
-  active: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: true
-  },
-  userId: {
-    type: DataTypes.INTEGER,
-    allowNull: true,
-    // unique: true
-  },
-  defaultDeliveryAddress: {
-    type: DataTypes.STRING,
-    allowNull: true
-  },
-  defaultContactPhone: {
+  reference: {
     type: DataTypes.STRING,
     allowNull: true
   },
@@ -86,14 +55,9 @@ const Client = sequelize.define('Client', {
     type: DataTypes.TEXT,
     allowNull: true
   },
-  clientStatus: {
-    type: DataTypes.ENUM('activo', 'nuevo', 'inactivo', 'retomando'),
-    allowNull: false,
-    defaultValue: 'nuevo'
-  },
-  recommendations: {
-    type: DataTypes.TEXT,
-    allowNull: true
+  active: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true
   },
   lastOrderDate: {
     type: DataTypes.DATE,

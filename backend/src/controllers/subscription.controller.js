@@ -1,4 +1,4 @@
-const { Subscription, GuestOrder, GuestOrderProduct, Product } = require('../models');
+const { Subscription, GuestOrder, GuestOrderProduct, Product, Client } = require('../models');
 
 // Obtener suscripciones de un cliente por DNI
 const getClientSubscriptions = async (req, res) => {
@@ -140,6 +140,34 @@ const useSubscriptionBottles = async (req, res) => {
   }
 };
 
+// Obtener todas las suscripciones
+const getAllSubscriptions = async (req, res) => {
+  try {
+    const subscriptions = await Subscription.findAll({
+      include: [
+        {
+          model: Client,
+          as: 'client',
+          attributes: ['id', 'name', 'email', 'phone', 'documentNumber']
+        }
+      ],
+      order: [['created_at', 'DESC']]
+    });
+
+    res.json({
+      success: true,
+      data: subscriptions
+    });
+  } catch (error) {
+    console.error('Error al obtener suscripciones:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+};
+
 // Obtener estadísticas de suscripciones
 const getSubscriptionStats = async (req, res) => {
   try {
@@ -151,12 +179,18 @@ const getSubscriptionStats = async (req, res) => {
       where: { status: 'completed' }
     });
 
+    // Obtener también la lista de suscripciones para el admin
+    const subscriptions = await Subscription.findAll({
+      order: [['created_at', 'DESC']]
+    });
+
     res.json({
       success: true,
       data: {
         total: totalSubscriptions,
         active: activeSubscriptions,
-        completed: completedSubscriptions
+        completed: completedSubscriptions,
+        subscriptions: subscriptions
       }
     });
   } catch (error) {
@@ -173,5 +207,6 @@ module.exports = {
   getClientSubscriptions,
   createSubscription,
   useSubscriptionBottles,
+  getAllSubscriptions,
   getSubscriptionStats
 };

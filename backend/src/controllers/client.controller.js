@@ -119,8 +119,7 @@ exports.createClient = async (req, res) => {
       email: email || null,
       reference: reference || null,
       notes: notes || null,
-      active: status === 'active',
-      clientStatus: 'nuevo'
+      active: status === 'active'
     });
 
     return res.status(201).json({

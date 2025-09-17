@@ -53,7 +53,8 @@ import {
   FaWhatsapp,
   FaCreditCard,
   FaCheckCircle,
-  FaCalendarAlt
+  FaCalendarAlt,
+  FaExclamationTriangle
 } from 'react-icons/fa';
 import useProductStore from '../stores/productStore';
 import useDeliveryStore from '../stores/deliveryStore';
@@ -190,10 +191,10 @@ const GuestOrderNew = () => {
     
     try {
       // Buscar cliente
-      const clientResponse = await fetch(`/api/clients/document/${dniValue}`);
+      const clientResponse = await axios.get(`/api/clients/document/${dniValue}`);
       
-      if (clientResponse.ok) {
-        const client = await clientResponse.json();
+      if (clientResponse.data.success) {
+        const client = clientResponse.data.data;
         
         // Guardar el clientId
         setClientId(client.id);
@@ -214,70 +215,66 @@ const GuestOrderNew = () => {
         
         // Buscar preferencias del cliente
         try {
-          const preferencesResponse = await fetch(`/api/client-preferences/dni/${dniValue}`);
-          if (preferencesResponse.ok) {
-            const preferencesData = await preferencesResponse.json();
+          const preferencesResponse = await axios.get(`/api/client-preferences/dni/${dniValue}`);
+          if (preferencesResponse.data.success && preferencesResponse.data.data) {
+            const preferences = preferencesResponse.data.data;
             
-            if (preferencesData.success && preferencesData.data) {
-              const preferences = preferencesData.data;
+            // Aplicar preferencias automáticamente
+            setPaymentMethod(preferences.preferredPaymentMethod);
+            setPreferencesApplied(true);
+            
+            // Verificar si la preferencia sigue activa (no ha expirado)
+            const now = new Date();
+            const validUntil = new Date(preferences.validUntil);
+            const isPreferenceActive = validUntil > now;
+            
+            if (isPreferenceActive) {
+              // La preferencia sigue activa - mostrar solo esa modalidad
+              setCanChangePreference(false);
               
-              // Aplicar preferencias automáticamente
-              setPaymentMethod(preferences.preferredPaymentMethod);
-              setPreferencesApplied(true);
-              
-              // Verificar si la preferencia sigue activa (no ha expirado)
-              const now = new Date();
-              const validUntil = new Date(preferences.validUntil);
-              const isPreferenceActive = validUntil > now;
-              
-              if (isPreferenceActive) {
-                // La preferencia sigue activa - mostrar solo esa modalidad
-                setCanChangePreference(false);
-                
-                // Si es suscripción, verificar si tiene suscripciones activas
-                if (preferences.preferredPaymentMethod === 'suscripcion') {
-                  const activeSubscriptions = subscriptions.filter(sub => sub.status === 'active' && sub.remainingBottles > 0);
-                  if (activeSubscriptions.length > 0) {
-                    setIsSubscriptionMode(true);
-                    setSelectedSubscription(activeSubscriptions[0]);
-                    toast({
-                      title: 'Suscripción activa encontrada',
-                      description: `Tienes ${activeSubscriptions[0].remainingBottles} bidones disponibles de tu suscripción`,
-                      status: 'success',
-                      duration: 5000,
-                      isClosable: true,
-                    });
-                  } else {
-                    toast({
-                      title: 'Preferencia de suscripción activa',
-                      description: 'Puedes comprar una nueva suscripción',
-                      status: 'info',
-                      duration: 5000,
-                      isClosable: true,
-                    });
-                  }
+              // Si es suscripción, verificar si tiene suscripciones activas
+              if (preferences.preferredPaymentMethod === 'suscripcion') {
+                const activeSubscriptions = subscriptions.filter(sub => sub.status === 'active' && sub.remainingBottles > 0);
+                if (activeSubscriptions.length > 0) {
+                  setIsSubscriptionMode(true);
+                  setSelectedSubscription(activeSubscriptions[0]);
+                  toast({
+                    title: 'Suscripción activa encontrada',
+                    description: `Tienes ${activeSubscriptions[0].remainingBottles} bidones disponibles de tu suscripción`,
+                    status: 'success',
+                    duration: 5000,
+                    isClosable: true,
+                  });
                 } else {
                   toast({
-                    title: 'Modalidad activa encontrada',
-                    description: `Tu modalidad de ${preferences.preferredPaymentMethod === 'vale' ? 'vale' : 'suscripción'} está activa hasta ${validUntil.toLocaleDateString()}`,
+                    title: 'Preferencia de suscripción activa',
+                    description: 'Puedes comprar una nueva suscripción',
                     status: 'info',
                     duration: 5000,
                     isClosable: true,
                   });
                 }
               } else {
-                // La preferencia expiró - mostrar todas las opciones
-                setPreferencesApplied(false);
-                setCanChangePreference(false);
-                
                 toast({
-                  title: 'Modalidad expirada',
-                  description: 'Tu modalidad anterior expiró. Elige una nueva modalidad de pago.',
-                  status: 'warning',
+                  title: 'Modalidad activa encontrada',
+                  description: `Tu modalidad de ${preferences.preferredPaymentMethod === 'vale' ? 'vale' : 'suscripción'} está activa hasta ${validUntil.toLocaleDateString()}`,
+                  status: 'info',
                   duration: 5000,
                   isClosable: true,
                 });
               }
+            } else {
+              // La preferencia expiró - mostrar todas las opciones
+              setPreferencesApplied(false);
+              setCanChangePreference(false);
+              
+              toast({
+                title: 'Modalidad expirada',
+                description: 'Tu modalidad anterior expiró. Elige una nueva modalidad de pago.',
+                status: 'warning',
+                duration: 5000,
+                isClosable: true,
+              });
             }
           }
         } catch (preferencesError) {
@@ -296,7 +293,7 @@ const GuestOrderNew = () => {
       } else {
         toast({
           title: 'Cliente no encontrado',
-          description: '¿Deseas registrarte como cliente frecuente?',
+          description: 'Completa tus datos para registrarte automáticamente',
           status: 'info',
           duration: 5000,
           isClosable: true,
@@ -305,17 +302,30 @@ const GuestOrderNew = () => {
       }
     } catch (error) {
       console.error('Error al buscar cliente:', error);
-      toast({
-        title: 'Error de conexión',
-        description: 'No se pudo conectar con el servidor',
-        status: 'error',
-        duration: 3000,
-        isClosable: true,
-      });
-      setCurrentStep(2); // Ir a formulario manual
+      
+      // Si es error 404, el cliente no existe
+      if (error.response?.status === 404) {
+        toast({
+          title: 'Cliente no encontrado',
+          description: 'Completa tus datos para registrarte automáticamente',
+          status: 'info',
+          duration: 5000,
+          isClosable: true,
+        });
+        setCurrentStep(2); // Ir a formulario de datos
+      } else {
+        toast({
+          title: 'Error al buscar cliente',
+          description: 'Intenta nuevamente o regístrate como nuevo cliente',
+          status: 'error',
+          duration: 5000,
+          isClosable: true,
+        });
+        setCurrentStep(2); // Ir a formulario de datos
+      }
+    } finally {
+      setSearchingDni(false);
     }
-    
-    setSearchingDni(false);
   };
 
   const handleDniSubmit = (e) => {
@@ -366,11 +376,13 @@ const GuestOrderNew = () => {
       
       if (response.data.success) {
         // Guardar el ID del cliente recién creado
-        setClientId(response.data.data.id);
+        const newClientId = response.data.data.id;
+        setClientId(newClientId);
+        console.log('Cliente registrado con ID:', newClientId);
         
         toast({
-          title: '¡Cliente registrado exitosamente!',
-          description: 'Ahora puedes hacer pedidos más rápido y acceder a beneficios especiales',
+          title: '¡Registro exitoso!',
+          description: 'Te has registrado automáticamente. Ahora puedes elegir productos y modalidades de pago',
           status: 'success',
           duration: 5000,
           isClosable: true,
@@ -378,14 +390,20 @@ const GuestOrderNew = () => {
         
         // Continuar al siguiente paso
         setCurrentStep(3);
+        
+        // Forzar re-render para mantener el estado
+        setTimeout(() => {
+          console.log('ClientId después del registro:', newClientId);
+          console.log('ClientId en estado:', clientId);
+        }, 100);
       } else {
-        throw new Error(response.data.message || 'Error al registrar cliente');
+        throw new Error(response.data.message || 'Error al registrar');
       }
     } catch (error) {
-      console.error('Error al registrar cliente:', error);
+      console.error('Error al registrar:', error);
       toast({
-        title: 'Error al registrar cliente',
-        description: error.response?.data?.message || 'No se pudo registrar el cliente',
+        title: 'Error al registrar',
+        description: error.response?.data?.message || 'No se pudo completar el registro',
         status: 'error',
         duration: 5000,
         isClosable: true,
@@ -397,6 +415,18 @@ const GuestOrderNew = () => {
 
   const addToCart = async (product) => {
     if (loadingProducts.has(product.id)) return;
+    
+    // Si está en modo suscripción, solo permitir bidones
+    if (isSubscriptionMode && product.type !== 'bidon') {
+      toast({
+        title: 'Solo bidones en suscripción',
+        description: 'Con tu suscripción solo puedes pedir bidones de agua',
+        status: 'warning',
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
     
     setLoadingProducts(prev => new Set(prev).add(product.id));
     try {
@@ -497,6 +527,27 @@ const GuestOrderNew = () => {
   };
 
   const handleFinalSubmit = async () => {
+    console.log('Estado antes de crear pedido:', {
+      clientId: clientId,
+      dni: dni,
+      paymentMethod: paymentMethod,
+      selectedSubscriptionPlan: selectedSubscriptionPlan,
+      cart: cart
+    });
+
+    // Validar que el cliente esté registrado
+    if (!clientId) {
+      toast({
+        title: 'Cliente no registrado',
+        description: 'Debes registrarte como cliente para continuar',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+      setCurrentStep(2);
+      return;
+    }
+
     // Para suscripciones, no validar carrito
     if (paymentMethod !== 'suscripcion' && cart.length === 0) {
       toast({
@@ -585,6 +636,12 @@ const GuestOrderNew = () => {
         
         if (response.data.success) {
           // Usar bidones de la suscripción
+          console.log('Datos para use-bottles:', {
+            subscriptionId: selectedSubscription.id,
+            bottlesToUse: totalBottles,
+            selectedSubscription: selectedSubscription
+          });
+          
           await axios.post('/api/subscriptions/use-bottles', {
             subscriptionId: selectedSubscription.id,
             bottlesToUse: totalBottles
@@ -605,113 +662,203 @@ const GuestOrderNew = () => {
         }
       } else {
         // Flujo normal (compra de suscripción o pedido regular)
-        const orderData = {
-          customerName: clientData.name,
-          customerPhone: clientData.phone,
-          customerEmail: clientData.email || '',
-          deliveryAddress: clientData.address,
-          deliveryDistrict: clientData.district,
-          deliveryReference: clientData.reference || '',
-          deliveryNotes: clientData.notes || '',
-          products: paymentMethod === 'suscripcion' ? [] : cart.map(item => ({
-            productId: item.productId,
-            quantity: item.quantity,
-            price: item.unitPrice
-          })),
-          subtotal: paymentMethod === 'suscripcion' ? selectedSubscriptionPlan.price : getSubtotal(),
-          deliveryFee: paymentMethod === 'suscripcion' ? 0 : getDeliveryFee(),
-          totalAmount: paymentMethod === 'suscripcion' ? selectedSubscriptionPlan.price : getTotal(),
-          paymentMethod: paymentMethod,
-          paymentType: paymentMethod === 'suscripcion' ? 'cash' : (paymentType === 'efectivo' ? 'cash' : 'plin'),
-          clientId: clientId
-        };
-
-        console.log('Enviando pedido:', orderData);
-
-        // Crear el pedido
-        const response = await axios.post('/api/guest-orders', orderData);
         
-        if (response.data.success) {
-          // Si es compra de suscripción, crear la suscripción
-          if (paymentMethod === 'suscripcion' && selectedSubscriptionPlan) {
-            try {
-              const subscriptionData = {
-                clientId: clientId,
-                clientDni: dni,
-                subscriptionType: selectedSubscriptionPlan.id,
-                totalBottles: selectedSubscriptionPlan.bottles + selectedSubscriptionPlan.bonus,
+        // Si es compra de suscripción, crear la suscripción PRIMERO
+        if (paymentMethod === 'suscripcion' && selectedSubscriptionPlan) {
+          try {
+            console.log('Datos para crear suscripción:', {
+              clientId: clientId,
+              dni: dni,
+              selectedSubscriptionPlan: selectedSubscriptionPlan
+            });
+
+            if (!clientId) {
+              throw new Error('ClientId es requerido para crear suscripción');
+            }
+
+            const subscriptionData = {
+              clientId: clientId,
+              clientDni: dni,
+              subscriptionType: selectedSubscriptionPlan.id,
+              totalBottles: selectedSubscriptionPlan.bottles + selectedSubscriptionPlan.bonus,
+              totalAmount: selectedSubscriptionPlan.price,
+              paidAmount: selectedSubscriptionPlan.price,
+              notes: `Suscripción ${selectedSubscriptionPlan.name} comprada`
+            };
+
+            const subscriptionResponse = await axios.post('/api/subscriptions', subscriptionData);
+            console.log('Suscripción creada:', subscriptionResponse.data);
+
+            if (subscriptionResponse.data.success) {
+              const subscription = subscriptionResponse.data.data;
+              
+              // Ahora crear el pedido de suscripción
+              const orderData = {
+                customerName: clientData.name,
+                customerPhone: clientData.phone,
+                customerEmail: clientData.email || '',
+                deliveryAddress: clientData.address,
+                deliveryDistrict: clientData.district,
+                deliveryReference: clientData.reference || '',
+                deliveryNotes: clientData.notes || '',
+                products: [], // No hay productos en el carrito para suscripciones
+                subtotal: selectedSubscriptionPlan.price,
+                deliveryFee: 0,
                 totalAmount: selectedSubscriptionPlan.price,
-                paidAmount: selectedSubscriptionPlan.price,
-                notes: `Suscripción ${selectedSubscriptionPlan.name} comprada`
+                paymentMethod: 'suscripcion',
+                paymentType: 'cash',
+                clientId: clientId,
+                subscriptionId: subscription.id
               };
 
-              const subscriptionResponse = await axios.post('/api/subscriptions', subscriptionData);
-              console.log('Suscripción creada:', subscriptionResponse.data);
+              console.log('Enviando pedido de suscripción:', orderData);
+              const response = await axios.post('/api/guest-orders', orderData);
+              
+              if (response.data.success) {
+                // Guardar preferencias del cliente para suscripción
+                try {
+                  const validUntil = new Date();
+                  validUntil.setMonth(validUntil.getMonth() + 1);
+                  
+                  const preferencesData = {
+                    dni,
+                    clientId,
+                    preferredPaymentMethod: 'suscripcion',
+                    subscriptionType: selectedSubscriptionPlan.id,
+                    subscriptionAmount: selectedSubscriptionPlan.price,
+                    subscriptionQuantity: selectedSubscriptionPlan.bottles + selectedSubscriptionPlan.bonus,
+                    validUntil: validUntil.toISOString()
+                  };
+                  
+                  await axios.post('/api/client-preferences', preferencesData);
+                  console.log('Preferencias de suscripción guardadas:', preferencesData);
+                  
+                  toast({
+                    title: 'Modalidad guardada',
+                    description: `Tu modalidad de suscripción estará activa hasta ${validUntil.toLocaleDateString()}`,
+                    status: 'success',
+                    duration: 4000,
+                    isClosable: true,
+                  });
+                } catch (preferencesError) {
+                  console.log('Error al guardar preferencias de suscripción:', preferencesError);
+                }
 
-              toast({
-                title: 'Suscripción creada',
-                description: `Se creó tu suscripción ${selectedSubscriptionPlan.name} con ${subscriptionData.totalBottles} bidones (${selectedSubscriptionPlan.bottles} + ${selectedSubscriptionPlan.bonus} extra)`,
-                status: 'success',
-                duration: 5000,
-                isClosable: true,
-              });
-            } catch (subscriptionError) {
-              console.log('Error al crear suscripción:', subscriptionError);
-            }
-          }
+                toast({
+                  title: 'Suscripción creada',
+                  description: `Se creó tu suscripción ${selectedSubscriptionPlan.name} con ${subscriptionData.totalBottles} bidones (${selectedSubscriptionPlan.bottles} + ${selectedSubscriptionPlan.bonus} extra)`,
+                  status: 'success',
+                  duration: 5000,
+                  isClosable: true,
+                });
 
-          // Guardar preferencias del cliente si eligió vale o suscripción
-          if (paymentMethod === 'vale' || paymentMethod === 'suscripcion') {
-            try {
-              if (clientId) {
-                const validUntil = new Date();
-                validUntil.setMonth(validUntil.getMonth() + 1);
+                // Cambiar a modo suscripción para permitir más pedidos
+                setIsSubscriptionMode(true);
+                setSelectedSubscription({
+                  id: subscription.id,
+                  remainingBottles: selectedSubscriptionPlan.bottles + selectedSubscriptionPlan.bonus,
+                  status: 'active'
+                });
                 
-                const preferencesData = {
-                  dni,
-                  clientId,
-                  preferredPaymentMethod: paymentMethod,
-                  subscriptionType: paymentMethod === 'suscripcion' ? 'basic' : null,
-                  subscriptionAmount: paymentMethod === 'suscripcion' ? getTotal() : null,
-                  subscriptionQuantity: paymentMethod === 'suscripcion' ? cart.reduce((sum, item) => sum + item.quantity, 0) : null,
-                  validUntil: validUntil.toISOString()
-                };
-                
-                await axios.post('/api/client-preferences', preferencesData);
-                console.log('Preferencias guardadas:', preferencesData);
+                // Limpiar el carrito y volver al paso de productos
+                setCart([]);
+                setCurrentStep(3);
                 
                 toast({
-                  title: 'Modalidad guardada',
-                  description: `Tu modalidad de ${paymentMethod === 'vale' ? 'vale' : 'suscripción'} estará activa hasta ${validUntil.toLocaleDateString()}`,
-                  status: 'success',
-                  duration: 4000,
+                  title: '¡Ahora puedes hacer pedidos!',
+                  description: `Tienes ${selectedSubscriptionPlan.bottles + selectedSubscriptionPlan.bonus} bidones disponibles. Agrega productos al carrito.`,
+                  status: 'info',
+                  duration: 6000,
                   isClosable: true,
                 });
               }
-            } catch (preferencesError) {
-              console.log('Error al guardar preferencias:', preferencesError);
             }
+          } catch (subscriptionError) {
+            console.log('Error al crear suscripción:', subscriptionError);
+            throw subscriptionError;
           }
-
-          toast({
-            title: '¡Pedido creado exitosamente!',
-            description: `Pedido #${response.data.data.id} registrado correctamente`,
-            status: 'success',
-            duration: 5000,
-            isClosable: true,
-          });
-
-          // Redirigir a la página de recibo
-          navigate(`/receipt/${response.data.data.id}`);
         } else {
-          throw new Error(response.data.message || 'Error al crear el pedido');
+          // Pedido normal (contraentrega, vale, etc.)
+          const orderData = {
+            customerName: clientData.name,
+            customerPhone: clientData.phone,
+            customerEmail: clientData.email || '',
+            deliveryAddress: clientData.address,
+            deliveryDistrict: clientData.district,
+            deliveryReference: clientData.reference || '',
+            deliveryNotes: clientData.notes || '',
+            products: cart.map(item => ({
+              productId: item.productId,
+              quantity: item.quantity,
+              price: item.unitPrice
+            })),
+            subtotal: getSubtotal(),
+            deliveryFee: getDeliveryFee(),
+            totalAmount: getTotal(),
+            paymentMethod: paymentMethod,
+            paymentType: paymentType === 'efectivo' ? 'cash' : 'plin',
+            clientId: clientId
+          };
+
+          console.log('Enviando pedido:', orderData);
+          console.log('ClientId actual:', clientId);
+
+          const response = await axios.post('/api/guest-orders', orderData);
+          
+          if (response.data.success) {
+            // Guardar preferencias del cliente si eligió vale o suscripción
+            if (paymentMethod === 'vale' || paymentMethod === 'suscripcion') {
+              try {
+                if (clientId) {
+                  const validUntil = new Date();
+                  validUntil.setMonth(validUntil.getMonth() + 1);
+                  
+                  const preferencesData = {
+                    dni,
+                    clientId,
+                    preferredPaymentMethod: paymentMethod,
+                    subscriptionType: paymentMethod === 'suscripcion' ? 'basic' : null,
+                    subscriptionAmount: paymentMethod === 'suscripcion' ? getTotal() : null,
+                    subscriptionQuantity: paymentMethod === 'suscripcion' ? cart.reduce((sum, item) => sum + item.quantity, 0) : null,
+                    validUntil: validUntil.toISOString()
+                  };
+                  
+                  await axios.post('/api/client-preferences', preferencesData);
+                  console.log('Preferencias guardadas:', preferencesData);
+                  
+                  toast({
+                    title: 'Modalidad guardada',
+                    description: `Tu modalidad de ${paymentMethod === 'vale' ? 'vale' : 'suscripción'} estará activa hasta ${validUntil.toLocaleDateString()}`,
+                    status: 'success',
+                    duration: 4000,
+                    isClosable: true,
+                  });
+                }
+              } catch (preferencesError) {
+                console.log('Error al guardar preferencias:', preferencesError);
+              }
+            }
+
+            toast({
+              title: '¡Pedido creado exitosamente!',
+              description: `Pedido #${response.data.data.id} registrado correctamente`,
+              status: 'success',
+              duration: 5000,
+              isClosable: true,
+            });
+
+            // Redirigir a la página de recibo
+            navigate(`/receipt/${response.data.data.id}`);
+          } else {
+            throw new Error(response.data.message || 'Error al crear el pedido');
+          }
         }
       }
     } catch (error) {
       console.error('Error al crear pedido:', error);
       toast({
         title: 'Error al crear pedido',
-        description: error.response?.data?.message || 'No se pudo procesar el pedido',
+        description: error.response?.data?.message || 'Error interno del servidor',
         status: 'error',
         duration: 5000,
         isClosable: true,
@@ -749,20 +896,34 @@ const GuestOrderNew = () => {
   };
 
   const handleWhatsAppSend = () => {
-    const message = `🧾 *COMPROBANTE DE PAGO PLIN*
+    let message = `🧾 *COMPROBANTE DE PAGO PLIN*
     
 👤 Cliente: ${clientData.name}
 📱 Teléfono: ${clientData.phone}
 🏠 Dirección: ${clientData.address}
 📍 Distrito: ${clientData.district}
 
-🛒 *PEDIDO:*
+`;
+
+    // Si es suscripción, mostrar información del plan
+    if (paymentMethod === 'suscripcion' && selectedSubscriptionPlan) {
+      message += `🎯 *SUSCRIPCIÓN:*
+📦 Plan: ${selectedSubscriptionPlan.name}
+💰 Precio: S/ ${selectedSubscriptionPlan.price}
+🔢 Bidones: ${selectedSubscriptionPlan.bottles} + ${selectedSubscriptionPlan.bonus} extra
+📊 Total bidones: ${selectedSubscriptionPlan.bottles + selectedSubscriptionPlan.bonus}
+
+✅ *PAGO REALIZADO VÍA PLIN*`;
+    } else {
+      // Para pedidos normales
+      message += `🛒 *PEDIDO:*
 ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFixed(2)}`).join('\n')}
 
 💰 *TOTAL: S/ ${getTotal().toFixed(2)}*
 📦 Flete: S/ ${getDeliveryFee().toFixed(2)}
 
 ✅ *PAGO REALIZADO VÍA PLIN*`;
+    }
     
     const whatsappUrl = `https://wa.me/51961606183?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
@@ -934,35 +1095,38 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
             />
           </FormControl>
 
+
+
+          <FormControl>
+            <FormLabel>Notas Adicionales</FormLabel>
+            <Textarea
+              value={clientData.notes}
+              onChange={(e) => setClientData({ ...clientData, notes: e.target.value })}
+              placeholder="Información adicional, preferencias especiales, etc. (opcional)"
+              rows={3}
+            />
+          </FormControl>
+
           <VStack spacing={3} w="full">
             <Button
               colorScheme="blue"
               size="lg"
               w="full"
-              onClick={() => setCurrentStep(3)}
+              onClick={handleRegisterClient}
               isDisabled={!clientData.name || !clientData.phone || !clientData.address || !clientData.district}
             >
-              Continuar con Productos
+              Registrarme y Continuar
             </Button>
             
             <Alert status="info" borderRadius="md">
               <AlertIcon />
               <VStack align="start" spacing={2}>
                 <Text fontSize="sm" fontWeight="bold">
-                  ¿Quieres registrarte como cliente frecuente?
+                  Registro Automático
                 </Text>
                 <Text fontSize="xs">
-                  Al registrarte podrás hacer pedidos más rápido y acceder a beneficios especiales como vales y suscripciones.
+                  Al continuar, te registrarás automáticamente como cliente para acceder a beneficios especiales como vales y suscripciones.
                 </Text>
-                <Button
-                  size="sm"
-                  colorScheme="green"
-                  variant="outline"
-                  onClick={handleRegisterClient}
-                  isDisabled={!clientData.name || !clientData.phone || !clientData.address || !clientData.district}
-                >
-                  Registrarme como Cliente
-                </Button>
               </VStack>
             </Alert>
           </VStack>
@@ -978,12 +1142,22 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
         <CardHeader>
           <Heading size="md">
             <FaShoppingCart style={{ display: 'inline', marginRight: '8px' }} />
-            Productos Disponibles
+            {isSubscriptionMode ? 'Bidones Disponibles (Suscripción)' : 'Productos Disponibles'}
           </Heading>
+          {isSubscriptionMode && (
+            <Alert status="info" size="sm" borderRadius="md" mt={2}>
+              <AlertIcon />
+              <Text fontSize="sm">
+                <strong>Modo Suscripción:</strong> Solo puedes pedir bidones de agua. Los bidones se descontarán de tu suscripción sin costo adicional.
+              </Text>
+            </Alert>
+          )}
         </CardHeader>
         <CardBody>
           <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
-            {products.map((product) => (
+            {products
+              .filter(product => !isSubscriptionMode || product.type === 'bidon')
+              .map((product) => (
               <Card key={product.id} variant="outline">
                 <CardBody>
                   <VStack align="start" spacing={3}>
@@ -1160,7 +1334,7 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
               <Icon as={FaCalendarAlt} boxSize={12} color="purple.500" />
               <Heading size="lg">Usar Suscripción</Heading>
               <Text color="gray.600" textAlign="center">
-                Tienes bidones disponibles de tu suscripción
+                Tienes {selectedSubscription.remainingBottles} bidones disponibles de tu suscripción
               </Text>
               <Alert status="success" size="sm" borderRadius="md">
                 <AlertIcon />
@@ -1312,6 +1486,36 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
 
     // Si se seleccionó suscripción, mostrar planes de suscripción
     if (paymentMethod === 'suscripcion' && !selectedSubscriptionPlan) {
+      console.log('Mostrando planes de suscripción. Estado actual:', {
+        clientId: clientId,
+        dni: dni,
+        paymentMethod: paymentMethod,
+        selectedSubscriptionPlan: selectedSubscriptionPlan
+      });
+      
+      // Si no hay clientId, mostrar error
+      if (!clientId) {
+        return (
+          <Card maxW="lg" mx="auto">
+            <CardHeader textAlign="center">
+              <VStack spacing={4}>
+                <Icon as={FaExclamationTriangle} boxSize={12} color="red.500" />
+                <Heading size="lg" color="red.500">Error de Cliente</Heading>
+                <Text color="gray.600" textAlign="center">
+                  No se pudo identificar al cliente. Por favor, regístrate nuevamente.
+                </Text>
+                <Button
+                  colorScheme="blue"
+                  onClick={() => setCurrentStep(2)}
+                >
+                  Volver al Registro
+                </Button>
+              </VStack>
+            </CardHeader>
+          </Card>
+        );
+      }
+      
       return (
         <Card maxW="4xl" mx="auto">
           <CardHeader textAlign="center">
@@ -1833,7 +2037,7 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
                           <VStack align="start" spacing={1}>
                             <Text fontWeight="bold">PLIN</Text>
                             <Text fontSize="sm" color="gray.600">
-                              Paga con PLIN al repartidor
+                              Paga con PLIN 
                             </Text>
                           </VStack>
                         </HStack>
@@ -1846,12 +2050,12 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
                   colorScheme="purple"
                   size="lg"
                   w="full"
-                  onClick={handleFinalSubmit}
+                  onClick={paymentType === 'efectivo' ? handleFinalSubmit : handlePLINPayment}
                   leftIcon={<FaCheckCircle />}
                   isLoading={loading}
                   loadingText="Creando suscripción..."
                 >
-                  Confirmar Suscripción
+                  {paymentType === 'efectivo' ? 'Confirmar Suscripción' : 'Pagar con PLIN'}
                 </Button>
               </VStack>
             </VStack>
@@ -2005,10 +2209,16 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
 
             <VStack spacing={2}>
               <Text fontWeight="bold" fontSize="lg">
-                Total a pagar: S/ {parseFloat(getTotal()).toFixed(2)}
+                Total a pagar: S/ {paymentMethod === 'suscripcion' && selectedSubscriptionPlan 
+                  ? parseFloat(selectedSubscriptionPlan.price).toFixed(2)
+                  : parseFloat(getTotal()).toFixed(2)
+                }
               </Text>
               <Text fontSize="sm" color="gray.600">
-                Incluye productos + flete de envío
+                {paymentMethod === 'suscripcion' && selectedSubscriptionPlan 
+                  ? `Plan ${selectedSubscriptionPlan.name} - ${selectedSubscriptionPlan.bottles + selectedSubscriptionPlan.bonus} bidones`
+                  : "Incluye productos + flete de envío"
+                }
               </Text>
             </VStack>
 

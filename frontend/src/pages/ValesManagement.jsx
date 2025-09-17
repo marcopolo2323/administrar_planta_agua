@@ -321,7 +321,14 @@ const ValesManagement = () => {
             {vales.length === 0 ? (
               <Alert status="info">
                 <AlertIcon />
-                No hay vales registrados
+                <VStack align="start" spacing={2}>
+                  <Text fontWeight="bold">No hay vales registrados</Text>
+                  <Text fontSize="sm">
+                    Los vales se crean automáticamente cuando los clientes eligen la modalidad "vale" en sus pedidos.
+                    <br/>
+                    Puedes crear vales manualmente usando el botón "Crear Vale" arriba.
+                  </Text>
+                </VStack>
               </Alert>
             ) : (
               <Table variant="simple">

@@ -64,18 +64,28 @@ const Dashboard = () => {
   const confirmedOrders = guestOrders?.filter(order => order.status === 'confirmed')?.length || 0;
   const preparingOrders = guestOrders?.filter(order => order.status === 'preparing')?.length || 0;
   const readyOrders = guestOrders?.filter(order => order.status === 'ready')?.length || 0;
+  
+  // Calcular estadísticas por tipo de pago
+  const contraentregaOrders = guestOrders?.filter(order => order.paymentMethod === 'contraentrega')?.length || 0;
+  const valeOrders = guestOrders?.filter(order => order.paymentMethod === 'vale')?.length || 0;
+  const suscripcionOrders = guestOrders?.filter(order => order.paymentMethod === 'suscripcion')?.length || 0;
+  
+  // Calcular ingresos totales
+  const totalRevenue = guestOrders?.reduce((sum, order) => sum + (parseFloat(order.totalAmount) || 0), 0) || 0;
+  const todayRevenue = guestOrders?.filter(order => {
+    const orderDate = new Date(order.createdAt);
+    const today = new Date();
+    return orderDate.toDateString() === today.toDateString();
+  }).reduce((sum, order) => sum + (parseFloat(order.totalAmount) || 0), 0) || 0;
 
   const quickActions = [
     {
-      title: 'Productos',
-      icon: FaBox,
-      color: 'blue',
-      onClick: () => {
-        console.log('🔍 Navegando a productos...');
-        navigate('/dashboard/products');
-      },
-      count: products.length,
-      description: 'Gestionar inventario'
+      title: 'Gestión de Pedidos',
+      icon: FaTruck,
+      color: 'orange',
+      onClick: () => navigate('/dashboard/orders-management'),
+      count: totalOrders,
+      description: 'Todos los pedidos'
     },
     {
       title: 'Clientes',
@@ -86,20 +96,28 @@ const Dashboard = () => {
       description: 'Clientes frecuentes'
     },
     {
-      title: 'Gestión de Pedidos',
-      icon: FaTruck,
-      color: 'orange',
-      onClick: () => navigate('/dashboard/orders-management'),
-      count: totalOrders,
-      description: 'Gestionar pedidos'
+      title: 'Suscripciones',
+      icon: FaCalendarAlt,
+      color: 'purple',
+      onClick: () => navigate('/dashboard/subscriptions'),
+      count: suscripcionOrders,
+      description: 'Planes de suscripción'
     },
     {
-      title: 'Créditos y Vales',
+      title: 'Vales',
       icon: FaCreditCard,
-      color: 'purple',
-      onClick: () => navigate('/dashboard/credits'),
-      count: '💳',
-      description: 'Gestionar créditos'
+      color: 'blue',
+      onClick: () => navigate('/dashboard/vales'),
+      count: valeOrders,
+      description: 'Gestión de vales'
+    },
+    {
+      title: 'Productos',
+      icon: FaBox,
+      color: 'teal',
+      onClick: () => navigate('/dashboard/products'),
+      count: products.length,
+      description: 'Inventario'
     },
     {
       title: 'Repartidores',
@@ -107,7 +125,7 @@ const Dashboard = () => {
       color: 'indigo',
       onClick: () => navigate('/dashboard/delivery-persons'),
       count: deliveryStats?.total || 0,
-      description: 'Gestionar repartidores'
+      description: 'Equipo de entrega'
     },
     {
       title: 'Documentos',
@@ -190,10 +208,10 @@ const Dashboard = () => {
         <Card bg={cardBg} borderColor={borderColor} boxShadow="sm">
           <CardBody>
             <Stat>
-              <StatLabel color="green.600">💧 Productos</StatLabel>
-              <StatNumber color="green.500" fontSize="2xl">{products.length}</StatNumber>
+              <StatLabel color="green.600">💰 Ingresos Hoy</StatLabel>
+              <StatNumber color="green.500" fontSize="2xl">S/ {todayRevenue.toFixed(2)}</StatNumber>
               <StatHelpText>
-                En inventario
+                Total: S/ {totalRevenue.toFixed(2)}
               </StatHelpText>
             </Stat>
           </CardBody>
@@ -214,7 +232,7 @@ const Dashboard = () => {
         <Card bg={cardBg} borderColor={borderColor} boxShadow="sm">
           <CardBody>
             <Stat>
-              <StatLabel color="purple.600">✅ Pedidos Entregados</StatLabel>
+              <StatLabel color="purple.600">✅ Entregados</StatLabel>
               <StatNumber color="purple.500" fontSize="2xl">{deliveredOrders}</StatNumber>
               <StatHelpText>
                 {readyOrders} listos para entregar
@@ -226,10 +244,61 @@ const Dashboard = () => {
         <Card bg={cardBg} borderColor={borderColor} boxShadow="sm">
           <CardBody>
             <Stat>
-              <StatLabel color="yellow.600">⏳ En Preparación</StatLabel>
-              <StatNumber color="yellow.500" fontSize="2xl">{preparingOrders}</StatNumber>
+              <StatLabel color="yellow.600">📊 Total Pedidos</StatLabel>
+              <StatNumber color="yellow.500" fontSize="2xl">{totalOrders}</StatNumber>
               <StatHelpText>
-                {totalOrders} total de pedidos
+                {preparingOrders} en preparación
+              </StatHelpText>
+            </Stat>
+          </CardBody>
+        </Card>
+      </SimpleGrid>
+
+      {/* Estadísticas por tipo de pago */}
+      <SimpleGrid columns={{ base: 1, sm: 2, lg: 4 }} spacing={4} mb={8} maxW="100%">
+        <Card bg={cardBg} borderColor={borderColor} boxShadow="sm">
+          <CardBody>
+            <Stat>
+              <StatLabel color="blue.600">💵 Contraentrega</StatLabel>
+              <StatNumber color="blue.500" fontSize="xl">{contraentregaOrders}</StatNumber>
+              <StatHelpText>
+                Pago al recibir
+              </StatHelpText>
+            </Stat>
+          </CardBody>
+        </Card>
+
+        <Card bg={cardBg} borderColor={borderColor} boxShadow="sm">
+          <CardBody>
+            <Stat>
+              <StatLabel color="orange.600">🎫 Vales</StatLabel>
+              <StatNumber color="orange.500" fontSize="xl">{valeOrders}</StatNumber>
+              <StatHelpText>
+                Pago a crédito
+              </StatHelpText>
+            </Stat>
+          </CardBody>
+        </Card>
+
+        <Card bg={cardBg} borderColor={borderColor} boxShadow="sm">
+          <CardBody>
+            <Stat>
+              <StatLabel color="purple.600">📅 Suscripciones</StatLabel>
+              <StatNumber color="purple.500" fontSize="xl">{suscripcionOrders}</StatNumber>
+              <StatHelpText>
+                Pago mensual
+              </StatHelpText>
+            </Stat>
+          </CardBody>
+        </Card>
+
+        <Card bg={cardBg} borderColor={borderColor} boxShadow="sm">
+          <CardBody>
+            <Stat>
+              <StatLabel color="green.600">💧 Productos</StatLabel>
+              <StatNumber color="green.500" fontSize="xl">{products.length}</StatNumber>
+              <StatHelpText>
+                En inventario
               </StatHelpText>
             </Stat>
           </CardBody>

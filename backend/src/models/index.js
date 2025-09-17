@@ -16,9 +16,9 @@ const Subscription = require('./subscription.model');
 const SubscriptionPlan = require('./subscriptionPlan.model');
 
 // Definir relaciones después de que todos los modelos estén inicializados
-// Relaciones entre User y Client
-User.hasOne(Client, { foreignKey: 'userId', as: 'Client' });
-Client.belongsTo(User, { foreignKey: 'userId', as: 'User' });
+// Relaciones entre User y Client (comentadas - userId eliminado del modelo Client)
+// User.hasOne(Client, { foreignKey: 'userId', as: 'Client' });
+// Client.belongsTo(User, { foreignKey: 'userId', as: 'User' });
 
 // Relaciones de repartidores
 DeliveryPerson.belongsTo(User, { foreignKey: 'userId' });

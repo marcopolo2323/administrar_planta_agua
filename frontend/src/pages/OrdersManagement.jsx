@@ -449,20 +449,40 @@ const OrdersManagement = () => {
           </VStack>
 
           {/* Información de pago */}
-          <HStack justify="space-between">
-            <HStack spacing={2}>
-              <Icon as={getPaymentIcon(order.paymentType)} size={14} />
-              <Text fontSize="sm">
-                {order.paymentMethod === 'vale' ? 'A Crédito (Vale)' :
-                 order.paymentMethod === 'suscripcion' ? 'Suscripción' :
-                 order.paymentMethod === 'contraentrega' ? 'Contraentrega' :
-                 order.paymentType === 'efectivo' ? 'Efectivo' : 'PLIN'}
+          <VStack spacing={2} align="stretch">
+            <HStack justify="space-between">
+              <HStack spacing={2}>
+                <Icon as={getPaymentIcon(order.paymentType)} size={14} />
+                <Text fontSize="sm">
+                  {order.paymentMethod === 'vale' ? 'A Crédito (Vale)' :
+                   order.paymentMethod === 'suscripcion' ? 'Suscripción' :
+                   order.paymentMethod === 'contraentrega' ? 'Contraentrega' :
+                   order.paymentType === 'efectivo' ? 'Efectivo' : 'PLIN'}
+                </Text>
+              </HStack>
+              <Text fontWeight="bold" fontSize="sm" color="green.600">
+                S/ {parseFloat(order.total || order.totalAmount || 0).toFixed(2)}
               </Text>
             </HStack>
-            <Text fontWeight="bold" fontSize="sm" color="green.600">
-              S/ {parseFloat(order.total || order.totalAmount || 0).toFixed(2)}
-            </Text>
-          </HStack>
+            
+            {/* Información específica para suscripciones */}
+            {order.paymentMethod === 'suscripcion' && order.subscriptionId && (
+              <HStack spacing={2} bg="purple.50" p={2} borderRadius="md">
+                <Text fontSize="xs" color="purple.600" fontWeight="medium">
+                  📅 Suscripción ID: {order.subscriptionId}
+                </Text>
+              </HStack>
+            )}
+            
+            {/* Información específica para vales */}
+            {order.paymentMethod === 'vale' && (
+              <HStack spacing={2} bg="orange.50" p={2} borderRadius="md">
+                <Text fontSize="xs" color="orange.600" fontWeight="medium">
+                  🎫 Pago a crédito - Se cobrará al final del mes
+                </Text>
+              </HStack>
+            )}
+          </VStack>
 
           {/* Repartidor asignado */}
           {order.deliveryPersonId && (
