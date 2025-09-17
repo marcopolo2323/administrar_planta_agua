@@ -102,6 +102,102 @@ app.get('/run-seed', async (req, res) => {
     });
   }
 });
+
+// Ruta para migrar Supabase
+app.get('/migrate-supabase', async (req, res) => {
+  try {
+    console.log('🔄 Iniciando migración de Supabase...');
+    
+    // Verificar si la columna reference existe
+    const result = await sequelize.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'Clients' 
+      AND column_name = 'reference'
+    `, { type: sequelize.QueryTypes.SELECT });
+    
+    if (result.length === 0) {
+      console.log('🔄 Agregando columna reference a la tabla Clients...');
+      
+      // Agregar la columna reference
+      await sequelize.query(`
+        ALTER TABLE "Clients" 
+        ADD COLUMN "reference" VARCHAR(255)
+      `);
+      
+      console.log('✅ Columna reference agregada exitosamente');
+      
+      res.json({ 
+        success: true, 
+        message: 'Migración completada: Columna reference agregada'
+      });
+    } else {
+      console.log('✅ Columna reference ya existe');
+      
+      res.json({ 
+        success: true, 
+        message: 'Migración no necesaria: Columna reference ya existe'
+      });
+    }
+    
+  } catch (error) {
+    console.error('❌ Error en migración:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message
+    });
+  }
+});
+
+// Ruta de diagnóstico
+app.get('/diagnose', async (req, res) => {
+  try {
+    console.log('🔍 Iniciando diagnóstico de la base de datos...');
+    
+    // Verificar conexión
+    await sequelize.authenticate();
+    
+    // Verificar columnas de la tabla Clients
+    const columns = await sequelize.query(`
+      SELECT column_name, data_type, is_nullable
+      FROM information_schema.columns 
+      WHERE table_name = 'Clients'
+      ORDER BY column_name
+    `, { type: sequelize.QueryTypes.SELECT });
+    
+    // Contar registros
+    const clientCount = await sequelize.query('SELECT COUNT(*) as count FROM "Clients"', { type: sequelize.QueryTypes.SELECT });
+    const userCount = await sequelize.query('SELECT COUNT(*) as count FROM "Users"', { type: sequelize.QueryTypes.SELECT });
+    const productCount = await sequelize.query('SELECT COUNT(*) as count FROM "Products"', { type: sequelize.QueryTypes.SELECT });
+    
+    res.json({
+      success: true,
+      message: 'Diagnóstico completado',
+      data: {
+        connection: 'OK',
+        tables: {
+          clients: {
+            count: clientCount[0].count,
+            columns: columns
+          },
+          users: {
+            count: userCount[0].count
+          },
+          products: {
+            count: productCount[0].count
+          }
+        }
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Error en diagnóstico:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message
+    });
+  }
+});
 // Rutas públicas (deben ir antes de las protegidas)
 app.get('/api/delivery-fees', async (req, res) => {
   try {

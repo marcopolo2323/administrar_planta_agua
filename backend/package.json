@@ -16,6 +16,7 @@
     "deploy-update": "node src/scripts/deployUpdate.js",
     "convert-excel": "node src/scripts/convertExcelToJson.js",
     "verify-deploy": "node src/scripts/verifyDeploy.js",
+    "migrate-supabase": "node src/scripts/migrateSupabase.js",
     "init-production": "node init-production.js"
   },
   "keywords": [

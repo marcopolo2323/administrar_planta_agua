@@ -173,8 +173,11 @@ const deployUpdate = async () => {
     console.error('❌ Error durante la actualización:', error);
     throw error;
   } finally {
-    await sequelize.close();
-    console.log('\n🔌 Conexión a la base de datos cerrada');
+    // No cerrar la conexión en producción para evitar errores posteriores
+    if (process.env.NODE_ENV !== 'production') {
+      await sequelize.close();
+      console.log('\n🔌 Conexión a la base de datos cerrada');
+    }
   }
 };
 

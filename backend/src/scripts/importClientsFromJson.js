@@ -45,17 +45,8 @@ const importClientsFromJson = async () => {
         district: distrito || 'Callería',
         phone: telefonoFinal,
         email: emailFinal,
-        isCompany: documentType === 'RUC',
-        hasCredit: esActivo,
-        creditLimit: esActivo ? 1000.00 : 0.00,
-        currentDebt: 0.00,
-        paymentDueDay: 30,
+        notes: recomendacion || 'Cliente importado desde Excel',
         active: true,
-        userId: null,
-        defaultDeliveryAddress: direccion || `Dirección ${index + 1}`,
-        defaultContactPhone: telefonoFinal,
-        clientStatus: esActivo ? 'activo' : 'nuevo',
-        recommendations: recomendacion || 'Cliente importado desde Excel',
         lastOrderDate: esActivo ? new Date() : null,
         totalOrders: esActivo ? Math.floor(Math.random() * 10) + 1 : 0
       };
