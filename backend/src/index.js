@@ -103,6 +103,30 @@ app.get('/run-seed', async (req, res) => {
   }
 });
 
+// Ruta para sincronizar todas las tablas
+app.get('/sync-tables', async (req, res) => {
+  try {
+    console.log('🔄 Iniciando sincronización de tablas...');
+    
+    // Sincronizar todas las tablas
+    await sequelize.sync({ force: false });
+    
+    console.log('✅ Tablas sincronizadas exitosamente');
+    
+    res.json({ 
+      success: true, 
+      message: 'Tablas sincronizadas exitosamente'
+    });
+    
+  } catch (error) {
+    console.error('❌ Error en sincronización:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message
+    });
+  }
+});
+
 // Ruta para migrar Supabase
 app.get('/migrate-supabase', async (req, res) => {
   try {
@@ -186,11 +210,39 @@ app.get('/diagnose', async (req, res) => {
       ORDER BY column_name
     `, { type: sequelize.QueryTypes.SELECT });
     
-    // Contar registros
-    const clientCount = await sequelize.query('SELECT COUNT(*) as count FROM "Clients"', { type: sequelize.QueryTypes.SELECT });
-    const userCount = await sequelize.query('SELECT COUNT(*) as count FROM "Users"', { type: sequelize.QueryTypes.SELECT });
-    const productCount = await sequelize.query('SELECT COUNT(*) as count FROM "Products"', { type: sequelize.QueryTypes.SELECT });
-    const guestOrderCount = await sequelize.query('SELECT COUNT(*) as count FROM "GuestOrder"', { type: sequelize.QueryTypes.SELECT });
+    // Contar registros (con manejo de errores para tablas que no existen)
+    let clientCount = 0;
+    let userCount = 0;
+    let productCount = 0;
+    let guestOrderCount = 0;
+    
+    try {
+      const clientResult = await sequelize.query('SELECT COUNT(*) as count FROM "Clients"', { type: sequelize.QueryTypes.SELECT });
+      clientCount = clientResult[0].count;
+    } catch (e) {
+      console.log('⚠️ Tabla Clients no existe');
+    }
+    
+    try {
+      const userResult = await sequelize.query('SELECT COUNT(*) as count FROM "Users"', { type: sequelize.QueryTypes.SELECT });
+      userCount = userResult[0].count;
+    } catch (e) {
+      console.log('⚠️ Tabla Users no existe');
+    }
+    
+    try {
+      const productResult = await sequelize.query('SELECT COUNT(*) as count FROM "Products"', { type: sequelize.QueryTypes.SELECT });
+      productCount = productResult[0].count;
+    } catch (e) {
+      console.log('⚠️ Tabla Products no existe');
+    }
+    
+    try {
+      const guestOrderResult = await sequelize.query('SELECT COUNT(*) as count FROM "GuestOrder"', { type: sequelize.QueryTypes.SELECT });
+      guestOrderCount = guestOrderResult[0].count;
+    } catch (e) {
+      console.log('⚠️ Tabla GuestOrder no existe');
+    }
     
     res.json({
       success: true,
@@ -199,17 +251,17 @@ app.get('/diagnose', async (req, res) => {
         connection: 'OK',
         tables: {
           clients: {
-            count: clientCount[0].count,
+            count: clientCount,
             columns: columns
           },
           users: {
-            count: userCount[0].count
+            count: userCount
           },
           products: {
-            count: productCount[0].count
+            count: productCount
           },
           guestOrders: {
-            count: guestOrderCount[0].count
+            count: guestOrderCount
           }
         }
       }
