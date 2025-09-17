@@ -75,36 +75,24 @@ const deliveryAuthRoutes = require('./routes/delivery.auth.routes');
 const deliveryAssignedRoutes = require('./routes/delivery.assigned.routes');
 const voucherRoutes = require('./routes/voucher.routes');
 const valeRoutes = require('./routes/vale.routes');
-const clientPreferenceRoutes = require('./routes/clientPreference.routes');
-const alertRoutes = require('./routes/alert.routes');
-const valePaymentRoutes = require('./routes/valePayment.routes');
-const guestPaymentRoutes = require('./routes/guestPayment.routes');
 const subscriptionRoutes = require('./routes/subscription.routes');
 const userRoutes = require('./routes/user.routes');
-const clientPaymentsRoutes = require('./routes/client.payments.routes');
-const monthlyPaymentRoutes = require('./routes/monthlyPayment.routes');
-const legalRoutes = require('./routes/legal.routes');
 const documentRoutes = require('./routes/document.routes');
-const resetDatabase = require('./utils/seedDb')
+const resetDatabase = require('./utils/seedDb');
+const deployUpdate = require('./scripts/deployUpdate');
 
 //temporal
 app.get('/run-seed', async (req, res) => {
   try {
-    // Verificar si ya hay datos
-    const productCount = await Product.count();
-    if (productCount > 0) {
-      return res.json({ 
-        success: false, 
-        message: 'La base de datos ya tiene datos. Seed no ejecutado.'
-      });
-    }
+    console.log('🌱 Iniciando seed completo con clientes del Excel...');
     
-    console.log('🌱 Base de datos vacía, ejecutando seed...');
-    await resetDatabase();
+    // Ejecutar el script de deploy que incluye los clientes del Excel
+    await deployUpdate();
     
     res.json({ 
       success: true, 
-      message: 'Database seeded successfully!'
+      message: 'Database seeded successfully with Excel clients!',
+      details: 'Se importaron 79 clientes desde el Excel y se configuró todo el sistema'
     });
   } catch (error) {
     console.error('❌ Error en seed:', error);
@@ -140,15 +128,8 @@ app.use('/api/delivery-auth', deliveryAuthRoutes);
 app.use('/api/delivery', deliveryAssignedRoutes);
 app.use('/api/vouchers', voucherRoutes);
 app.use('/api/vales', valeRoutes);
-app.use('/api/client-preferences', clientPreferenceRoutes);
-app.use('/api/alerts', alertRoutes);
-app.use('/api/vale-payments', valePaymentRoutes);
-app.use('/api/guest-payments', guestPaymentRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/users', userRoutes);
-app.use('/api/client-payments', clientPaymentsRoutes);
-app.use('/api/monthly-payments', monthlyPaymentRoutes);
-app.use('/api/legal', legalRoutes);
 app.use('/api/documents', documentRoutes);
 
 // Rutas de productos (mantener compatibilidad)

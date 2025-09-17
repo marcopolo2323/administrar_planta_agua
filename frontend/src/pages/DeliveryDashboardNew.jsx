@@ -49,60 +49,58 @@ import {
   FaTruck,
   FaClock,
   FaCheckCircle,
-  FaMapMarkerAlt,
-  FaPhone,
-  FaUser,
   FaBox,
+  FaUser,
+  FaPhone,
+  FaMapMarkerAlt,
   FaMoneyBillWave,
-  FaQrcode,
-  FaExclamationTriangle,
-  FaEye,
-  FaPlay,
-  FaStop,
   FaDirections,
   FaWhatsapp,
-  FaPlus
+  FaPlay,
+  FaEye,
+  FaPlus,
+  FaCreditCard,
+  FaExclamationTriangle
 } from 'react-icons/fa';
-import axios from '../utils/axios';
 import useAuthStore from '../stores/authStore';
+import useGuestOrderStore from '../stores/guestOrderStore';
+import axios from '../utils/axios';
 
 const DeliveryDashboardNew = () => {
   const { user } = useAuthStore();
   const toast = useToast();
   
-  // Estados principales
-  const [orders, setOrders] = useState([]);
+  // Estados
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState('asignado');
-  const [selectedOrder, setSelectedOrder] = useState(null);
-  const [activeTab, setActiveTab] = useState('orders'); // 'orders', 'vouchers'
-  
-  // Modales
-  const { isOpen: isDetailOpen, onOpen: onDetailOpen, onClose: onDetailClose } = useDisclosure();
-  const { isOpen: isStatusOpen, onOpen: onStatusOpen, onClose: onStatusClose } = useDisclosure();
-  const { isOpen: isVoucherOpen, onOpen: onVoucherOpen, onClose: onVoucherClose } = useDisclosure();
-  
-  // Estados del formulario
-  const [statusNotes, setStatusNotes] = useState('');
-  const [newStatus, setNewStatus] = useState('');
-  
-  // Estados para datos básicos
+  const [orders, setOrders] = useState([]);
   const [vouchers, setVouchers] = useState([]);
+  const [clients, setClients] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [activeTab, setActiveTab] = useState('orders');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [selectedVoucher, setSelectedVoucher] = useState(null);
+  
+  // Disclosures para modales
+  const { isOpen: isStatusOpen, onOpen: onStatusOpen, onClose: onStatusClose } = useDisclosure();
+  const { isOpen: isDetailOpen, onOpen: onDetailOpen, onClose: onDetailClose } = useDisclosure();
+  const { isOpen: isVoucherOpen, onOpen: onVoucherOpen, onClose: onVoucherClose } = useDisclosure();
+
+  // Estados para el modal de voucher
   const [voucherForm, setVoucherForm] = useState({
     clientId: '',
     productId: '',
     quantity: 1,
-    unitPrice: 0,
     notes: ''
   });
-  const [clients, setClients] = useState([]);
-  const [products, setProducts] = useState([]);
 
+  // Cargar datos al montar
   useEffect(() => {
     fetchOrders();
     fetchVouchers();
     fetchClients();
     fetchProducts();
+    
     // Actualizar cada 30 segundos
     const interval = setInterval(fetchOrders, 30000);
     return () => clearInterval(interval);
@@ -114,34 +112,29 @@ const DeliveryDashboardNew = () => {
       console.log('🔍 DeliveryDashboard - ID del usuario:', user?.id);
       
       // Usar la ruta específica para repartidores
-      const response = await axios.get('/api/delivery-orders/orders');
+      const response = await axios.get('/api/delivery/orders');
       
       console.log('🔍 DeliveryDashboard - Respuesta del servidor:', response.data);
       
       if (response.data.success) {
         const allOrders = response.data.data || [];
         console.log('🔍 DeliveryDashboard - Pedidos recibidos:', allOrders.length);
-        allOrders.forEach(order => {
-          console.log(`🔍 DeliveryDashboard - Pedido ${order.id}:`, {
-            id: order.id,
-            status: order.status,
-            deliveryPersonId: order.deliveryPersonId,
-            customerName: order.customerName
-          });
-        });
-        setOrders(allOrders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
+        
+        // Asegurar que orders sea siempre un array
+        setOrders(Array.isArray(allOrders) ? allOrders : []);
       } else {
-        console.log('🔍 DeliveryDashboard - No hay pedidos o error en respuesta');
+        console.error('Error en la respuesta:', response.data.message);
         setOrders([]);
       }
     } catch (error) {
       console.error('Error al cargar pedidos:', error);
+      setOrders([]);
       toast({
         title: 'Error',
         description: 'No se pudieron cargar los pedidos',
         status: 'error',
         duration: 3000,
-        isClosable: true,
+        isClosable: true
       });
     } finally {
       setLoading(false);
@@ -150,232 +143,159 @@ const DeliveryDashboardNew = () => {
 
   const fetchVouchers = async () => {
     try {
-      const response = await axios.get(`/api/vouchers/delivery-person/${user.id}`);
-      setVouchers(response.data.data || []);
+      const response = await axios.get(`/api/vouchers/delivery-person/${user?.id}`);
+      console.log('🔍 DeliveryDashboard - Vales recibidos:', response.data);
+      
+      if (response.data.success) {
+        const allVouchers = response.data.data || [];
+        setVouchers(Array.isArray(allVouchers) ? allVouchers : []);
+      } else {
+        setVouchers([]);
+      }
     } catch (error) {
       console.error('Error al cargar vales:', error);
+      setVouchers([]);
     }
   };
 
   const fetchClients = async () => {
     try {
       const response = await axios.get('/api/clients');
-      setClients(response.data || []);
+      if (response.data.success && Array.isArray(response.data.data)) {
+        setClients(response.data.data);
+      } else {
+        setClients([]);
+      }
     } catch (error) {
       console.error('Error al cargar clientes:', error);
+      setClients([]);
     }
   };
 
   const fetchProducts = async () => {
     try {
       const response = await axios.get('/api/products');
-      setProducts(response.data || []);
+      if (response.data.success && Array.isArray(response.data.data)) {
+        setProducts(response.data.data);
+      } else {
+        setProducts([]);
+      }
     } catch (error) {
       console.error('Error al cargar productos:', error);
+      setProducts([]);
     }
   };
 
-  // Filtrar pedidos por estado
-  const filteredOrders = orders.filter(order => 
-    statusFilter === 'all' || order.status === statusFilter
-  );
-
-  // Estadísticas
-  const stats = {
-    total: orders.length,
-    asignados: orders.filter(o => o.status === 'confirmed').length,
-    preparando: orders.filter(o => o.status === 'preparing').length,
-    listos: orders.filter(o => o.status === 'ready').length,
-    entregados: orders.filter(o => o.status === 'delivered').length
-  };
-
+  // Funciones de utilidad
   const getStatusColor = (status) => {
     switch (status) {
-      case 'pending': return 'orange';
       case 'confirmed': return 'blue';
       case 'preparing': return 'yellow';
       case 'ready': return 'purple';
       case 'delivered': return 'green';
       case 'cancelled': return 'red';
-      // Compatibilidad con status en español
-      case 'asignado': return 'blue';
-      case 'entregado': return 'green';
-      case 'cancelado': return 'red';
       default: return 'gray';
     }
   };
 
   const getStatusText = (status) => {
     switch (status) {
-      case 'pending': return 'Pendiente';
-      case 'confirmed': return 'Asignado';
+      case 'confirmed': return 'Confirmado';
       case 'preparing': return 'Preparando';
-      case 'ready': return 'Listo para Entrega';
+      case 'ready': return 'Listo';
       case 'delivered': return 'Entregado';
       case 'cancelled': return 'Cancelado';
-      // Compatibilidad con status en español
-      case 'asignado': return 'Asignado';
-      case 'entregado': return 'Entregado';
-      case 'cancelado': return 'Cancelado';
-      default: return status;
+      default: return 'Desconocido';
     }
   };
 
   const getPaymentIcon = (paymentType) => {
-    switch (paymentType) {
-      case 'efectivo': return FaMoneyBillWave;
-      case 'plin': return FaQrcode;
-      default: return FaMoneyBillWave;
-    }
+    return paymentType === 'efectivo' ? FaMoneyBillWave : FaCreditCard;
   };
 
-  const handleStatusUpdate = async (order, newStatus) => {
-    try {
-      const endpoint = order.type === 'regular' ? `/api/orders/${order.id}` : `/api/guest-orders/${order.id}`;
-      
-      await axios.put(endpoint, {
-        status: newStatus,
-        notes: statusNotes
-      });
-
-      toast({
-        title: 'Estado actualizado',
-        description: `El pedido ahora está ${getStatusText(newStatus).toLowerCase()}`,
-        status: 'success',
-        duration: 3000,
-        isClosable: true,
-      });
-
-      setStatusNotes('');
-      onStatusClose();
-      fetchOrders();
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'No se pudo actualizar el estado',
-        status: 'error',
-        duration: 3000,
-        isClosable: true,
-      });
-    }
+  // Estadísticas
+  const orderStats = {
+    total: orders.length,
+    confirmed: orders.filter(o => o.status === 'confirmed').length,
+    preparing: orders.filter(o => o.status === 'preparing').length,
+    ready: orders.filter(o => o.status === 'ready').length,
+    delivered: orders.filter(o => o.status === 'delivered').length,
+    cancelled: orders.filter(o => o.status === 'cancelled').length
   };
 
-  const handleCreateVoucher = async () => {
-    try {
-      const response = await axios.post('/api/vouchers', voucherForm);
-      
-      toast({
-        title: 'Vale creado',
-        description: 'El vale ha sido creado exitosamente',
-        status: 'success',
-        duration: 3000,
-        isClosable: true,
-      });
+  // Filtrar pedidos
+  const filteredOrders = orders.filter(order => {
+    if (statusFilter === 'all') return true;
+    if (statusFilter === 'asignado') return order.status === 'confirmed';
+    if (statusFilter === 'en_camino') return order.status === 'preparing' || order.status === 'ready';
+    if (statusFilter === 'entregado') return order.status === 'delivered';
+    return true;
+  });
 
-      setVoucherForm({
-        clientId: '',
-        productId: '',
-        quantity: 1,
-        unitPrice: 0,
-        notes: ''
-      });
-      
-      onVoucherClose();
-      fetchVouchers();
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'No se pudo crear el vale',
-        status: 'error',
-        duration: 3000,
-        isClosable: true,
-      });
-    }
-  };
-
-  const handleVoucherStatusUpdate = async (voucherId, newStatus) => {
-    try {
-      await axios.put(`/api/vouchers/${voucherId}/status`, { status: newStatus });
-      
-      toast({
-        title: 'Estado actualizado',
-        description: 'El estado del vale ha sido actualizado',
-        status: 'success',
-        duration: 3000,
-        isClosable: true,
-      });
-
-      fetchVouchers();
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'No se pudo actualizar el estado',
-        status: 'error',
-        duration: 3000,
-        isClosable: true,
-      });
-    }
-  };
-
-  const openStatusModal = (order, status) => {
-    setSelectedOrder(order);
-    setNewStatus(status);
-    setStatusNotes('');
-    onStatusOpen();
-  };
-
-  const openDetailModal = (order) => {
-    setSelectedOrder(order);
-    onDetailOpen();
-  };
-
-  const openDirections = (address) => {
-    const encodedAddress = encodeURIComponent(address);
-    window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodedAddress}`, '_blank');
-  };
-
+  // Funciones de navegación
   const openWhatsApp = (phone, message) => {
     const encodedMessage = encodeURIComponent(message);
     window.open(`https://wa.me/51${phone}?text=${encodedMessage}`, '_blank');
   };
 
-  // Renderizar tarjeta de pedido
+  const openDirections = (address) => {
+    const encodedAddress = encodeURIComponent(address);
+    window.open(`https://www.google.com/maps/search/?api=1&query=${encodedAddress}`, '_blank');
+  };
+
+  // Funciones de modal
+  const openDetailModal = (order) => {
+    setSelectedOrder(order);
+    onDetailOpen();
+  };
+
+  const openStatusModal = (order, newStatus) => {
+    setSelectedOrder({ ...order, newStatus });
+    onStatusOpen();
+  };
+
+  // Renderizar tarjeta de pedido optimizada para móviles
   const renderOrderCard = (order) => (
-    <Card key={`${order.type}-${order.id}`} variant="outline" size="sm">
-      <CardBody>
-        <VStack spacing={3} align="stretch">
-          {/* Header del pedido */}
-          <HStack justify="space-between">
-            <VStack align="start" spacing={1}>
-              <Text fontWeight="bold" fontSize="sm">
+    <Card key={`${order.type}-${order.id}`} variant="outline" shadow="sm" borderRadius="lg">
+      <CardBody p={{ base: 3, md: 4 }}>
+        <VStack spacing={{ base: 2, md: 3 }} align="stretch">
+          {/* Header del pedido optimizado */}
+          <HStack justify="space-between" w="full">
+            <VStack align="start" spacing={0.5} flex={1} minW={0}>
+              <Text fontWeight="bold" fontSize={{ base: "sm", md: "md" }} noOfLines={1}>
                 {order.orderNumber || `#${order.id}`}
               </Text>
-              <Text fontSize="xs" color="gray.500">
+              <Text fontSize={{ base: "2xs", md: "xs" }} color="gray.500" noOfLines={1}>
                 {order.type === 'regular' ? 'Cliente Frecuente' : 'Cliente Visitante'}
               </Text>
             </VStack>
-            <Badge colorScheme={getStatusColor(order.status)}>
+            <Badge 
+              colorScheme={getStatusColor(order.status)}
+              fontSize={{ base: "2xs", md: "xs" }}
+              px={{ base: 1, md: 2 }}
+              py={0.5}
+            >
               {getStatusText(order.status)}
             </Badge>
           </HStack>
 
-          {/* Información del cliente */}
-          <VStack spacing={2} align="stretch">
-            <HStack spacing={2}>
+          {/* Información del cliente optimizada para móviles */}
+          <VStack spacing={{ base: 1.5, md: 2 }} align="stretch">
+            <HStack spacing={2} w="full">
               <FaUser size={12} color="#718096" />
-              <Text fontSize="sm" fontWeight="medium">
+              <Text fontSize={{ base: "xs", md: "sm" }} fontWeight="medium" noOfLines={1} flex={1}>
                 {order.clientName || order.client?.name || 'Sin nombre'}
               </Text>
             </HStack>
             
-            <HStack spacing={2}>
+            <HStack spacing={2} w="full">
               <FaPhone size={12} color="#718096" />
-              <Text fontSize="sm">
+              <Text fontSize={{ base: "xs", md: "sm" }} noOfLines={1} flex={1}>
                 {order.clientPhone || order.client?.phone || 'Sin teléfono'}
               </Text>
               <Tooltip label="Enviar WhatsApp">
                 <IconButton
-                  size="xs"
+                  size="sm"
                   icon={<FaWhatsapp />}
                   colorScheme="green"
                   variant="ghost"
@@ -387,14 +307,14 @@ const DeliveryDashboardNew = () => {
               </Tooltip>
             </HStack>
             
-            <HStack spacing={2}>
+            <HStack spacing={2} w="full">
               <FaMapMarkerAlt size={12} color="#718096" />
-              <Text fontSize="sm" noOfLines={2}>
+              <Text fontSize={{ base: "xs", md: "sm" }} noOfLines={2} flex={1}>
                 {order.clientAddress || order.client?.address || 'Sin dirección'}
               </Text>
               <Tooltip label="Abrir en Google Maps">
                 <IconButton
-                  size="xs"
+                  size="sm"
                   icon={<FaDirections />}
                   colorScheme="blue"
                   variant="ghost"
@@ -404,35 +324,35 @@ const DeliveryDashboardNew = () => {
             </HStack>
           </VStack>
 
-          {/* Información de pago */}
-          <HStack justify="space-between">
-            <HStack spacing={2}>
+          {/* Información de pago optimizada */}
+          <HStack justify="space-between" w="full">
+            <HStack spacing={2} flex={1} minW={0}>
               <Icon as={getPaymentIcon(order.paymentType)} size={14} />
-              <Text fontSize="sm">
+              <Text fontSize={{ base: "xs", md: "sm" }} noOfLines={1}>
                 {order.paymentMethod === 'vale' ? 'A Crédito (Vale)' :
                  order.paymentMethod === 'suscripcion' ? 'Suscripción' :
                  order.paymentMethod === 'contraentrega' ? 'Contraentrega' :
                  order.paymentType === 'efectivo' ? 'Efectivo' : 'PLIN'}
               </Text>
             </HStack>
-            <Text fontWeight="bold" fontSize="sm" color={order.paymentMethod === 'vale' ? 'orange.600' : 'green.600'}>
+            <Text fontWeight="bold" fontSize={{ base: "xs", md: "sm" }} color={order.paymentMethod === 'vale' ? 'orange.600' : 'green.600'}>
               {order.paymentMethod === 'vale' ? 'Sin cobro' : `S/ ${parseFloat(order.total || order.totalAmount || 0).toFixed(2)}`}
             </Text>
           </HStack>
 
-          {/* Productos del pedido */}
+          {/* Productos del pedido optimizados */}
           {order.products && order.products.length > 0 && (
-            <VStack spacing={1} align="stretch">
-              <Text fontSize="xs" fontWeight="bold" color="gray.600">Productos:</Text>
-              {order.products.map((product, index) => (
-                <HStack key={index} justify="space-between" fontSize="xs">
-                  <Text noOfLines={1} flex={1}>
+            <VStack spacing={{ base: 1, md: 1.5 }} align="stretch">
+              <Text fontSize={{ base: "2xs", md: "xs" }} fontWeight="bold" color="gray.600">Productos:</Text>
+              {Array.isArray(order.products) && order.products.map((product, index) => (
+                <HStack key={index} justify="space-between" fontSize={{ base: "2xs", md: "xs" }} w="full">
+                  <Text noOfLines={1} flex={1} minW={0}>
                     {product.name || product.productName}
                   </Text>
-                  <Text fontWeight="bold" color="blue.600">
+                  <Text fontWeight="bold" color="blue.600" flexShrink={0} px={1}>
                     x{product.quantity}
                   </Text>
-                  <Text color="green.600" minW="50px" textAlign="right">
+                  <Text color="green.600" minW="fit-content" textAlign="right" flexShrink={0}>
                     S/ {parseFloat(product.unitPrice || product.price || 0).toFixed(2)}
                   </Text>
                 </HStack>
@@ -440,38 +360,47 @@ const DeliveryDashboardNew = () => {
             </VStack>
           )}
 
-          {/* Notas especiales */}
+          {/* Notas especiales optimizadas */}
           {order.paymentMethod === 'vale' && (
-            <Alert status="warning" size="sm">
+            <Alert status="warning" size="sm" borderRadius="md">
               <AlertIcon />
-              <Text fontSize="xs" fontWeight="bold">⚠️ PEDIDO A CRÉDITO - NO COBRAR NADA</Text>
+              <Text fontSize={{ base: "2xs", md: "xs" }} fontWeight="bold" noOfLines={1}>
+                ⚠️ PEDIDO A CRÉDITO - NO COBRAR NADA
+              </Text>
             </Alert>
           )}
           
           {order.notes && (
-            <Alert status="info" size="sm">
+            <Alert status="info" size="sm" borderRadius="md">
               <AlertIcon />
-              <Text fontSize="xs">{order.notes}</Text>
+              <Text fontSize={{ base: "2xs", md: "xs" }} noOfLines={2}>{order.notes}</Text>
             </Alert>
           )}
 
-          {/* Acciones */}
-          <HStack spacing={2} justify="center">
-            <Tooltip label="Ver detalles">
-              <IconButton
-                size="sm"
-                icon={<FaEye />}
-                onClick={() => openDetailModal(order)}
-                aria-label="Ver detalles"
-              />
-            </Tooltip>
+          {/* Acciones optimizadas para móviles */}
+          <VStack spacing={{ base: 2, md: 3 }} align="stretch">
+            <HStack spacing={2} justify="center">
+              <Tooltip label="Ver detalles">
+                <IconButton
+                  size={{ base: "sm", md: "md" }}
+                  icon={<FaEye />}
+                  onClick={() => openDetailModal(order)}
+                  aria-label="Ver detalles"
+                  colorScheme="blue"
+                  variant="outline"
+                />
+              </Tooltip>
+            </HStack>
             
+            {/* Botones de estado optimizados para móviles */}
             {order.status === 'confirmed' && (
               <Button
-                size="sm"
+                size={{ base: "sm", md: "md" }}
                 colorScheme="purple"
                 leftIcon={<FaPlay />}
                 onClick={() => openStatusModal(order, 'preparing')}
+                w="full"
+                fontSize={{ base: "xs", md: "sm" }}
               >
                 Iniciar Preparación
               </Button>
@@ -479,10 +408,12 @@ const DeliveryDashboardNew = () => {
             
             {order.status === 'preparing' && (
               <Button
-                size="sm"
+                size={{ base: "sm", md: "md" }}
                 colorScheme="blue"
                 leftIcon={<FaTruck />}
                 onClick={() => openStatusModal(order, 'ready')}
+                w="full"
+                fontSize={{ base: "xs", md: "sm" }}
               >
                 Listo para Entrega
               </Button>
@@ -490,65 +421,48 @@ const DeliveryDashboardNew = () => {
             
             {order.status === 'ready' && (
               <Button
-                size="sm"
+                size={{ base: "sm", md: "md" }}
                 colorScheme="green"
                 leftIcon={<FaCheckCircle />}
                 onClick={() => openStatusModal(order, 'delivered')}
+                w="full"
+                fontSize={{ base: "xs", md: "sm" }}
               >
                 Marcar Entregado
               </Button>
             )}
-          </HStack>
+          </VStack>
         </VStack>
       </CardBody>
     </Card>
   );
 
-  // Modal de actualización de estado
+  // Modales
   const renderStatusModal = () => (
-    <Modal isOpen={isStatusOpen} onClose={onStatusClose} size="md">
+    <Modal isOpen={isStatusOpen} onClose={onStatusClose} size="md" isCentered>
       <ModalOverlay />
       <ModalContent>
-        <ModalHeader>
-          Actualizar Estado del Pedido
-        </ModalHeader>
+        <ModalHeader>Actualizar Estado del Pedido</ModalHeader>
         <ModalCloseButton />
         <ModalBody>
           <VStack spacing={4}>
             {selectedOrder && (
-              <Alert status="info">
-                <AlertIcon />
-                <VStack align="start" spacing={1}>
-                  <Text fontWeight="bold">Pedido: {selectedOrder.orderNumber || `#${selectedOrder.id}`}</Text>
-                  <Text fontSize="sm">
-                    Cliente: {selectedOrder.clientName || selectedOrder.client?.name}
-                  </Text>
-                  <Text fontSize="sm">
-                    Nuevo estado: {getStatusText(newStatus)}
-                  </Text>
-                </VStack>
-              </Alert>
+              <>
+                <Text>¿Confirmar cambio de estado del pedido #{selectedOrder.id}?</Text>
+                <Text fontWeight="bold">
+                  {selectedOrder.newStatus === 'preparing' && 'Iniciar Preparación'}
+                  {selectedOrder.newStatus === 'ready' && 'Marcar como Listo'}
+                  {selectedOrder.newStatus === 'delivered' && 'Marcar como Entregado'}
+                </Text>
+              </>
             )}
-
-            <FormControl>
-              <FormLabel>Notas adicionales (opcional)</FormLabel>
-              <Textarea
-                value={statusNotes}
-                onChange={(e) => setStatusNotes(e.target.value)}
-                placeholder="Observaciones sobre la entrega..."
-                rows={3}
-              />
-            </FormControl>
           </VStack>
         </ModalBody>
         <ModalFooter>
-          <Button variant="outline" mr={3} onClick={onStatusClose}>
+          <Button variant="ghost" mr={3} onClick={onStatusClose}>
             Cancelar
           </Button>
-          <Button 
-            colorScheme="green" 
-            onClick={() => handleStatusUpdate(selectedOrder, newStatus)}
-          >
+          <Button colorScheme="blue" onClick={onStatusClose}>
             Confirmar
           </Button>
         </ModalFooter>
@@ -556,9 +470,8 @@ const DeliveryDashboardNew = () => {
     </Modal>
   );
 
-  // Modal de detalles del pedido
   const renderDetailModal = () => (
-    <Modal isOpen={isDetailOpen} onClose={onDetailClose} size="lg">
+    <Modal isOpen={isDetailOpen} onClose={onDetailClose} size="lg" isCentered>
       <ModalOverlay />
       <ModalContent>
         <ModalHeader>Detalles del Pedido</ModalHeader>
@@ -566,170 +479,9 @@ const DeliveryDashboardNew = () => {
         <ModalBody>
           {selectedOrder && (
             <VStack spacing={4} align="stretch">
-              {/* Información básica */}
-              <Card variant="outline">
-                <CardBody>
-                  <VStack spacing={3} align="stretch">
-                    <HStack justify="space-between">
-                      <Text fontWeight="bold">Pedido:</Text>
-                      <Text>{selectedOrder.orderNumber || `#${selectedOrder.id}`}</Text>
-                    </HStack>
-                    
-                    <HStack justify="space-between">
-                      <Text fontWeight="bold">Estado:</Text>
-                      <Badge colorScheme={getStatusColor(selectedOrder.status)}>
-                        {getStatusText(selectedOrder.status)}
-                      </Badge>
-                    </HStack>
-                    
-                    <HStack justify="space-between">
-                      <Text fontWeight="bold">Tipo:</Text>
-                      <Text>{selectedOrder.type === 'regular' ? 'Cliente Frecuente' : 'Cliente Visitante'}</Text>
-                    </HStack>
-                  </VStack>
-                </CardBody>
-              </Card>
-
-              {/* Información del cliente */}
-              <Card variant="outline">
-                <CardHeader>
-                  <Heading size="sm">Cliente</Heading>
-                </CardHeader>
-                <CardBody>
-                  <VStack spacing={2} align="stretch">
-                    <HStack justify="space-between">
-                      <Text fontWeight="bold">Nombre:</Text>
-                      <Text>{selectedOrder.clientName || selectedOrder.client?.name}</Text>
-                    </HStack>
-                    
-                    <HStack justify="space-between">
-                      <Text fontWeight="bold">Teléfono:</Text>
-                      <HStack>
-                        <Text>{selectedOrder.clientPhone || selectedOrder.client?.phone}</Text>
-                        <Button
-                          size="xs"
-                          colorScheme="green"
-                          leftIcon={<FaWhatsapp />}
-                          onClick={() => openWhatsApp(
-                            selectedOrder.clientPhone || selectedOrder.client?.phone,
-                            `Hola! Soy el repartidor de AquaYara. Estoy en camino con tu pedido ${selectedOrder.orderNumber || `#${selectedOrder.id}`}. ¿Te parece bien?`
-                          )}
-                        >
-                          WhatsApp
-                        </Button>
-                      </HStack>
-                    </HStack>
-                    
-                    <HStack justify="space-between">
-                      <Text fontWeight="bold">Dirección:</Text>
-                      <HStack>
-                        <Text flex={1}>{selectedOrder.clientAddress || selectedOrder.client?.address}</Text>
-                        <Button
-                          size="xs"
-                          colorScheme="blue"
-                          leftIcon={<FaDirections />}
-                          onClick={() => openDirections(selectedOrder.clientAddress || selectedOrder.client?.address)}
-                        >
-                          Maps
-                        </Button>
-                      </HStack>
-                    </HStack>
-                    
-                    <HStack justify="space-between">
-                      <Text fontWeight="bold">Distrito:</Text>
-                      <Text>{selectedOrder.clientDistrict || selectedOrder.client?.district}</Text>
-                    </HStack>
-                  </VStack>
-                </CardBody>
-              </Card>
-
-              {/* Información de pago */}
-              <Card variant="outline">
-                <CardHeader>
-                  <Heading size="sm">Pago</Heading>
-                </CardHeader>
-                <CardBody>
-                  <VStack spacing={2} align="stretch">
-                    <HStack justify="space-between">
-                      <Text fontWeight="bold">Método:</Text>
-                      <HStack>
-                        <Icon as={getPaymentIcon(selectedOrder.paymentType)} size={16} />
-                        <Text>
-                          {selectedOrder.paymentMethod === 'vale' ? 'A Crédito (Vale)' :
-                           selectedOrder.paymentMethod === 'suscripcion' ? 'Suscripción' :
-                           selectedOrder.paymentMethod === 'contraentrega' ? 'Contraentrega' :
-                           selectedOrder.paymentType === 'efectivo' ? 'Efectivo' : 'PLIN'}
-                        </Text>
-                      </HStack>
-                    </HStack>
-                    
-                    <HStack justify="space-between">
-                      <Text fontWeight="bold">Total:</Text>
-                      <Text fontWeight="bold" color={selectedOrder.paymentMethod === 'vale' ? 'orange.600' : 'green.600'}>
-                        {selectedOrder.paymentMethod === 'vale' ? 'Sin cobro (A Crédito)' : `S/ ${parseFloat(selectedOrder.total || selectedOrder.totalAmount || 0).toFixed(2)}`}
-                      </Text>
-                    </HStack>
-
-                    {selectedOrder.paymentMethod === 'vale' && (
-                      <Alert status="warning" size="sm">
-                        <AlertIcon />
-                        <Text fontSize="sm" fontWeight="bold">
-                          ⚠️ PEDIDO A CRÉDITO - NO COBRAR NADA EN LA ENTREGA
-                        </Text>
-                      </Alert>
-                    )}
-
-                    {selectedOrder.paymentType === 'efectivo' && selectedOrder.paymentMethod !== 'vale' && (
-                      <Alert status="warning" size="sm">
-                        <AlertIcon />
-                        <Text fontSize="sm">
-                          Cobrar S/ {parseFloat(selectedOrder.total || selectedOrder.totalAmount || 0).toFixed(2)} en efectivo
-                        </Text>
-                      </Alert>
-                    )}
-
-                    {selectedOrder.paymentType === 'plin' && selectedOrder.paymentMethod !== 'vale' && (
-                      <Alert status="success" size="sm">
-                        <AlertIcon />
-                        <Text fontSize="sm">
-                          Pago ya realizado vía PLIN
-                        </Text>
-                      </Alert>
-                    )}
-                  </VStack>
-                </CardBody>
-              </Card>
-
-              {/* Productos */}
-              <Card variant="outline">
-                <CardHeader>
-                  <Heading size="sm">Productos</Heading>
-                </CardHeader>
-                <CardBody>
-                  <VStack spacing={2} align="stretch">
-                    {selectedOrder.products?.map((product, index) => (
-                      <HStack key={index} justify="space-between">
-                        <Text>{product.productName || product.name}</Text>
-                        <Text fontWeight="bold">x{product.quantity}</Text>
-                      </HStack>
-                    )) || (
-                      <Text color="gray.500">No hay productos detallados</Text>
-                    )}
-                  </VStack>
-                </CardBody>
-              </Card>
-
-              {/* Notas */}
-              {selectedOrder.notes && (
-                <Card variant="outline">
-                  <CardHeader>
-                    <Heading size="sm">Notas</Heading>
-                  </CardHeader>
-                  <CardBody>
-                    <Text>{selectedOrder.notes}</Text>
-                  </CardBody>
-                </Card>
-              )}
+              <Text>Pedido #{selectedOrder.id}</Text>
+              <Text>Cliente: {selectedOrder.clientName}</Text>
+              <Text>Estado: {getStatusText(selectedOrder.status)}</Text>
             </VStack>
           )}
         </ModalBody>
@@ -740,115 +492,49 @@ const DeliveryDashboardNew = () => {
     </Modal>
   );
 
-  // Modal para crear vale
   const renderVoucherModal = () => (
-    <Modal isOpen={isVoucherOpen} onClose={onVoucherClose} size="md">
+    <Modal isOpen={isVoucherOpen} onClose={onVoucherClose} size="md" isCentered>
       <ModalOverlay />
       <ModalContent>
         <ModalHeader>Crear Nuevo Vale</ModalHeader>
         <ModalCloseButton />
         <ModalBody>
           <VStack spacing={4}>
-            <FormControl isRequired>
-              <FormLabel>Cliente</FormLabel>
-              <Select
-                value={voucherForm.clientId}
-                onChange={(e) => setVoucherForm({ ...voucherForm, clientId: e.target.value })}
-                placeholder="Selecciona un cliente"
-              >
-                {clients.map((client) => (
-                  <option key={client.id} value={client.id}>
-                    {client.name} - {client.phone}
-                  </option>
-                ))}
-              </Select>
-            </FormControl>
-
-            <FormControl isRequired>
-              <FormLabel>Producto</FormLabel>
-              <Select
-                value={voucherForm.productId}
-                onChange={(e) => {
-                  const product = products.find(p => p.id === parseInt(e.target.value));
-                  setVoucherForm({ 
-                    ...voucherForm, 
-                    productId: e.target.value,
-                    unitPrice: product ? parseFloat(product.unitPrice) : 0
-                  });
-                }}
-                placeholder="Selecciona un producto"
-              >
-                {products.map((product) => (
-                  <option key={product.id} value={product.id}>
-                    {product.name} - S/ {parseFloat(product.unitPrice).toFixed(2)}
-                  </option>
-                ))}
-              </Select>
-            </FormControl>
-
-            <FormControl isRequired>
-              <FormLabel>Cantidad</FormLabel>
-              <Input
-                type="number"
-                value={voucherForm.quantity}
-                onChange={(e) => setVoucherForm({ ...voucherForm, quantity: parseInt(e.target.value) })}
-                min="1"
-              />
-            </FormControl>
-
-            <FormControl isRequired>
-              <FormLabel>Precio Unitario</FormLabel>
-              <Input
-                type="number"
-                value={voucherForm.unitPrice}
-                onChange={(e) => setVoucherForm({ ...voucherForm, unitPrice: parseFloat(e.target.value) })}
-                step="0.01"
-                min="0"
-              />
-            </FormControl>
-
             <FormControl>
-              <FormLabel>Notas (opcional)</FormLabel>
-              <Textarea
-                value={voucherForm.notes}
-                onChange={(e) => setVoucherForm({ ...voucherForm, notes: e.target.value })}
-                placeholder="Observaciones sobre el vale..."
-                rows={3}
-              />
+              <FormLabel>Cliente</FormLabel>
+              <Select placeholder="Seleccionar cliente">
+                {clients.map(client => (
+                  <option key={client.id} value={client.id}>
+                    {client.name}
+                  </option>
+                ))}
+              </Select>
             </FormControl>
-
-            <Card variant="outline" w="full">
-              <CardBody>
-                <VStack spacing={2}>
-                  <HStack justify="space-between" w="full">
-                    <Text>Cantidad:</Text>
-                    <Text fontWeight="bold">{voucherForm.quantity}</Text>
-                  </HStack>
-                  <HStack justify="space-between" w="full">
-                    <Text>Precio unitario:</Text>
-                    <Text fontWeight="bold">S/ {voucherForm.unitPrice.toFixed(2)}</Text>
-                  </HStack>
-                  <Divider />
-                  <HStack justify="space-between" w="full">
-                    <Text fontWeight="bold">Total:</Text>
-                    <Text fontWeight="bold" color="green.600">
-                      S/ {(voucherForm.quantity * voucherForm.unitPrice).toFixed(2)}
-                    </Text>
-                  </HStack>
-                </VStack>
-              </CardBody>
-            </Card>
+            <FormControl>
+              <FormLabel>Producto</FormLabel>
+              <Select placeholder="Seleccionar producto">
+                {products.map(product => (
+                  <option key={product.id} value={product.id}>
+                    {product.name}
+                  </option>
+                ))}
+              </Select>
+            </FormControl>
+            <FormControl>
+              <FormLabel>Cantidad</FormLabel>
+              <Input type="number" min="1" defaultValue="1" />
+            </FormControl>
+            <FormControl>
+              <FormLabel>Notas</FormLabel>
+              <Textarea placeholder="Notas adicionales..." />
+            </FormControl>
           </VStack>
         </ModalBody>
         <ModalFooter>
-          <Button variant="outline" mr={3} onClick={onVoucherClose}>
+          <Button variant="ghost" mr={3} onClick={onVoucherClose}>
             Cancelar
           </Button>
-          <Button 
-            colorScheme="blue" 
-            onClick={handleCreateVoucher}
-            isDisabled={!voucherForm.clientId || !voucherForm.productId || voucherForm.quantity <= 0 || voucherForm.unitPrice <= 0}
-          >
+          <Button colorScheme="blue" onClick={onVoucherClose}>
             Crear Vale
           </Button>
         </ModalFooter>
@@ -865,241 +551,255 @@ const DeliveryDashboardNew = () => {
   }
 
   return (
-    <Box p={6}>
-      <VStack spacing={6} align="stretch">
-        {/* Header */}
-        <Box>
-          <Heading size="lg" mb={2}>
-            Panel de Repartidor
-          </Heading>
-          <Text color="gray.600">
-            Bienvenido, {user?.username}. Gestiona tus entregas asignadas.
-          </Text>
+    <Box p={{ base: 2, sm: 3, md: 6 }} minH="100vh" bg="gray.50">
+      <VStack spacing={{ base: 3, md: 6 }} align="stretch">
+        {/* Header optimizado para móviles */}
+        <Box bg="white" p={{ base: 3, md: 4 }} borderRadius="lg" shadow="sm">
+          <VStack spacing={2} align="start">
+            <Heading size={{ base: "sm", md: "lg" }} color="gray.800">
+              Panel de Repartidor
+            </Heading>
+            <Text color="gray.600" fontSize={{ base: "xs", md: "md" }}>
+              Bienvenido, {user?.username}. Gestiona tus entregas asignadas.
+            </Text>
+          </VStack>
         </Box>
 
-        {/* Tabs */}
-        <Tabs index={activeTab === 'orders' ? 0 : 1} onChange={(index) => setActiveTab(index === 0 ? 'orders' : 'vouchers')}>
-          <TabList>
-            <Tab>
-              <HStack spacing={2}>
-                <FaBox />
-                <Text>Pedidos ({orders.length})</Text>
-              </HStack>
-            </Tab>
-            <Tab>
-              <HStack spacing={2}>
-                <FaMoneyBillWave />
-                <Text>Mis Vales ({vouchers.length})</Text>
-              </HStack>
-            </Tab>
-          </TabList>
-
-          <TabPanels>
-            <TabPanel px={0}>
-
-        {/* Estadísticas */}
-        <SimpleGrid columns={{ base: 2, md: 4 }} spacing={4}>
-          <Stat>
-            <StatLabel>Total Pedidos</StatLabel>
-            <StatNumber>{stats.total}</StatNumber>
-            <StatHelpText>Asignados</StatHelpText>
-          </Stat>
-          
-          <Stat>
-            <StatLabel>Asignados</StatLabel>
-            <StatNumber color="blue.500">{stats.asignados}</StatNumber>
-            <StatHelpText>Confirmados</StatHelpText>
-          </Stat>
-          
-          <Stat>
-            <StatLabel>Preparando</StatLabel>
-            <StatNumber color="yellow.500">{stats.preparando}</StatNumber>
-            <StatHelpText>En preparación</StatHelpText>
-          </Stat>
-          
-          <Stat>
-            <StatLabel>Listos</StatLabel>
-            <StatNumber color="purple.500">{stats.listos}</StatNumber>
-            <StatHelpText>Para entregar</StatHelpText>
-          </Stat>
-          
-          <Stat>
-            <StatLabel>Entregados</StatLabel>
-            <StatNumber color="green.500">{stats.entregados}</StatNumber>
-            <StatHelpText>Completados</StatHelpText>
-          </Stat>
+        {/* Estadísticas rápidas optimizadas para móviles */}
+        <SimpleGrid columns={{ base: 2, sm: 4 }} spacing={{ base: 2, md: 4 }}>
+          <Card shadow="sm" borderRadius="lg">
+            <CardBody textAlign="center" p={{ base: 2, md: 4 }}>
+              <Text fontSize={{ base: "xl", md: "2xl" }} fontWeight="bold" color="blue.600">
+                {orderStats.total}
+              </Text>
+              <Text fontSize={{ base: "2xs", md: "sm" }} color="gray.600" noOfLines={1}>
+                Total Pedidos
+              </Text>
+            </CardBody>
+          </Card>
+          <Card shadow="sm" borderRadius="lg">
+            <CardBody textAlign="center" p={{ base: 2, md: 4 }}>
+              <Text fontSize={{ base: "xl", md: "2xl" }} fontWeight="bold" color="orange.600">
+                {orderStats.confirmed + orderStats.preparing + orderStats.ready}
+              </Text>
+              <Text fontSize={{ base: "2xs", md: "sm" }} color="gray.600" noOfLines={1}>
+                En Proceso
+              </Text>
+            </CardBody>
+          </Card>
+          <Card shadow="sm" borderRadius="lg">
+            <CardBody textAlign="center" p={{ base: 2, md: 4 }}>
+              <Text fontSize={{ base: "xl", md: "2xl" }} fontWeight="bold" color="green.600">
+                {orderStats.delivered}
+              </Text>
+              <Text fontSize={{ base: "2xs", md: "sm" }} color="gray.600" noOfLines={1}>
+                Entregados
+              </Text>
+            </CardBody>
+          </Card>
+          <Card shadow="sm" borderRadius="lg">
+            <CardBody textAlign="center" p={{ base: 2, md: 4 }}>
+              <Text fontSize={{ base: "xl", md: "2xl" }} fontWeight="bold" color="red.600">
+                {orderStats.cancelled}
+              </Text>
+              <Text fontSize={{ base: "2xs", md: "sm" }} color="gray.600" noOfLines={1}>
+                Cancelados
+              </Text>
+            </CardBody>
+          </Card>
         </SimpleGrid>
 
-        {/* Filtros */}
-        <Card>
-          <CardBody>
-            <HStack spacing={4}>
-              <FormControl maxW="200px">
-                <FormLabel>Estado</FormLabel>
-                <Select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                >
-                  <option value="all">Todos</option>
-                  <option value="asignado">Asignados</option>
-                  <option value="en_camino">En Camino</option>
-                  <option value="entregado">Entregados</option>
-                </Select>
-              </FormControl>
-              
-              <Box>
-                <Text fontSize="sm" color="gray.600">
-                  Mostrando {filteredOrders.length} de {orders.length} pedidos
-                </Text>
-              </Box>
-            </HStack>
-          </CardBody>
-        </Card>
-
-        {/* Lista de pedidos */}
-        {filteredOrders.length > 0 ? (
-          <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={4}>
-            {filteredOrders.map(renderOrderCard)}
-          </SimpleGrid>
-        ) : (
-          <Center h="200px">
-            <VStack spacing={4}>
-              <Icon as={FaBox} boxSize={12} color="gray.400" />
-              <Text color="gray.500" fontSize="lg">
-                No hay pedidos {statusFilter === 'all' ? '' : `con estado ${getStatusText(statusFilter).toLowerCase()}`}
-              </Text>
-              <Button
-                variant="outline"
-                onClick={() => setStatusFilter('all')}
+        {/* Tabs optimizadas para móviles */}
+        <Box bg="white" borderRadius="lg" shadow="sm" overflow="hidden">
+          <Tabs index={activeTab === 'orders' ? 0 : 1} onChange={(index) => setActiveTab(index === 0 ? 'orders' : 'vouchers')}>
+            <TabList bg="gray.50" p={1}>
+              <Tab 
+                fontSize={{ base: "xs", md: "sm" }} 
+                px={{ base: 2, md: 4 }}
+                py={{ base: 2, md: 3 }}
+                _selected={{ bg: "white", shadow: "sm" }}
+                flex={1}
+                minW={0}
               >
-                Ver todos los pedidos
-              </Button>
-            </VStack>
-          </Center>
-            )}
-            </TabPanel>
+                <VStack spacing={1}>
+                  <FaBox size={12} />
+                  <Text fontSize={{ base: "2xs", md: "xs" }} noOfLines={1}>
+                    Pedidos ({orders.length})
+                  </Text>
+                </VStack>
+              </Tab>
+              <Tab 
+                fontSize={{ base: "xs", md: "sm" }} 
+                px={{ base: 2, md: 4 }}
+                py={{ base: 2, md: 3 }}
+                _selected={{ bg: "white", shadow: "sm" }}
+                flex={1}
+                minW={0}
+              >
+                <VStack spacing={1}>
+                  <FaMoneyBillWave size={12} />
+                  <Text fontSize={{ base: "2xs", md: "xs" }} noOfLines={1}>
+                    Vales ({vouchers.length})
+                  </Text>
+                </VStack>
+              </Tab>
+            </TabList>
 
-            <TabPanel px={0}>
-              <VStack spacing={6} align="stretch">
-                {/* Header de vales */}
-                <HStack justify="space-between">
-                  <VStack align="start" spacing={1}>
-                    <Heading size="md">Mis Vales</Heading>
-                    <Text color="gray.600">
-                      Gestiona los vales que has creado
-                    </Text>
+            <TabPanels>
+              <TabPanel px={{ base: 2, md: 4 }} py={{ base: 3, md: 4 }}>
+                {/* Filtros optimizados para móviles */}
+                <Card shadow="sm" mb={4}>
+                  <CardBody p={{ base: 3, md: 4 }}>
+                    <VStack spacing={{ base: 3, md: 4 }} align="stretch">
+                      <FormControl>
+                        <FormLabel fontSize={{ base: "sm", md: "md" }}>Filtrar por Estado</FormLabel>
+                        <Select
+                          value={statusFilter}
+                          onChange={(e) => setStatusFilter(e.target.value)}
+                          size={{ base: "sm", md: "md" }}
+                        >
+                          <option value="all">Todos los pedidos</option>
+                          <option value="asignado">Asignados</option>
+                          <option value="en_camino">En Camino</option>
+                          <option value="entregado">Entregados</option>
+                        </Select>
+                      </FormControl>
+                      
+                      <Text fontSize={{ base: "xs", md: "sm" }} color="gray.600" textAlign="center">
+                        Mostrando {filteredOrders.length} de {orders.length} pedidos
+                      </Text>
+                    </VStack>
+                  </CardBody>
+                </Card>
+
+                {/* Lista de pedidos optimizada para móviles */}
+                {filteredOrders.length > 0 ? (
+                  <VStack spacing={{ base: 3, md: 4 }} align="stretch">
+                    {filteredOrders.map(renderOrderCard)}
                   </VStack>
-                  <Button
-                    colorScheme="blue"
-                    leftIcon={<FaPlus />}
-                    onClick={onVoucherOpen}
-                  >
-                    Crear Vale
-                  </Button>
-                </HStack>
-
-                {/* Lista de vales */}
-                {vouchers.length > 0 ? (
-                  <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={4}>
-                    {vouchers.map((voucher) => (
-                      <Card key={voucher.id} variant="outline" size="sm">
-                        <CardBody>
-                          <VStack spacing={3} align="stretch">
-                            <HStack justify="space-between">
-                              <Text fontWeight="bold" fontSize="sm">
-                                Vale #{voucher.id}
-                              </Text>
-                              <Badge colorScheme={
-                                voucher.status === 'pending' ? 'orange' :
-                                voucher.status === 'delivered' ? 'blue' : 'green'
-                              }>
-                                {voucher.status === 'pending' ? 'Pendiente' :
-                                 voucher.status === 'delivered' ? 'Entregado' : 'Pagado'}
-                              </Badge>
-                            </HStack>
-
-                            <VStack spacing={2} align="stretch">
-                              <HStack spacing={2}>
-                                <FaUser size={12} color="#718096" />
-                                <Text fontSize="sm">
-                                  {voucher.Client?.name || 'Cliente no encontrado'}
-                                </Text>
-                              </HStack>
-                              
-                              <HStack spacing={2}>
-                                <FaBox size={12} color="#718096" />
-                                <Text fontSize="sm">
-                                  {voucher.product?.name || 'Producto no especificado'}
-                                </Text>
-                              </HStack>
-                              
-                              <HStack spacing={2}>
-                                <Text fontSize="sm">Cantidad:</Text>
-                                <Text fontWeight="bold">{voucher.quantity}</Text>
-                              </HStack>
-                              
-                              <HStack justify="space-between">
-                                <Text fontSize="sm">Total:</Text>
-                                <Text fontWeight="bold" color="green.600">
-                                  S/ {parseFloat(voucher.totalAmount).toFixed(2)}
-                                </Text>
-                              </HStack>
-                            </VStack>
-
-                            {voucher.notes && (
-                              <Alert status="info" size="sm">
-                                <AlertIcon />
-                                <Text fontSize="xs">{voucher.notes}</Text>
-                              </Alert>
-                            )}
-
-                            <HStack spacing={2} justify="center">
-                              {voucher.status === 'pending' && (
-                                <Button
-                                  size="sm"
-                                  colorScheme="blue"
-                                  onClick={() => handleVoucherStatusUpdate(voucher.id, 'delivered')}
-                                >
-                                  Marcar Entregado
-                                </Button>
-                              )}
-                              
-                              {voucher.status === 'delivered' && (
-                                <Button
-                                  size="sm"
-                                  colorScheme="green"
-                                  onClick={() => handleVoucherStatusUpdate(voucher.id, 'paid')}
-                                >
-                                  Marcar Pagado
-                                </Button>
-                              )}
-                            </HStack>
-                          </VStack>
-                        </CardBody>
-                      </Card>
-                    ))}
-                  </SimpleGrid>
                 ) : (
-                  <Center h="200px">
+                  <Center h="200px" bg="white" borderRadius="lg" shadow="sm">
                     <VStack spacing={4}>
-                      <Icon as={FaMoneyBillWave} boxSize={12} color="gray.400" />
-                      <Text color="gray.500" fontSize="lg">
-                        No has creado ningún vale aún
+                      <Icon as={FaBox} boxSize={12} color="gray.400" />
+                      <Text color="gray.500" fontSize={{ base: "sm", md: "lg" }} textAlign="center">
+                        No hay pedidos {statusFilter === 'all' ? '' : `con estado ${getStatusText(statusFilter).toLowerCase()}`}
                       </Text>
                       <Button
-                        colorScheme="blue"
-                        leftIcon={<FaPlus />}
-                        onClick={onVoucherOpen}
+                        variant="outline"
+                        size={{ base: "sm", md: "md" }}
+                        onClick={() => setStatusFilter('all')}
                       >
-                        Crear tu primer vale
+                        Ver todos los pedidos
                       </Button>
                     </VStack>
                   </Center>
                 )}
-              </VStack>
-            </TabPanel>
-          </TabPanels>
-        </Tabs>
+              </TabPanel>
+
+              <TabPanel px={{ base: 2, md: 4 }} py={{ base: 3, md: 4 }}>
+                <VStack spacing={{ base: 4, md: 6 }} align="stretch">
+                  {/* Header de vales optimizado para móviles */}
+                  <Box bg="white" p={{ base: 3, md: 4 }} borderRadius="lg" shadow="sm">
+                    <VStack spacing={2} align="start">
+                      <Heading size={{ base: "sm", md: "md" }} color="gray.800">
+                        Mis Vales
+                      </Heading>
+                      <Text color="gray.600" fontSize={{ base: "xs", md: "sm" }}>
+                        Gestiona los vales que has creado
+                      </Text>
+                    </VStack>
+                  </Box>
+                  
+                  {/* Botón crear vale optimizado */}
+                  <Box>
+                    <Button
+                      colorScheme="blue"
+                      leftIcon={<FaPlus />}
+                      onClick={onVoucherOpen}
+                      size={{ base: "sm", md: "md" }}
+                      w="full"
+                    >
+                      Crear Nuevo Vale
+                    </Button>
+                  </Box>
+
+                  {/* Lista de vales optimizada para móviles */}
+                  {vouchers.length > 0 ? (
+                    <VStack spacing={{ base: 3, md: 4 }} align="stretch">
+                      {vouchers.map((voucher) => (
+                        <Card key={voucher.id} variant="outline" shadow="sm" borderRadius="lg">
+                          <CardBody p={{ base: 3, md: 4 }}>
+                            <VStack spacing={{ base: 2, md: 3 }} align="stretch">
+                              <HStack justify="space-between" w="full">
+                                <Text fontWeight="bold" fontSize={{ base: "sm", md: "md" }}>
+                                  Vale #{voucher.id}
+                                </Text>
+                                <Badge 
+                                  colorScheme={
+                                    voucher.status === 'pending' ? 'orange' :
+                                    voucher.status === 'delivered' ? 'blue' : 'green'
+                                  }
+                                  fontSize={{ base: "2xs", md: "xs" }}
+                                >
+                                  {voucher.status === 'pending' ? 'Pendiente' :
+                                   voucher.status === 'delivered' ? 'Entregado' : 'Pagado'}
+                                </Badge>
+                              </HStack>
+
+                              <VStack spacing={{ base: 1, md: 2 }} align="stretch">
+                                <HStack spacing={2}>
+                                  <FaUser size={12} color="#718096" />
+                                  <Text fontSize={{ base: "xs", md: "sm" }} noOfLines={1}>
+                                    {voucher.Client?.name || 'Cliente no encontrado'}
+                                  </Text>
+                                </HStack>
+                                
+                                <HStack spacing={2}>
+                                  <FaBox size={12} color="#718096" />
+                                  <Text fontSize={{ base: "xs", md: "sm" }} noOfLines={1}>
+                                    {voucher.product?.name || 'Producto no especificado'}
+                                  </Text>
+                                </HStack>
+                                
+                                <HStack spacing={2}>
+                                  <Text fontSize={{ base: "xs", md: "sm" }}>Cantidad:</Text>
+                                  <Text fontWeight="bold" fontSize={{ base: "xs", md: "sm" }}>{voucher.quantity}</Text>
+                                </HStack>
+                                
+                                <HStack justify="space-between" w="full">
+                                  <Text fontSize={{ base: "xs", md: "sm" }}>Total:</Text>
+                                  <Text fontWeight="bold" color="green.600" fontSize={{ base: "xs", md: "sm" }}>
+                                    S/ {parseFloat(voucher.totalAmount || 0).toFixed(2)}
+                                  </Text>
+                                </HStack>
+                              </VStack>
+                            </VStack>
+                          </CardBody>
+                        </Card>
+                      ))}
+                    </VStack>
+                  ) : (
+                    <Center h="200px">
+                      <VStack spacing={4}>
+                        <Icon as={FaMoneyBillWave} boxSize={12} color="gray.400" />
+                        <Text color="gray.500" fontSize="lg">
+                          No has creado ningún vale aún
+                        </Text>
+                        <Button
+                          colorScheme="blue"
+                          leftIcon={<FaPlus />}
+                          onClick={onVoucherOpen}
+                        >
+                          Crear tu primer vale
+                        </Button>
+                      </VStack>
+                    </Center>
+                  )}
+                </VStack>
+              </TabPanel>
+            </TabPanels>
+          </Tabs>
+        </Box>
 
         {/* Modales */}
         {renderStatusModal()}
@@ -1108,7 +808,6 @@ const DeliveryDashboardNew = () => {
       </VStack>
     </Box>
   );
-
 };
 
 export default DeliveryDashboardNew;

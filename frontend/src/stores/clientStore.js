@@ -12,7 +12,13 @@ const useClientStore = create((set, get) => ({
     set({ loading: true, error: null });
     try {
       const response = await axios.get('/api/clients');
-      set({ clients: response.data, loading: false });
+      console.log('🔍 API Clientes Response:', response.data);
+      
+      // Manejar diferentes formatos de respuesta
+      const clientsData = response.data.success ? response.data.data : response.data;
+      console.log('🔍 Clientes Data:', clientsData);
+      
+      set({ clients: clientsData || [], loading: false });
     } catch (error) {
       console.error('Error al cargar clientes:', error);
       set({ error: error.message, loading: false });

@@ -50,10 +50,10 @@ const Receipt = () => {
     const loadOrder = async () => {
       try {
         if (id) {
-          // Si tenemos ID, intentar cargar desde el servidor (ruta pública)
+          // Si tenemos ID, intentar cargar desde el servidor usando token
           try {
-            // Usar la ruta pública que no requiere autenticación
-            const response = await axios.get(`/api/guest-orders/${id}`);
+            // Usar la ruta segura por token
+            const response = await axios.get(`/api/guest-orders/token/${id}`);
             if (response.data.success) {
               const orderData = response.data.data;
               // Transformar los datos para que coincidan con el formato esperado

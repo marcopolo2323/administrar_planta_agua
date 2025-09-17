@@ -50,6 +50,11 @@ const GuestOrder = sequelize.define('GuestOrder', {
     allowNull: true,
     defaultValue: 0
   },
+  accessToken: {
+    type: DataTypes.STRING(64),
+    allowNull: true,
+    unique: true
+  },
   paymentMethod: {
     type: DataTypes.ENUM('cash', 'card', 'transfer', 'yape', 'plin', 'vale', 'suscripcion', 'contraentrega'),
     defaultValue: 'cash'

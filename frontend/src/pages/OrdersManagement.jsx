@@ -62,7 +62,8 @@ import {
   FaQrcode,
   FaCheckCircle,
   FaClock,
-  FaExclamationTriangle
+  FaExclamationTriangle,
+  FaDownload
 } from 'react-icons/fa';
 import useGuestOrderStore from '../stores/guestOrderStore';
 import useDeliveryStore from '../stores/deliveryStore';
@@ -384,6 +385,56 @@ const OrdersManagement = () => {
     onDetailOpen();
   };
 
+  // Función para descargar boleta
+  const downloadReceipt = async (order) => {
+    try {
+      const response = await fetch('/api/documents/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          orderId: order.id,
+          orderType: order.type === 'guest' ? 'guest' : 'regular',
+          documentType: 'boleta',
+          orderData: order // Enviar los datos del pedido directamente
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al generar la boleta');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `boleta_${order.orderNumber || order.id}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast({
+        title: 'Boleta descargada',
+        description: 'La boleta se ha descargado correctamente',
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+    } catch (error) {
+      console.error('Error al descargar boleta:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudo descargar la boleta',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+  };
+
   // Renderizar tarjeta de pedido
   const renderOrderCard = (order) => (
     <Card key={`${order.type}-${order.id}`} variant="outline" size="sm">
@@ -514,6 +565,16 @@ const OrdersManagement = () => {
               />
             </Tooltip>
             
+            <Tooltip label="Descargar boleta">
+              <IconButton
+                size="sm"
+                icon={<FaDownload />}
+                colorScheme="green"
+                onClick={() => downloadReceipt(order)}
+                aria-label="Descargar boleta"
+              />
+            </Tooltip>
+            
             {(!order.deliveryPersonId || order.status === 'pendiente') && (
               <Tooltip label="Asignar repartidor">
                 <IconButton
@@ -553,7 +614,7 @@ const OrdersManagement = () => {
 
   // Modal de asignación de repartidor
   const renderAssignModal = () => (
-    <Modal isOpen={isAssignOpen} onClose={onAssignClose} size="md">
+    <Modal isOpen={isAssignOpen} onClose={onAssignClose} size="md" isCentered>
       <ModalOverlay />
       <ModalContent>
         <ModalHeader>Asignar Repartidor</ModalHeader>
@@ -615,7 +676,7 @@ const OrdersManagement = () => {
 
   // Modal de detalles del pedido
   const renderDetailModal = () => (
-    <Modal isOpen={isDetailOpen} onClose={onDetailClose} size="lg">
+    <Modal isOpen={isDetailOpen} onClose={onDetailClose} size="lg" isCentered>
       <ModalOverlay />
       <ModalContent>
         <ModalHeader>Detalles del Pedido</ModalHeader>

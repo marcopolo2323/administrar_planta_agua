@@ -78,8 +78,12 @@ const ValesManagement = () => {
     status: 'active'
   });
 
+  // Estados para clientes
+  const [clients, setClients] = useState([]);
+
   useEffect(() => {
     fetchVales();
+    fetchClients();
     
     // Actualizar cada 30 segundos
     const interval = setInterval(() => {
@@ -89,6 +93,17 @@ const ValesManagement = () => {
     
     return () => clearInterval(interval);
   }, []);
+
+  const fetchClients = async () => {
+    try {
+      const response = await axios.get('/api/clients');
+      if (response.data.success) {
+        setClients(response.data.data || []);
+      }
+    } catch (error) {
+      console.error('Error al cargar clientes:', error);
+    }
+  };
 
   const fetchVales = async () => {
     try {
@@ -414,7 +429,7 @@ const ValesManagement = () => {
       </VStack>
 
       {/* Modal de Crear Vale */}
-      <Modal isOpen={isCreateOpen} onClose={onCreateClose} size="md">
+      <Modal isOpen={isCreateOpen} onClose={onCreateClose} size="md" isCentered>
         <ModalOverlay />
         <ModalContent>
           <ModalHeader>Crear Nuevo Vale</ModalHeader>
@@ -428,8 +443,11 @@ const ValesManagement = () => {
                   onChange={(e) => setFormData({...formData, clientId: e.target.value})}
                   placeholder="Selecciona un cliente"
                 >
-                  {/* Aquí se cargarían los clientes */}
-                  <option value="1">Cliente de Prueba</option>
+                  {clients.map(client => (
+                    <option key={client.id} value={client.id}>
+                      {client.name} - {client.email}
+                    </option>
+                  ))}
                 </Select>
               </FormControl>
 
@@ -475,7 +493,7 @@ const ValesManagement = () => {
       </Modal>
 
       {/* Modal de Detalles */}
-      <Modal isOpen={isDetailOpen} onClose={onDetailClose} size="md">
+      <Modal isOpen={isDetailOpen} onClose={onDetailClose} size="md" isCentered>
         <ModalOverlay />
         <ModalContent>
           <ModalHeader>Detalles del Vale</ModalHeader>

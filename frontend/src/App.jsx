@@ -6,7 +6,6 @@ import ProtectedRoute from './components/ProtectedRoute';
 // Layouts
 import AuthLayout from './layouts/AuthLayout';
 import DashboardLayout from './layouts/DashboardLayout';
-import ClientLayout from './layouts/ClientLayout';
 
 // Pages
 import Login from './pages/Login';
@@ -15,16 +14,13 @@ import OrdersManagement from './pages/OrdersManagement';
 import GuestOrderNew from './pages/GuestOrderNew';
 import DeliveryFeesManagement from './pages/DeliveryFeesManagement';
 import DeliveryPersonsManagement from './pages/DeliveryPersonsManagement';
-import Reports from './pages/Reports';
 import Receipt from './pages/Receipt';
 import TrackOrder from './pages/TrackOrder';
 import DeliveryDashboardNew from './pages/DeliveryDashboardNew';
 import DeliveryLogin from './pages/DeliveryLogin';
 import SubscriptionsManagement from './pages/SubscriptionsManagement';
-import Documents from './pages/Documents';
-import CreditsManagement from './pages/CreditsManagement';
 import ValesManagement from './pages/ValesManagement';
-import AlertsManagement from './pages/AlertsManagement';
+import CollectionReport from './pages/CollectionReport';
 import ClientsManagement from './pages/ClientsManagement';
 
 const App = () => {
@@ -77,12 +73,9 @@ const App = () => {
           <Route path="delivery-fees" element={<ProtectedRoute requiredRoles={['admin']}><DeliveryFeesManagement /></ProtectedRoute>} />
           <Route path="delivery-persons" element={<ProtectedRoute requiredRoles={['admin']}><DeliveryPersonsManagement /></ProtectedRoute>} />
           <Route path="subscriptions" element={<ProtectedRoute requiredRoles={['admin']}><SubscriptionsManagement /></ProtectedRoute>} />
-          <Route path="credits" element={<ProtectedRoute requiredRoles={['admin']}><CreditsManagement /></ProtectedRoute>} />
           <Route path="vales" element={<ProtectedRoute requiredRoles={['admin']}><ValesManagement /></ProtectedRoute>} />
-          <Route path="alerts" element={<ProtectedRoute requiredRoles={['admin']}><AlertsManagement /></ProtectedRoute>} />
+          <Route path="collection-report" element={<ProtectedRoute requiredRoles={['admin']}><CollectionReport /></ProtectedRoute>} />
           <Route path="clients" element={<ProtectedRoute requiredRoles={['admin']}><ClientsManagement /></ProtectedRoute>} />
-          <Route path="documents" element={<ProtectedRoute requiredRoles={['admin']}><Documents /></ProtectedRoute>} />
-          <Route path="reports" element={<ProtectedRoute requiredRoles={['admin']}><Reports /></ProtectedRoute>} />
         </Route>
 
         {/* Ruta específica para repartidores */}

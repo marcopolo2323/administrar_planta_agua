@@ -259,116 +259,211 @@ exports.downloadDocument = async (req, res) => {
  */
 exports.generateDocumentForOrder = async (req, res) => {
   try {
-    const { orderId, orderType = 'regular', documentType = 'boleta' } = req.body;
+    const { orderId, orderType = 'regular', documentType = 'boleta', orderData: frontendOrderData } = req.body;
     
     let orderData = null;
     
-    if (orderType === 'regular') {
-      // Buscar pedido regular
-      orderData = await Order.findByPk(orderId, {
-        include: [
-          { model: Client, attributes: ['id', 'name', 'phone', 'email'] },
-          { 
-            model: OrderDetail,
-            as: 'orderDetails',
-            include: [{ model: Product, attributes: ['id', 'name', 'unitPrice'] }]
-          }
-        ]
-      });
+    // Si tenemos datos del frontend, usarlos directamente
+    if (frontendOrderData) {
+      console.log('🔍 Datos del pedido recibidos:', JSON.stringify(frontendOrderData, null, 2));
       
-      if (!orderData) {
-        return res.status(404).json({
-          success: false,
-          message: 'Pedido regular no encontrado'
-        });
+      // Mapear productos correctamente
+      let orderDetails = [];
+      
+      if (frontendOrderData.products && frontendOrderData.products.length > 0) {
+        // Para pedidos de invitados
+        orderDetails = frontendOrderData.products.map(product => ({
+          productName: product.product?.name || product.name || 'Producto',
+          quantity: product.quantity || 1,
+          unitPrice: parseFloat(product.price || product.unitPrice || 0),
+          subtotal: parseFloat(product.subtotal || (product.quantity * product.price) || 0)
+        }));
+      } else if (frontendOrderData.orderDetails && frontendOrderData.orderDetails.length > 0) {
+        // Para pedidos regulares
+        orderDetails = frontendOrderData.orderDetails.map(detail => ({
+          productName: detail.product?.name || detail.Product?.name || 'Producto',
+          quantity: detail.quantity || 1,
+          unitPrice: parseFloat(detail.unitPrice || detail.price || 0),
+          subtotal: parseFloat(detail.subtotal || (detail.quantity * detail.unitPrice) || 0)
+        }));
+      } else {
+        // Fallback: crear un producto genérico
+        orderDetails = [{
+          productName: 'Agua Purificada',
+          quantity: 1,
+          unitPrice: parseFloat(frontendOrderData.total || frontendOrderData.totalAmount || 0),
+          subtotal: parseFloat(frontendOrderData.total || frontendOrderData.totalAmount || 0)
+        }];
       }
-      
-      // Preparar datos para el generador de documentos
+
       orderData = {
-        id: orderData.id,
-        customerName: orderData.Client?.name,
-        customerPhone: orderData.Client?.phone,
-        customerEmail: orderData.Client?.email,
-        deliveryAddress: orderData.deliveryAddress,
-        deliveryDistrict: orderData.deliveryDistrict,
-        total: parseFloat(orderData.total),
-        subtotal: parseFloat(orderData.subtotal),
-        deliveryFee: parseFloat(orderData.deliveryFee || 0),
-        paymentMethod: orderData.paymentMethod,
-        orderDetails: orderData.orderDetails.map(detail => ({
-          productName: detail.Product?.name || 'Producto',
-          quantity: detail.quantity,
-          unitPrice: parseFloat(detail.unitPrice),
-          subtotal: parseFloat(detail.subtotal)
-        }))
+        id: frontendOrderData.id,
+        customerName: frontendOrderData.customerName || frontendOrderData.clientName || 'Cliente',
+        customerPhone: frontendOrderData.customerPhone || frontendOrderData.clientPhone || 'Sin teléfono',
+        customerEmail: frontendOrderData.customerEmail || frontendOrderData.clientEmail || '',
+        deliveryAddress: frontendOrderData.deliveryAddress || frontendOrderData.clientAddress || 'Sin dirección',
+        deliveryDistrict: frontendOrderData.deliveryDistrict || frontendOrderData.clientDistrict || '',
+        total: parseFloat(frontendOrderData.total || frontendOrderData.totalAmount || 0),
+        subtotal: parseFloat(frontendOrderData.subtotal || (orderDetails.reduce((sum, item) => sum + item.subtotal, 0))),
+        deliveryFee: parseFloat(frontendOrderData.deliveryFee || 0),
+        paymentMethod: frontendOrderData.paymentMethod || frontendOrderData.paymentType || 'Efectivo',
+        orderDetails: orderDetails
       };
-    } else if (orderType === 'guest') {
-      // Buscar pedido de invitado
-      orderData = await GuestOrder.findByPk(orderId, {
-        include: [
-          {
-            model: GuestOrderProduct,
-            as: 'products',
-            include: [{ model: Product, attributes: ['id', 'name', 'unitPrice'] }]
-          }
-        ]
-      });
       
-      if (!orderData) {
-        return res.status(404).json({
-          success: false,
-          message: 'Pedido de invitado no encontrado'
-        });
-      }
-      
-      // Preparar datos para el generador de documentos
-      orderData = {
-        id: orderData.id,
-        customerName: orderData.customerName,
-        customerPhone: orderData.customerPhone,
-        customerEmail: orderData.customerEmail,
-        deliveryAddress: orderData.deliveryAddress,
-        deliveryDistrict: orderData.deliveryDistrict,
-        total: parseFloat(orderData.totalAmount),
-        subtotal: parseFloat(orderData.subtotal),
-        deliveryFee: parseFloat(orderData.deliveryFee || 0),
-        paymentMethod: orderData.paymentMethod,
-        orderDetails: orderData.products.map(item => ({
-          productName: item.Product?.name || 'Producto',
-          quantity: item.quantity,
-          unitPrice: parseFloat(item.price),
-          subtotal: parseFloat(item.subtotal)
-        }))
-      };
+      console.log('🔍 Productos mapeados:', JSON.stringify(orderDetails, null, 2));
+      console.log('🔍 Datos finales del pedido:', JSON.stringify(orderData, null, 2));
     } else {
-      return res.status(400).json({
-        success: false,
-        message: 'Tipo de pedido no válido'
-      });
+      // Fallback: buscar en la base de datos
+      if (orderType === 'regular') {
+        // Buscar pedido regular
+        orderData = await Order.findByPk(orderId, {
+          include: [
+            { model: Client, attributes: ['id', 'name', 'phone', 'email'] },
+            { 
+              model: OrderDetail,
+              as: 'orderDetails',
+              include: [{ 
+                model: Product, 
+                as: 'Product',
+                attributes: ['id', 'name', 'unitPrice'] 
+              }]
+            }
+          ]
+        });
+        
+        if (!orderData) {
+          return res.status(404).json({
+            success: false,
+            message: 'Pedido regular no encontrado'
+          });
+        }
+        
+        // Preparar datos para el generador de documentos
+        orderData = {
+          id: orderData.id,
+          customerName: orderData.Client?.name,
+          customerPhone: orderData.Client?.phone,
+          customerEmail: orderData.Client?.email,
+          deliveryAddress: orderData.deliveryAddress,
+          deliveryDistrict: orderData.deliveryDistrict,
+          total: parseFloat(orderData.total),
+          subtotal: parseFloat(orderData.subtotal),
+          deliveryFee: parseFloat(orderData.deliveryFee || 0),
+          paymentMethod: orderData.paymentMethod,
+          orderDetails: orderData.orderDetails.map(detail => ({
+            productName: detail.Product?.name || 'Producto',
+            quantity: detail.quantity,
+            unitPrice: parseFloat(detail.unitPrice),
+            subtotal: parseFloat(detail.subtotal)
+          }))
+        };
+      } else if (orderType === 'guest') {
+        // Buscar pedido de invitado
+        orderData = await GuestOrder.findByPk(orderId, {
+          include: [
+            {
+              model: GuestOrderProduct,
+              as: 'products',
+              include: [{ 
+                model: Product, 
+                as: 'product',
+                attributes: ['id', 'name', 'unitPrice'] 
+              }]
+            }
+          ]
+        });
+        
+        if (!orderData) {
+          return res.status(404).json({
+            success: false,
+            message: 'Pedido de invitado no encontrado'
+          });
+        }
+        
+        // Preparar datos para el generador de documentos
+        orderData = {
+          id: orderData.id,
+          customerName: orderData.customerName,
+          customerPhone: orderData.customerPhone,
+          customerEmail: orderData.customerEmail,
+          deliveryAddress: orderData.deliveryAddress,
+          deliveryDistrict: orderData.deliveryDistrict,
+          total: parseFloat(orderData.totalAmount),
+          subtotal: parseFloat(orderData.subtotal),
+          deliveryFee: parseFloat(orderData.deliveryFee || 0),
+          paymentMethod: orderData.paymentMethod,
+          orderDetails: orderData.products.map(item => ({
+            productName: item.Product?.name || 'Producto',
+            quantity: item.quantity,
+            unitPrice: parseFloat(item.price),
+            subtotal: parseFloat(item.subtotal)
+          }))
+        };
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: 'Tipo de pedido no válido'
+        });
+      }
     }
     
-    // Generar el documento
-    const filePath = await documentGeneratorService.generateDocumentPDF(
-      orderData,
-      documentType
-    );
-    
-    // Obtener información del archivo generado
-    const stats = await fs.stat(filePath);
-    const filename = path.basename(filePath);
-    
-    res.json({
-      success: true,
-      message: 'Documento generado correctamente',
-      data: {
-        filename,
-        filePath,
-        size: stats.size,
-        type: documentType,
-        orderId: orderData.id,
-        orderType
-      }
+    // Generar el documento usando PDFKit directamente
+    const PDFDocument = require('pdfkit');
+    const doc = new PDFDocument({
+      size: 'A4',
+      margin: 50
     });
+    
+    // Configurar headers para descarga
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${documentType}_${orderData.id}.pdf"`);
+    
+    // Pipe del documento a la respuesta
+    doc.pipe(res);
+    
+    // Encabezado
+    doc.fontSize(20).text(`${documentType.toUpperCase()}`, 50, 50);
+    doc.fontSize(16).text(`Pedido #${orderData.id}`, 50, 100);
+    
+    // Información del cliente
+    doc.fontSize(12).text(`Cliente: ${orderData.customerName || 'N/A'}`, 50, 130);
+    doc.text(`Teléfono: ${orderData.customerPhone || 'N/A'}`, 50, 150);
+    doc.text(`Dirección: ${orderData.deliveryAddress || 'N/A'}`, 50, 170);
+    
+    // Productos
+    doc.text('Productos:', 50, 220);
+    let yPosition = 250;
+    
+    if (orderData.orderDetails && orderData.orderDetails.length > 0) {
+      orderData.orderDetails.forEach(item => {
+        doc.text(`• ${item.productName} - Cantidad: ${item.quantity} - Precio: S/ ${item.unitPrice}`, 70, yPosition);
+        yPosition += 20;
+      });
+    } else {
+      doc.text('• Sin productos detallados', 70, yPosition);
+      yPosition += 20;
+    }
+    
+    // Totales
+    yPosition += 20;
+    doc.text(`Subtotal: S/ ${orderData.subtotal || 0}`, 50, yPosition);
+    yPosition += 20;
+    doc.text(`Flete: S/ ${orderData.deliveryFee || 0}`, 50, yPosition);
+    yPosition += 20;
+    doc.fontSize(14).text(`TOTAL: S/ ${orderData.total || 0}`, 50, yPosition);
+    
+    // Método de pago
+    yPosition += 40;
+    doc.fontSize(12).text(`Método de pago: ${orderData.paymentMethod || 'Efectivo'}`, 50, yPosition);
+    
+    // Pie de página
+    const pageHeight = doc.page.height;
+    const footerY = pageHeight - 100;
+    doc.fontSize(10).text('Gracias por su compra', { align: 'center', y: footerY });
+    doc.text('Planta de Agua Aquayara - Agua de calidad para su hogar', { align: 'center', y: footerY + 15 });
+    
+    // Finalizar documento
+    doc.end();
   } catch (error) {
     console.error('Error al generar documento:', error);
     res.status(500).json({

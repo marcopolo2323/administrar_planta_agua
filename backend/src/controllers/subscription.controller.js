@@ -168,6 +168,40 @@ const getAllSubscriptions = async (req, res) => {
   }
 };
 
+// Actualizar suscripción
+const updateSubscription = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, remainingBottles, notes } = req.body;
+
+    const subscription = await Subscription.findByPk(id);
+    if (!subscription) {
+      return res.status(404).json({
+        success: false,
+        message: 'Suscripción no encontrada'
+      });
+    }
+
+    await subscription.update({
+      status: status || subscription.status,
+      remainingBottles: remainingBottles !== undefined ? parseInt(remainingBottles) : subscription.remainingBottles,
+      notes: notes !== undefined ? notes : subscription.notes
+    });
+
+    res.json({
+      success: true,
+      data: subscription
+    });
+  } catch (error) {
+    console.error('Error al actualizar suscripción:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+};
+
 // Obtener estadísticas de suscripciones
 const getSubscriptionStats = async (req, res) => {
   try {
@@ -208,5 +242,6 @@ module.exports = {
   createSubscription,
   useSubscriptionBottles,
   getAllSubscriptions,
+  updateSubscription,
   getSubscriptionStats
 };

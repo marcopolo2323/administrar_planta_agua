@@ -66,16 +66,10 @@ const DashboardLayout = () => {
     
     // Pagos y créditos
     { to: '/dashboard/vales', label: 'Gestión de Vales', icon: '🎫', adminOnly: true },
+    { to: '/dashboard/collection-report', label: 'Reporte de Cobranza', icon: '💰', adminOnly: true },
     
     // Suscripciones
     { to: '/dashboard/subscriptions', label: 'Suscripciones', icon: '📅', adminOnly: true },
-    
-    // Alertas y notificaciones
-    { to: '/dashboard/alerts', label: 'Centro de Alertas', icon: '🚨', adminOnly: true },
-    
-    // Documentos y reportes
-    { to: '/dashboard/documents', label: 'Documentos', icon: '📄', adminOnly: true },
-    { to: '/dashboard/reports', label: 'Reportes', icon: '📊', adminOnly: true },
     
     // Configuración del sistema
     { to: '/dashboard/delivery-fees', label: 'Tarifas de Envío', icon: '🚚', adminOnly: true },
@@ -99,6 +93,11 @@ const DashboardLayout = () => {
   };
 
   const menuItems = getMenuItems();
+
+  // Función para cerrar el menú móvil
+  const closeMobileMenu = () => {
+    setIsMobileMenuOpen(false);
+  };
 
   const SidebarContent = () => (
     <VStack spacing={0} h="full" align="stretch">
@@ -128,6 +127,7 @@ const DashboardLayout = () => {
             _active={{ bg: 'whiteAlpha.300' }}
             size="sm"
             h="40px"
+            onClick={closeMobileMenu}
           >
             {item.label}
           </Button>
@@ -156,7 +156,7 @@ const DashboardLayout = () => {
             </VStack>
           </MenuButton>
           <MenuList>
-            <MenuItem onClick={handleLogout} color="red.500">
+            <MenuItem onClick={() => { handleLogout(); closeMobileMenu(); }} color="red.500">
               Cerrar Sesión
             </MenuItem>
           </MenuList>
@@ -187,6 +187,8 @@ const DashboardLayout = () => {
         onClose={() => setIsMobileMenuOpen(false)}
         placement="left"
         size="xs"
+        closeOnOverlayClick={true}
+        closeOnEsc={true}
       >
         <DrawerOverlay />
         <DrawerContent>

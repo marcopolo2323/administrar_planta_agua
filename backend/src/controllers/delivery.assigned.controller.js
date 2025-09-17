@@ -1,4 +1,4 @@
-const { GuestOrder, GuestOrderProduct, Product, District, DeliveryFee, Order, OrderDetail, Client, DeliveryPerson } = require('../models');
+const { GuestOrder, GuestOrderProduct, Product, District, DeliveryFee, Client, DeliveryPerson } = require('../models');
 const { Op } = require('sequelize');
 
 // Obtener pedidos asignados al repartidor autenticado (tanto regulares como de invitados)
@@ -24,19 +24,14 @@ exports.getAssignedOrders = async (req, res) => {
     const deliveryPersonId = deliveryPerson.id;
     console.log('📋 Repartidor encontrado con ID:', deliveryPersonId);
 
-    // Construir filtros para ambos tipos de pedidos
+    // Construir filtros para pedidos de invitados
     const guestOrderWhere = {
-      deliveryPersonId: deliveryPersonId
-    };
-    
-    const regularOrderWhere = {
       deliveryPersonId: deliveryPersonId
     };
 
     // Filtrar por estado si se proporciona
     if (status && status !== 'all') {
       guestOrderWhere.status = status;
-      regularOrderWhere.status = status;
     }
 
     // Obtener pedidos de invitados
@@ -63,37 +58,23 @@ exports.getAssignedOrders = async (req, res) => {
       order: [['createdAt', 'DESC']]
     });
 
-    // Obtener pedidos regulares
-    const regularOrders = await Order.findAll({
-      where: regularOrderWhere,
-      include: [
-        {
-          model: OrderDetail,
-          as: 'orderDetails',
-          include: [
-            {
-              model: Product,
-              as: 'product',
-              attributes: ['id', 'name', 'description', 'image']
-            }
-          ]
-        },
-        {
-          model: Client,
-          attributes: ['id', 'name', 'phone', 'address', 'district']
-        }
-      ],
-      order: [['createdAt', 'DESC']]
-    });
-
     console.log('📦 Pedidos de invitados encontrados:', guestOrders.length);
-    console.log('📦 Pedidos regulares encontrados:', regularOrders.length);
+    if (guestOrders.length > 0) {
+      console.log('🔍 Primer pedido completo:', JSON.stringify(guestOrders[0], null, 2));
+    }
 
     // Formatear pedidos de invitados
     const formattedGuestOrders = guestOrders.map(order => ({
       id: order.id,
       type: 'guest',
-      orderNumber: `INV-${order.id.toString().padStart(3, '0')}`,
+      orderNumber: `PED-${order.id.toString().padStart(3, '0')}`,
+      // Datos del cliente (compatibilidad con frontend)
+      clientName: order.customerName,
+      clientPhone: order.customerPhone,
+      clientEmail: order.customerEmail,
+      clientAddress: order.deliveryAddress,
+      clientDistrict: order.deliveryDistrict,
+      // Datos originales (mantener para compatibilidad)
       customerName: order.customerName,
       customerPhone: order.customerPhone,
       customerEmail: order.customerEmail,
@@ -103,53 +84,36 @@ exports.getAssignedOrders = async (req, res) => {
       deliveryNotes: order.deliveryNotes,
       products: order.products?.map(item => ({
         name: item.product?.name || 'Producto no encontrado',
+        productName: item.product?.name || 'Producto no encontrado',
         quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        subtotal: item.subtotal
+        unitPrice: parseFloat(item.unitPrice || item.price || 0),
+        price: parseFloat(item.price || item.unitPrice || 0),
+        subtotal: parseFloat(item.subtotal || 0)
       })) || [],
       subtotal: parseFloat(order.subtotal || 0),
       deliveryFee: parseFloat(order.deliveryFee || 0),
       totalAmount: parseFloat(order.totalAmount || 0),
+      total: parseFloat(order.totalAmount || 0),
       status: order.status,
       paymentMethod: order.paymentMethod,
+      paymentType: order.paymentMethod === 'cash' ? 'efectivo' : 
+                   order.paymentMethod === 'plin' ? 'plin' :
+                   order.paymentMethod === 'vale' ? 'vale' :
+                   order.paymentMethod === 'suscripcion' ? 'suscripcion' :
+                   order.paymentMethod === 'contraentrega' ? 'contraentrega' : 'efectivo',
       paymentReference: order.paymentReference,
       createdAt: order.createdAt,
       updatedAt: order.updatedAt
     }));
 
-    // Formatear pedidos regulares
-    const formattedRegularOrders = regularOrders.map(order => ({
-      id: order.id,
-      type: 'regular',
-      orderNumber: `PED-${order.id.toString().padStart(3, '0')}`,
-      customerName: order.Client?.name || 'Cliente no encontrado',
-      customerPhone: order.Client?.phone || '',
-      customerEmail: order.Client?.email || '',
-      deliveryAddress: order.Client?.address || order.deliveryAddress,
-      deliveryDistrict: order.Client?.district || order.deliveryDistrict,
-      deliveryReference: order.deliveryReference,
-      deliveryNotes: order.notes,
-      products: order.orderDetails?.map(detail => ({
-        name: detail.product?.name || 'Producto no encontrado',
-        quantity: detail.quantity,
-        unitPrice: detail.unitPrice,
-        subtotal: detail.subtotal
-      })) || [],
-      subtotal: parseFloat(order.subtotal || 0),
-      deliveryFee: parseFloat(order.deliveryFee || 0),
-      totalAmount: parseFloat(order.total || 0),
-      status: order.status,
-      paymentMethod: order.paymentMethod,
-      paymentReference: order.paymentReference,
-      createdAt: order.createdAt,
-      updatedAt: order.updatedAt
-    }));
-
-    // Combinar y ordenar todos los pedidos
-    const allOrders = [...formattedGuestOrders, ...formattedRegularOrders]
+    // Ordenar pedidos de invitados
+    const allOrders = formattedGuestOrders
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-    console.log('📋 Total de pedidos combinados:', allOrders.length);
+    console.log('📋 Total de pedidos:', allOrders.length);
+    if (allOrders.length > 0) {
+      console.log('🔍 Primer pedido formateado:', JSON.stringify(allOrders[0], null, 2));
+    }
 
     res.json({
       success: true,
@@ -347,22 +311,10 @@ exports.getDeliveryStats = async (req, res) => {
       } 
     });
 
-    // Estadísticas de pedidos regulares
-    const regularTotalOrders = await Order.count({ where: whereClause });
-    const regularDeliveredOrders = await Order.count({ 
-      where: { ...whereClause, status: 'entregado' } 
-    });
-    const regularPendingOrders = await Order.count({ 
-      where: { 
-        ...whereClause, 
-        status: { [Op.in]: ['confirmado', 'en_preparacion', 'en_camino'] } 
-      } 
-    });
-
-    // Totales combinados
-    const totalOrders = guestTotalOrders + regularTotalOrders;
-    const deliveredOrders = guestDeliveredOrders + regularDeliveredOrders;
-    const pendingOrders = guestPendingOrders + regularPendingOrders;
+    // Totales (solo pedidos de invitados)
+    const totalOrders = guestTotalOrders;
+    const deliveredOrders = guestDeliveredOrders;
+    const pendingOrders = guestPendingOrders;
 
     // Calcular total de entregas
     const guestOrders = await GuestOrder.findAll({
@@ -370,14 +322,7 @@ exports.getDeliveryStats = async (req, res) => {
       attributes: ['totalAmount']
     });
     
-    const regularOrders = await Order.findAll({
-      where: { ...whereClause, status: 'entregado' },
-      attributes: ['total']
-    });
-    
-    const guestTotalDeliveries = guestOrders.reduce((sum, order) => sum + parseFloat(order.totalAmount || 0), 0);
-    const regularTotalDeliveries = regularOrders.reduce((sum, order) => sum + parseFloat(order.total || 0), 0);
-    const totalDeliveries = guestTotalDeliveries + regularTotalDeliveries;
+    const totalDeliveries = guestOrders.reduce((sum, order) => sum + parseFloat(order.totalAmount || 0), 0);
 
     res.json({
       success: true,
@@ -391,11 +336,6 @@ exports.getDeliveryStats = async (req, res) => {
           total: guestTotalOrders,
           delivered: guestDeliveredOrders,
           pending: guestPendingOrders
-        },
-        regularOrders: {
-          total: regularTotalOrders,
-          delivered: regularDeliveredOrders,
-          pending: regularPendingOrders
         }
       }
     });

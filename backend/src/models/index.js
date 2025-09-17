@@ -11,9 +11,7 @@ const DeliveryFee = require('./deliveryFee.model');
 const District = require('./district.model');
 const Voucher = require('./voucher.model');
 const Vale = require('./vale.model');
-const ClientPreference = require('./clientPreference.model');
 const Subscription = require('./subscription.model');
-const SubscriptionPlan = require('./subscriptionPlan.model');
 
 // Definir relaciones después de que todos los modelos estén inicializados
 // Relaciones entre User y Client (comentadas - userId eliminado del modelo Client)
@@ -58,9 +56,6 @@ User.hasMany(Voucher, { foreignKey: 'deliveryPersonId', as: 'deliveryVouchers' }
 Client.hasMany(Vale, { foreignKey: 'clientId', as: 'vales' });
 Vale.belongsTo(Client, { foreignKey: 'clientId', as: 'client' });
 
-// Relaciones de preferencias de cliente
-Client.hasMany(ClientPreference, { foreignKey: 'clientId', as: 'preferences' });
-ClientPreference.belongsTo(Client, { foreignKey: 'clientId', as: 'client' });
 Voucher.belongsTo(User, { foreignKey: 'deliveryPersonId', as: 'deliveryPerson' });
 
 Product.hasMany(Voucher, { foreignKey: 'productId', as: 'vouchers' });
@@ -78,8 +73,6 @@ User.hasMany(GuestOrder, { foreignKey: 'deliveryPersonId', as: 'assignedGuestOrd
 Client.hasMany(Subscription, { foreignKey: 'clientId', as: 'subscriptions' });
 Subscription.belongsTo(Client, { foreignKey: 'clientId', as: 'client' });
 
-SubscriptionPlan.hasMany(Subscription, { foreignKey: 'planId', as: 'subscriptions' });
-Subscription.belongsTo(SubscriptionPlan, { foreignKey: 'planId', as: 'plan' });
 
 // Relaciones de GuestOrder con Subscription
 GuestOrder.belongsTo(Subscription, { foreignKey: 'subscriptionId', as: 'subscription' });
@@ -99,7 +92,5 @@ module.exports = {
   District,
   Voucher,
   Vale,
-  ClientPreference,
-  Subscription,
-  SubscriptionPlan
+  Subscription
 };

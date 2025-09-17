@@ -1,4 +1,5 @@
 const { GuestOrder, Product, GuestOrderProduct, User, Voucher, Vale } = require('../models');
+const { generateUniqueAccessToken } = require('../utils/security');
 
 // Crear un nuevo pedido de invitado o cliente frecuente
 exports.createGuestOrder = async (req, res) => {
@@ -93,7 +94,11 @@ exports.createGuestOrder = async (req, res) => {
       subscriptionId: req.body.subscriptionId || null
     });
     
-    console.log('Pedido creado con ID:', guestOrder.id);
+    // Generar token de acceso único para el pedido
+    const accessToken = await generateUniqueAccessToken(GuestOrder);
+    await guestOrder.update({ accessToken });
+    
+    console.log('Pedido creado con ID:', guestOrder.id, 'y token:', accessToken);
 
     // Crear los productos del pedido
     const orderProducts = await Promise.all(
@@ -223,6 +228,7 @@ exports.createGuestOrder = async (req, res) => {
     res.status(201).json({
       success: true,
       data: completeOrder,
+      accessToken: accessToken,
       message: clientId ? 'Pedido creado y vales generados automáticamente' : 'Pedido creado correctamente'
     });
   } catch (error) {
@@ -291,7 +297,7 @@ exports.getGuestOrders = async (req, res) => {
   }
 };
 
-// Obtener un pedido específico
+// Obtener un pedido específico por ID (requiere autenticación)
 exports.getGuestOrderById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -331,6 +337,62 @@ exports.getGuestOrderById = async (req, res) => {
     });
   } catch (error) {
     console.error('Error al obtener pedido:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+};
+
+// Obtener un pedido específico por token de acceso (ruta pública segura)
+exports.getGuestOrderByToken = async (req, res) => {
+  try {
+    const { token } = req.params;
+    
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        message: 'Token de acceso requerido'
+      });
+    }
+    
+    const order = await GuestOrder.findOne({
+      where: { accessToken: token },
+      include: [
+        {
+          model: GuestOrderProduct,
+          as: 'products',
+          include: [
+            {
+              model: Product,
+              as: 'product',
+              attributes: ['id', 'name', 'unitPrice']
+            }
+          ]
+        },
+        {
+          model: User,
+          as: 'deliveryPerson',
+          attributes: ['id', 'username', 'email'],
+          required: false
+        }
+      ]
+    });
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Pedido no encontrado o token inválido'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: order
+    });
+  } catch (error) {
+    console.error('Error al obtener pedido por token:', error);
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor',

@@ -420,7 +420,7 @@ const DeliveryPersonsManagement = () => {
       )}
 
       {/* Modal de formulario */}
-      <Modal isOpen={isOpen} onClose={onClose} size="lg">
+      <Modal isOpen={isOpen} onClose={onClose} size="lg" isCentered>
         <ModalOverlay />
         <ModalContent>
           <form onSubmit={handleSubmit}>

@@ -9,7 +9,13 @@
     "preview": "vite preview",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0"
   },
-  "keywords": ["agua", "gestión", "ventas", "pedidos", "aquayara"],
+  "keywords": [
+    "agua",
+    "gestión",
+    "ventas",
+    "pedidos",
+    "aquayara"
+  ],
   "author": "AquaYara Team",
   "license": "MIT",
   "dependencies": {

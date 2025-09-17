@@ -12,5 +12,6 @@ router.post('/', authMiddleware, requireAdmin, valeController.createVale);
 router.put('/:id', authMiddleware, requireAdmin, valeController.updateVale);
 router.post('/use', authMiddleware, requireAdmin, valeController.useVale);
 router.get('/stats', authMiddleware, requireAdmin, valeController.getValeStats);
+router.get('/monthly-report', authMiddleware, requireAdmin, valeController.getMonthlyCollectionReport);
 
 module.exports = router;

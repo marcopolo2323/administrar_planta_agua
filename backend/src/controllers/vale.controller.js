@@ -1,6 +1,4 @@
-const Vale = require('../models/vale.model');
-const Client = require('../models/client.model');
-const GuestOrder = require('../models/guestOrder.model');
+const { Vale, Client, GuestOrder } = require('../models');
 const { Op } = require('sequelize');
 
 // Obtener todos los vales
@@ -217,6 +215,107 @@ const useVale = async (req, res) => {
   }
 };
 
+// Obtener reporte de cobranza mensual por cliente
+const getMonthlyCollectionReport = async (req, res) => {
+  try {
+    const { year, month } = req.query;
+    
+    // Si no se especifica año/mes, usar el mes actual
+    const currentDate = new Date();
+    const targetYear = year ? parseInt(year) : currentDate.getFullYear();
+    const targetMonth = month ? parseInt(month) : currentDate.getMonth() + 1;
+    
+    // Crear fechas de inicio y fin del mes
+    const startDate = new Date(targetYear, targetMonth - 1, 1);
+    const endDate = new Date(targetYear, targetMonth, 0, 23, 59, 59);
+    
+    console.log(`Generando reporte de cobranza para ${targetMonth}/${targetYear}`);
+    console.log(`Rango de fechas: ${startDate.toISOString()} - ${endDate.toISOString()}`);
+    
+    // Obtener vales activos del mes especificado
+    const vales = await Vale.findAll({
+      where: {
+        status: 'active',
+        createdAt: {
+          [Op.between]: [startDate, endDate]
+        }
+      },
+      include: [{
+        model: Client,
+        as: 'client',
+        attributes: ['id', 'name', 'email', 'phone', 'documentNumber']
+      }],
+      order: [['clientId', 'ASC']]
+    });
+    
+    // Agrupar por cliente y calcular totales
+    const clientTotals = {};
+    
+    vales.forEach(vale => {
+      const clientId = vale.clientId;
+      if (!clientTotals[clientId]) {
+        clientTotals[clientId] = {
+          client: vale.client,
+          totalAmount: 0,
+          usedAmount: 0,
+          remainingAmount: 0,
+          valesCount: 0,
+          vales: []
+        };
+      }
+      
+      clientTotals[clientId].totalAmount += parseFloat(vale.amount);
+      clientTotals[clientId].usedAmount += parseFloat(vale.usedAmount);
+      clientTotals[clientId].remainingAmount += parseFloat(vale.remainingAmount);
+      clientTotals[clientId].valesCount += 1;
+      clientTotals[clientId].vales.push({
+        id: vale.id,
+        amount: parseFloat(vale.amount),
+        usedAmount: parseFloat(vale.usedAmount),
+        remainingAmount: parseFloat(vale.remainingAmount),
+        description: vale.description,
+        dueDate: vale.dueDate,
+        createdAt: vale.createdAt
+      });
+    });
+    
+    // Convertir a array y ordenar por monto restante (deuda)
+    const reportData = Object.values(clientTotals)
+      .filter(client => client.remainingAmount > 0) // Solo clientes con deuda
+      .sort((a, b) => b.remainingAmount - a.remainingAmount);
+    
+    // Calcular totales generales
+    const totalDebt = reportData.reduce((sum, client) => sum + client.remainingAmount, 0);
+    const totalClients = reportData.length;
+    const totalVales = reportData.reduce((sum, client) => sum + client.valesCount, 0);
+    
+    res.json({
+      success: true,
+      data: {
+        period: {
+          year: targetYear,
+          month: targetMonth,
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString()
+        },
+        summary: {
+          totalClients,
+          totalVales,
+          totalDebt: parseFloat(totalDebt.toFixed(2))
+        },
+        clients: reportData
+      }
+    });
+  } catch (error) {
+    console.error('Error al obtener reporte de cobranza:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+};
+
 // Obtener estadísticas de vales
 const getValeStats = async (req, res) => {
   try {
@@ -257,5 +356,6 @@ module.exports = {
   createVale,
   updateVale,
   useVale,
-  getValeStats
+  getValeStats,
+  getMonthlyCollectionReport
 };

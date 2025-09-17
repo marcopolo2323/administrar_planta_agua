@@ -54,16 +54,14 @@ async function seedDatabase() {
       phone: '911111111'
     });
 
-    // Cliente frecuente
-    const clienteFrecuente = await User.create({
-      username: 'cliente1',
-      email: 'cliente1@example.com',
-      password: 'cliente123',
-      role: 'cliente',
-      name: 'Juan Pérez',
-      phone: '966666666',
-      address: 'Av. Los Pinos 123',
-      district: 'San Isidro'
+    // Usuario vendedor adicional
+    const vendedor2 = await User.create({
+      username: 'vendedor2',
+      email: 'vendedor2@aguapura.com',
+      password: 'vendedor123',
+      role: 'vendedor',
+      name: 'Vendedor Secundario',
+      phone: '977777777'
     });
 
     console.log('✅ Usuarios creados correctamente');
@@ -71,7 +69,8 @@ async function seedDatabase() {
     // 2. CREAR CLIENTES
     console.log('👤 Creando clientes...');
     
-    const clientes = await Client.bulkCreate([
+    // Crear clientes básicos primero
+    const clientesBasicos = await Client.bulkCreate([
       {
         name: 'Juan Pérez',
         documentType: 'DNI',
@@ -86,7 +85,7 @@ async function seedDatabase() {
         currentDebt: 0.00,
         paymentDueDay: 30,
         active: true,
-        userId: clienteFrecuente.id,
+        userId: null, // Cliente sin usuario asociado
         defaultDeliveryAddress: 'Av. Los Pinos 123',
         defaultContactPhone: '966666666',
         clientStatus: 'activo',
@@ -117,7 +116,22 @@ async function seedDatabase() {
       }
     ]);
 
-    console.log('✅ Clientes creados correctamente');
+    console.log('✅ Clientes básicos creados correctamente');
+    
+    // Importar clientes desde JSON
+    console.log('📥 Importando clientes desde archivo JSON...');
+    try {
+      const importClientsFromJson = require('../scripts/importClientsFromJson');
+      const importResult = await importClientsFromJson();
+      console.log(`✅ Importados ${importResult.stats.total} clientes adicionales desde JSON`);
+    } catch (importError) {
+      console.warn('⚠️ Error al importar clientes desde JSON:', importError.message);
+      console.log('📝 Continuando con clientes básicos únicamente...');
+    }
+    
+    // Obtener todos los clientes (básicos + importados)
+    const clientes = await Client.findAll();
+    console.log(`✅ Total de clientes en la base de datos: ${clientes.length}`);
 
     // 3. CREAR PRODUCTOS
     console.log('📦 Creando productos...');
@@ -316,7 +330,7 @@ async function seedDatabase() {
 
     console.log('🎉 ¡Base de datos sembrada exitosamente!');
     console.log('\n📊 Resumen de datos creados:');
-    console.log(`👥 Usuarios: 5 (admin, vendedor, 2 repartidores, cliente)`);
+    console.log(`👥 Usuarios: 5 (admin, 2 vendedores, 2 repartidores)`);
     console.log(`👤 Clientes: ${clientes.length}`);
     console.log(`📦 Productos: ${productos.length}`);
     console.log(`🚚 Repartidores: ${repartidores.length}`);
@@ -326,10 +340,10 @@ async function seedDatabase() {
     
     console.log('\n🔑 Credenciales de acceso:');
     console.log('👨‍💼 Admin: admin / admin123');
-    console.log('👨‍💼 Vendedor: vendedor / vendedor123');
+    console.log('👨‍💼 Vendedor 1: vendedor / vendedor123');
+    console.log('👨‍💼 Vendedor 2: vendedor2 / vendedor123');
     console.log('🚚 Repartidor 1: repartidor / repartidor123');
     console.log('🚚 Repartidor 2: repartidor2 / repartidor123');
-    console.log('👤 Cliente: cliente1 / cliente123');
 
   } catch (error) {
     console.error('❌ Error al sembrar la base de datos:', error);

@@ -84,30 +84,53 @@ const useGuestOrderStore = create((set, get) => ({
   updateGuestOrder: async (orderId, updateData) => {
     set({ loading: true, error: null });
     try {
-      console.log('🔍 updateGuestOrder - Enviando petición:', {
-        url: `/api/guest-orders/${orderId}`,
-        data: updateData,
-        headers: axios.defaults.headers.common
-      });
-      
-      const response = await axios.put(`/api/guest-orders/${orderId}`, updateData);
-      const updatedOrder = response.data;
-      
-      console.log('🔍 updateGuestOrder - Respuesta recibida:', response.data);
-      console.log('🔍 updateGuestOrder - updatedOrder:', updatedOrder);
-      
-      set(state => ({
-        orders: Array.isArray(state.orders) ? state.orders.map(order => 
-          order.id === orderId ? { ...order, ...updatedOrder } : order
-        ) : [],
-        loading: false
-      }));
-      
-      console.log('🔍 updateGuestOrder - Estado actualizado, pedido modificado:', 
-        Array.isArray(get().orders) ? get().orders.find(order => order.id === orderId) : 'No encontrado'
-      );
-      
-      return { success: true, data: updatedOrder };
+      // Si se está asignando un repartidor, usar el endpoint específico
+      if (updateData.deliveryPersonId) {
+        console.log('🔍 Asignando repartidor - Enviando petición:', {
+          url: `/api/guest-orders/${orderId}/assign-delivery`,
+          data: { deliveryPersonId: updateData.deliveryPersonId },
+          headers: axios.defaults.headers.common
+        });
+        
+        const response = await axios.put(`/api/guest-orders/${orderId}/assign-delivery`, {
+          deliveryPersonId: updateData.deliveryPersonId
+        });
+        const updatedOrder = response.data.data;
+        
+        console.log('🔍 Asignación de repartidor - Respuesta recibida:', response.data);
+        console.log('🔍 Asignación de repartidor - updatedOrder:', updatedOrder);
+        
+        set(state => ({
+          orders: Array.isArray(state.orders) ? state.orders.map(order => 
+            order.id === orderId ? { ...order, ...updatedOrder } : order
+          ) : [],
+          loading: false
+        }));
+        
+        return { success: true, data: updatedOrder };
+      } else {
+        // Para otras actualizaciones, usar el endpoint general
+        console.log('🔍 updateGuestOrder - Enviando petición:', {
+          url: `/api/guest-orders/${orderId}`,
+          data: updateData,
+          headers: axios.defaults.headers.common
+        });
+        
+        const response = await axios.put(`/api/guest-orders/${orderId}`, updateData);
+        const updatedOrder = response.data;
+        
+        console.log('🔍 updateGuestOrder - Respuesta recibida:', response.data);
+        console.log('🔍 updateGuestOrder - updatedOrder:', updatedOrder);
+        
+        set(state => ({
+          orders: Array.isArray(state.orders) ? state.orders.map(order => 
+            order.id === orderId ? { ...order, ...updatedOrder } : order
+          ) : [],
+          loading: false
+        }));
+        
+        return { success: true, data: updatedOrder };
+      }
     } catch (error) {
       console.error('Error al actualizar pedido de invitado:', error);
       set({ 

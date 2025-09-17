@@ -466,7 +466,7 @@ const ClientsManagement = () => {
       </VStack>
 
       {/* Modal de creación */}
-      <Modal isOpen={isCreateOpen} onClose={onCreateClose} size="lg">
+      <Modal isOpen={isCreateOpen} onClose={onCreateClose} size="lg" isCentered>
         <ModalOverlay />
         <ModalContent>
           <ModalHeader>Nuevo Cliente</ModalHeader>
@@ -551,7 +551,7 @@ const ClientsManagement = () => {
       </Modal>
 
       {/* Modal de edición */}
-      <Modal isOpen={isEditOpen} onClose={onEditClose} size="lg">
+      <Modal isOpen={isEditOpen} onClose={onEditClose} size="lg" isCentered>
         <ModalOverlay />
         <ModalContent>
           <ModalHeader>Editar Cliente</ModalHeader>
@@ -636,7 +636,7 @@ const ClientsManagement = () => {
       </Modal>
 
       {/* Modal de visualización */}
-      <Modal isOpen={isViewOpen} onClose={onViewClose} size="md">
+      <Modal isOpen={isViewOpen} onClose={onViewClose} size="md" isCentered>
         <ModalOverlay />
         <ModalContent>
           <ModalHeader>Detalles del Cliente</ModalHeader>

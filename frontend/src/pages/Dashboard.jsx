@@ -18,7 +18,7 @@ import {
   Badge
 } from '@chakra-ui/react';
 import { useNavigate } from 'react-router-dom';
-import { FaBox, FaUsers, FaTruck, FaCreditCard, FaChartLine, FaDollarSign, FaShoppingCart, FaCalendarAlt, FaFilePdf } from 'react-icons/fa';
+import { FaUsers, FaTruck, FaCreditCard, FaDollarSign, FaShoppingCart, FaCalendarAlt, FaFileAlt } from 'react-icons/fa';
 import useProductStore from '../stores/productStore';
 import useClientStore from '../stores/clientStore';
 import useDeliveryStore from '../stores/deliveryStore';
@@ -48,6 +48,8 @@ const Dashboard = () => {
     // Actualizar cada 30 segundos para mantener sincronización
     const interval = setInterval(() => {
       fetchGuestOrders();
+      fetchClients();
+      fetchDeliveryPersons();
       setLastUpdate(new Date());
     }, 30000);
     
@@ -69,6 +71,22 @@ const Dashboard = () => {
   const contraentregaOrders = guestOrders?.filter(order => order.paymentMethod === 'contraentrega')?.length || 0;
   const valeOrders = guestOrders?.filter(order => order.paymentMethod === 'vale')?.length || 0;
   const suscripcionOrders = guestOrders?.filter(order => order.paymentMethod === 'suscripcion')?.length || 0;
+  
+  // Calcular estadísticas adicionales
+  const totalClients = clients?.length || 0;
+  const totalDeliveryPersons = deliveryStats?.totalPersons || 0;
+  const totalVales = valeOrders;
+  const totalSubscriptions = suscripcionOrders;
+  
+  // Debug logs
+  console.log('🔍 Dashboard Debug:', {
+    clients: clients?.length || 0,
+    totalClients,
+    deliveryPersons: deliveryStats?.totalPersons || 0,
+    totalDeliveryPersons,
+    valeOrders,
+    suscripcionOrders
+  });
   
   // Calcular ingresos totales
   const totalRevenue = guestOrders?.reduce((sum, order) => sum + (parseFloat(order.totalAmount) || 0), 0) || 0;
@@ -92,15 +110,15 @@ const Dashboard = () => {
       icon: FaUsers,
       color: 'green',
       onClick: () => navigate('/dashboard/clients'),
-      count: clients.length,
-      description: 'Clientes frecuentes'
+      count: totalClients,
+      description: 'Clientes registrados'
     },
     {
       title: 'Suscripciones',
       icon: FaCalendarAlt,
       color: 'purple',
       onClick: () => navigate('/dashboard/subscriptions'),
-      count: suscripcionOrders,
+      count: totalSubscriptions,
       description: 'Planes de suscripción'
     },
     {
@@ -108,73 +126,58 @@ const Dashboard = () => {
       icon: FaCreditCard,
       color: 'blue',
       onClick: () => navigate('/dashboard/vales'),
-      count: valeOrders,
+      count: totalVales,
       description: 'Gestión de vales'
     },
     {
-      title: 'Productos',
-      icon: FaBox,
-      color: 'teal',
-      onClick: () => navigate('/dashboard/products'),
-      count: products.length,
-      description: 'Inventario'
+      title: 'Reporte de Cobranza',
+      icon: FaFileAlt,
+      color: 'red',
+      onClick: () => navigate('/dashboard/collection-report'),
+      count: totalVales, // Mostrar total de vales como indicador de deudas
+      description: 'Deudas pendientes'
     },
     {
       title: 'Repartidores',
       icon: FaUsers,
       color: 'indigo',
       onClick: () => navigate('/dashboard/delivery-persons'),
-      count: deliveryStats?.total || 0,
+      count: totalDeliveryPersons,
       description: 'Equipo de entrega'
-    },
-    {
-      title: 'Documentos',
-      icon: FaFilePdf,
-      color: 'red',
-      onClick: () => navigate('/dashboard/documents'),
-      count: '📄',
-      description: 'Boletas y facturas'
-    },
-    {
-      title: 'Reportes',
-      icon: FaChartLine,
-      color: 'gray',
-      onClick: () => navigate('/dashboard/reports'),
-      count: '📊',
-      description: 'Análisis y reportes'
     }
   ];
 
   return (
-    <Box p={{ base: 2, md: 4 }} maxW="100%" overflow="hidden">
+    <Box p={{ base: 1, sm: 2, md: 4 }} maxW="100%" overflow="hidden">
       {/* Header */}
       <Flex 
-        direction={{ base: 'column', md: 'row' }} 
-        align={{ base: 'center', md: 'flex-start' }} 
+        direction={{ base: 'column', sm: 'row' }} 
+        align={{ base: 'center', sm: 'flex-start' }} 
         justify="space-between" 
-        mb={6}
+        mb={{ base: 4, md: 6 }}
         wrap="wrap"
+        gap={2}
       >
-        <VStack align={{ base: 'center', md: 'flex-start' }} spacing={2} maxW={{ base: '100%', md: '70%' }}>
+        <VStack align={{ base: 'center', sm: 'flex-start' }} spacing={{ base: 1, md: 2 }} maxW={{ base: '100%', sm: '70%' }}>
           <AquaYaraLogo 
-            size="md" 
+            size={{ base: 'sm', md: 'md' }} 
             variant="horizontal" 
             color="blue.500" 
             textColor="blue.600" 
             taglineColor="teal.500"
           />
-          <Heading size="lg" color="gray.700" textAlign={{ base: 'center', md: 'left' }}>
+          <Heading size={{ base: 'md', md: 'lg' }} color="gray.700" textAlign={{ base: 'center', sm: 'left' }}>
             Dashboard Administrativo
           </Heading>
-          <Text color="gray.500" fontSize="sm" textAlign={{ base: 'center', md: 'left' }}>
+          <Text color="gray.500" fontSize={{ base: 'xs', md: 'sm' }} textAlign={{ base: 'center', sm: 'left' }}>
             Gestión completa del negocio
           </Text>
-          <Text color="gray.400" fontSize="xs" textAlign={{ base: 'center', md: 'left' }}>
+          <Text color="gray.400" fontSize="xs" textAlign={{ base: 'center', sm: 'left' }}>
             Última actualización: {lastUpdate.toLocaleTimeString()}
           </Text>
         </VStack>
-        <VStack spacing={2} align={{ base: 'center', md: 'flex-end' }}>
-          <Badge colorScheme="green" variant="subtle">
+        <VStack spacing={1} align={{ base: 'center', sm: 'flex-end' }}>
+          <Badge colorScheme="green" variant="subtle" fontSize="xs">
             Sistema Activo
           </Badge>
           <Button
@@ -183,6 +186,8 @@ const Dashboard = () => {
             variant="outline"
             onClick={() => {
               fetchGuestOrders();
+              fetchClients();
+              fetchDeliveryPersons();
               setLastUpdate(new Date());
             }}
           >
@@ -192,13 +197,13 @@ const Dashboard = () => {
       </Flex>
 
       {/* Estadísticas principales */}
-      <SimpleGrid columns={{ base: 1, sm: 2, lg: 5 }} spacing={4} mb={8} maxW="100%">
+      <SimpleGrid columns={{ base: 1, sm: 2, lg: 5 }} spacing={{ base: 2, md: 4 }} mb={{ base: 4, md: 8 }} maxW="100%">
         <Card bg={cardBg} borderColor={borderColor} boxShadow="sm">
-          <CardBody>
+          <CardBody p={{ base: 3, md: 4 }}>
             <Stat>
-              <StatLabel color="orange.600">📦 Pedidos Pendientes</StatLabel>
-              <StatNumber color="orange.500" fontSize="2xl">{pendingOrders}</StatNumber>
-              <StatHelpText>
+              <StatLabel color="orange.600" fontSize={{ base: 'xs', md: 'sm' }}>📦 Pedidos Pendientes</StatLabel>
+              <StatNumber color="orange.500" fontSize={{ base: 'xl', md: '2xl' }}>{pendingOrders}</StatNumber>
+              <StatHelpText fontSize={{ base: 'xs', md: 'sm' }}>
                 {confirmedOrders} confirmados
               </StatHelpText>
             </Stat>
@@ -206,11 +211,11 @@ const Dashboard = () => {
         </Card>
 
         <Card bg={cardBg} borderColor={borderColor} boxShadow="sm">
-          <CardBody>
+          <CardBody p={{ base: 3, md: 4 }}>
             <Stat>
-              <StatLabel color="green.600">💰 Ingresos Hoy</StatLabel>
-              <StatNumber color="green.500" fontSize="2xl">S/ {todayRevenue.toFixed(2)}</StatNumber>
-              <StatHelpText>
+              <StatLabel color="green.600" fontSize={{ base: 'xs', md: 'sm' }}>💰 Ingresos Hoy</StatLabel>
+              <StatNumber color="green.500" fontSize={{ base: 'xl', md: '2xl' }}>S/ {todayRevenue.toFixed(2)}</StatNumber>
+              <StatHelpText fontSize={{ base: 'xs', md: 'sm' }}>
                 Total: S/ {totalRevenue.toFixed(2)}
               </StatHelpText>
             </Stat>
@@ -218,23 +223,23 @@ const Dashboard = () => {
         </Card>
 
         <Card bg={cardBg} borderColor={borderColor} boxShadow="sm">
-          <CardBody>
+          <CardBody p={{ base: 3, md: 4 }}>
             <Stat>
-              <StatLabel color="blue.600">👥 Clientes</StatLabel>
-              <StatNumber color="blue.500" fontSize="2xl">{clients.length}</StatNumber>
-              <StatHelpText>
-                Clientes frecuentes
+              <StatLabel color="blue.600" fontSize={{ base: 'xs', md: 'sm' }}>👥 Clientes</StatLabel>
+              <StatNumber color="blue.500" fontSize={{ base: 'xl', md: '2xl' }}>{clients.length}</StatNumber>
+              <StatHelpText fontSize={{ base: 'xs', md: 'sm' }}>
+                Clientes registrados
               </StatHelpText>
             </Stat>
           </CardBody>
         </Card>
 
         <Card bg={cardBg} borderColor={borderColor} boxShadow="sm">
-          <CardBody>
+          <CardBody p={{ base: 3, md: 4 }}>
             <Stat>
-              <StatLabel color="purple.600">✅ Entregados</StatLabel>
-              <StatNumber color="purple.500" fontSize="2xl">{deliveredOrders}</StatNumber>
-              <StatHelpText>
+              <StatLabel color="purple.600" fontSize={{ base: 'xs', md: 'sm' }}>✅ Entregados</StatLabel>
+              <StatNumber color="purple.500" fontSize={{ base: 'xl', md: '2xl' }}>{deliveredOrders}</StatNumber>
+              <StatHelpText fontSize={{ base: 'xs', md: 'sm' }}>
                 {readyOrders} listos para entregar
               </StatHelpText>
             </Stat>
@@ -242,11 +247,11 @@ const Dashboard = () => {
         </Card>
 
         <Card bg={cardBg} borderColor={borderColor} boxShadow="sm">
-          <CardBody>
+          <CardBody p={{ base: 3, md: 4 }}>
             <Stat>
-              <StatLabel color="yellow.600">📊 Total Pedidos</StatLabel>
-              <StatNumber color="yellow.500" fontSize="2xl">{totalOrders}</StatNumber>
-              <StatHelpText>
+              <StatLabel color="yellow.600" fontSize={{ base: 'xs', md: 'sm' }}>📊 Total Pedidos</StatLabel>
+              <StatNumber color="yellow.500" fontSize={{ base: 'xl', md: '2xl' }}>{totalOrders}</StatNumber>
+              <StatHelpText fontSize={{ base: 'xs', md: 'sm' }}>
                 {preparingOrders} en preparación
               </StatHelpText>
             </Stat>
@@ -255,13 +260,13 @@ const Dashboard = () => {
       </SimpleGrid>
 
       {/* Estadísticas por tipo de pago */}
-      <SimpleGrid columns={{ base: 1, sm: 2, lg: 4 }} spacing={4} mb={8} maxW="100%">
+      <SimpleGrid columns={{ base: 2, sm: 2, lg: 4 }} spacing={{ base: 2, md: 4 }} mb={{ base: 4, md: 8 }} maxW="100%">
         <Card bg={cardBg} borderColor={borderColor} boxShadow="sm">
-          <CardBody>
+          <CardBody p={{ base: 2, md: 4 }}>
             <Stat>
-              <StatLabel color="blue.600">💵 Contraentrega</StatLabel>
-              <StatNumber color="blue.500" fontSize="xl">{contraentregaOrders}</StatNumber>
-              <StatHelpText>
+              <StatLabel color="blue.600" fontSize={{ base: 'xs', md: 'sm' }}>💵 Contraentrega</StatLabel>
+              <StatNumber color="blue.500" fontSize={{ base: 'lg', md: 'xl' }}>{contraentregaOrders}</StatNumber>
+              <StatHelpText fontSize={{ base: 'xs', md: 'sm' }}>
                 Pago al recibir
               </StatHelpText>
             </Stat>
@@ -269,11 +274,11 @@ const Dashboard = () => {
         </Card>
 
         <Card bg={cardBg} borderColor={borderColor} boxShadow="sm">
-          <CardBody>
+          <CardBody p={{ base: 2, md: 4 }}>
             <Stat>
-              <StatLabel color="orange.600">🎫 Vales</StatLabel>
-              <StatNumber color="orange.500" fontSize="xl">{valeOrders}</StatNumber>
-              <StatHelpText>
+              <StatLabel color="orange.600" fontSize={{ base: 'xs', md: 'sm' }}>🎫 Vales</StatLabel>
+              <StatNumber color="orange.500" fontSize={{ base: 'lg', md: 'xl' }}>{valeOrders}</StatNumber>
+              <StatHelpText fontSize={{ base: 'xs', md: 'sm' }}>
                 Pago a crédito
               </StatHelpText>
             </Stat>
@@ -281,11 +286,11 @@ const Dashboard = () => {
         </Card>
 
         <Card bg={cardBg} borderColor={borderColor} boxShadow="sm">
-          <CardBody>
+          <CardBody p={{ base: 2, md: 4 }}>
             <Stat>
-              <StatLabel color="purple.600">📅 Suscripciones</StatLabel>
-              <StatNumber color="purple.500" fontSize="xl">{suscripcionOrders}</StatNumber>
-              <StatHelpText>
+              <StatLabel color="purple.600" fontSize={{ base: 'xs', md: 'sm' }}>📅 Suscripciones</StatLabel>
+              <StatNumber color="purple.500" fontSize={{ base: 'lg', md: 'xl' }}>{suscripcionOrders}</StatNumber>
+              <StatHelpText fontSize={{ base: 'xs', md: 'sm' }}>
                 Pago mensual
               </StatHelpText>
             </Stat>
@@ -293,11 +298,11 @@ const Dashboard = () => {
         </Card>
 
         <Card bg={cardBg} borderColor={borderColor} boxShadow="sm">
-          <CardBody>
+          <CardBody p={{ base: 2, md: 4 }}>
             <Stat>
-              <StatLabel color="green.600">💧 Productos</StatLabel>
-              <StatNumber color="green.500" fontSize="xl">{products.length}</StatNumber>
-              <StatHelpText>
+              <StatLabel color="green.600" fontSize={{ base: 'xs', md: 'sm' }}>💧 Productos</StatLabel>
+              <StatNumber color="green.500" fontSize={{ base: 'lg', md: 'xl' }}>{products.length}</StatNumber>
+              <StatHelpText fontSize={{ base: 'xs', md: 'sm' }}>
                 En inventario
               </StatHelpText>
             </Stat>
@@ -307,11 +312,11 @@ const Dashboard = () => {
 
       {/* Acciones rápidas */}
       <Card bg={cardBg} borderColor={borderColor} boxShadow="sm" maxW="100%">
-        <CardBody>
-          <Heading size="md" mb={4} color="gray.700">🚀 Acciones Rápidas</Heading>
+        <CardBody p={{ base: 3, md: 4 }}>
+          <Heading size={{ base: 'sm', md: 'md' }} mb={{ base: 3, md: 4 }} color="gray.700">🚀 Acciones Rápidas</Heading>
           <SimpleGrid 
-            columns={{ base: 2, sm: 3, md: 4, lg: 4 }} 
-            spacing={4}
+            columns={{ base: 2, sm: 3, md: 3, lg: 6 }} 
+            spacing={{ base: 2, md: 4 }}
             maxW="100%"
           >
             {quickActions.map((action, index) => (
@@ -319,8 +324,8 @@ const Dashboard = () => {
                 key={index}
                 colorScheme={action.color}
                 variant="outline"
-                size={isMobile ? "sm" : "md"}
-                height={isMobile ? "80px" : "100px"}
+                size={{ base: "xs", sm: "sm", md: "md" }}
+                height={{ base: "70px", sm: "80px", md: "100px" }}
                 flexDirection="column"
                 onClick={action.onClick}
                 _hover={{ 
@@ -334,20 +339,55 @@ const Dashboard = () => {
                 minW="0"
                 w="100%"
                 maxW="100%"
+                p={{ base: 1, md: 2 }}
               >
-                <VStack spacing={1} maxW="100%">
-                  <action.icon size={isMobile ? "16px" : "20px"} />
-                  <Text fontSize={isMobile ? "xs" : "sm"} fontWeight="bold" textAlign="center" noOfLines={1}>
-                    {action.title}
-                  </Text>
-                  <Text fontSize="xs" color="gray.500" textAlign="center" noOfLines={2}>
-                    {action.description}
-                  </Text>
+                <VStack spacing={{ base: 0.5, md: 1 }} maxW="100%" h="100%" justify="space-between" p={1}>
+                  <Box 
+                    display="flex" 
+                    alignItems="center" 
+                    justifyContent="center" 
+                    h={{ base: "20px", sm: "22px", md: "24px" }}
+                    w={{ base: "20px", sm: "22px", md: "24px" }}
+                    borderRadius="md"
+                    bg={action.color + ".100"}
+                    flexShrink={0}
+                  >
+                    <action.icon 
+                      size={{ base: "14px", sm: "16px", md: "18px" }} 
+                      color={`${action.color}.600`}
+                    />
+                  </Box>
+                  <VStack spacing={0.5} flex={1} minH={0} w="100%">
+                    <Text 
+                      fontSize={{ base: "2xs", sm: "xs", md: "sm" }} 
+                      fontWeight="bold" 
+                      textAlign="center" 
+                      noOfLines={1}
+                      lineHeight="shorter"
+                      w="100%"
+                    >
+                      {action.title}
+                    </Text>
+                    <Text 
+                      fontSize={{ base: "2xs", sm: "xs" }} 
+                      color="gray.500" 
+                      textAlign="center" 
+                      noOfLines={2}
+                      lineHeight="shorter"
+                      w="100%"
+                    >
+                      {action.description}
+                    </Text>
+                  </VStack>
                   <Badge 
                     colorScheme={action.color} 
-                    variant="subtle" 
-                    fontSize="xs"
+                    variant="solid" 
+                    fontSize={{ base: "2xs", sm: "xs" }}
                     borderRadius="full"
+                    px={{ base: 1, md: 2 }}
+                    py={0.5}
+                    flexShrink={0}
+                    minW="fit-content"
                   >
                     {action.count}
                   </Badge>

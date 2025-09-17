@@ -330,12 +330,18 @@ const GuestOrderNew = () => {
 
   const handleDniSubmit = (e) => {
     e.preventDefault();
-    if (dni.length >= 8) {
+    
+    // Validar DNI (8 dígitos) o RUC (11 dígitos)
+    if (dni.length === 8) {
+      // DNI válido
+      searchClientByDni(dni);
+    } else if (dni.length === 11) {
+      // RUC válido
       searchClientByDni(dni);
     } else {
       toast({
-        title: 'DNI inválido',
-        description: 'El DNI debe tener al menos 8 dígitos',
+        title: 'Documento inválido',
+        description: 'El DNI debe tener 8 dígitos o el RUC debe tener 11 dígitos',
         status: 'warning',
         duration: 3000,
         isClosable: true,
@@ -655,8 +661,8 @@ const GuestOrderNew = () => {
             isClosable: true,
           });
 
-          // Redirigir a la página de recibo
-          navigate(`/receipt/${response.data.data.id}`);
+          // Redirigir a la página de recibo usando el token de acceso
+          navigate(`/receipt/${response.data.accessToken}`);
         } else {
           throw new Error(response.data.message || 'Error al crear el pedido');
         }
@@ -683,6 +689,7 @@ const GuestOrderNew = () => {
               totalBottles: selectedSubscriptionPlan.bottles + selectedSubscriptionPlan.bonus,
               totalAmount: selectedSubscriptionPlan.price,
               paidAmount: selectedSubscriptionPlan.price,
+              expiryDate: null, // Las suscripciones duran hasta que se acaben los bidones
               notes: `Suscripción ${selectedSubscriptionPlan.name} comprada`
             };
 
@@ -847,8 +854,8 @@ const GuestOrderNew = () => {
               isClosable: true,
             });
 
-            // Redirigir a la página de recibo
-            navigate(`/receipt/${response.data.data.id}`);
+            // Redirigir a la página de recibo usando el token de acceso
+            navigate(`/receipt/${response.data.accessToken}`);
           } else {
             throw new Error(response.data.message || 'Error al crear el pedido');
           }
@@ -959,37 +966,37 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
 
   // Renderizar paso 1: Búsqueda por DNI
   const renderStep1 = () => (
-    <Card maxW="md" mx="auto">
-      <CardHeader textAlign="center">
-        <VStack spacing={4}>
-          <Icon as={FaIdCard} boxSize={12} color="blue.500" />
-          <Heading size="lg">Ingresa tu DNI</Heading>
-          <Text color="gray.600">
+    <Card maxW={{ base: "100%", sm: "md" }} mx="auto" w="100%">
+      <CardHeader textAlign="center" p={{ base: 4, md: 6 }}>
+        <VStack spacing={{ base: 3, md: 4 }}>
+          <Icon as={FaIdCard} boxSize={{ base: 8, md: 12 }} color="blue.500" />
+          <Heading size={{ base: "md", md: "lg" }}>Ingresa tu DNI</Heading>
+          <Text color="gray.600" fontSize={{ base: "sm", md: "md" }} textAlign="center">
             Buscaremos tus datos automáticamente para agilizar tu pedido
           </Text>
         </VStack>
       </CardHeader>
-      <CardBody>
+      <CardBody p={{ base: 4, md: 6 }}>
         <form onSubmit={handleDniSubmit}>
-          <VStack spacing={4}>
+          <VStack spacing={{ base: 3, md: 4 }}>
             <FormControl>
-              <FormLabel>Número de DNI</FormLabel>
+              <FormLabel fontSize={{ base: "sm", md: "md" }}>Número de Documento (DNI o RUC)</FormLabel>
               <Input
                 value={dni}
                 onChange={(e) => setDni(e.target.value)}
-                placeholder="12345678"
-                size="lg"
+                placeholder="12345678 (DNI) o 12345678901 (RUC)"
+                size={{ base: "md", md: "lg" }}
                 textAlign="center"
-                fontSize="xl"
+                fontSize={{ base: "md", md: "xl" }}
                 fontWeight="bold"
-                maxLength={8}
+                maxLength={11}
               />
             </FormControl>
             
             <Button
               type="submit"
               colorScheme="blue"
-              size="lg"
+              size={{ base: "md", md: "lg" }}
               w="full"
               isLoading={searchingDni}
               loadingText="Buscando..."
@@ -1023,14 +1030,14 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
       <CardBody>
         <VStack spacing={4}>
           <FormControl isRequired>
-            <FormLabel>DNI</FormLabel>
+              <FormLabel>Documento</FormLabel>
             <Input
               value={dni}
               isDisabled
-              placeholder="Tu DNI"
+              placeholder="Tu documento"
               bg="gray.100"
             />
-            <FormHelperText>DNI ingresado en el paso anterior</FormHelperText>
+            <FormHelperText>Documento ingresado en el paso anterior</FormHelperText>
           </FormControl>
 
           <FormControl isRequired>
@@ -1638,49 +1645,50 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
     }
 
     // Interfaz normal para cuando no hay preferencias aplicadas o expiraron
-    return (
-      <Card maxW="lg" mx="auto">
-        <CardHeader textAlign="center">
-          <VStack spacing={4}>
-            <Icon as={FaMoneyBillWave} boxSize={12} color="green.500" />
-            <Heading size="lg">Modalidad de Pago</Heading>
-            <Text color="gray.600" textAlign="center">
-              {preferencesApplied ? 'Tu modalidad anterior expiró. Elige una nueva modalidad:' : 'Selecciona cómo deseas pagar tu pedido'}
-            </Text>
-            <Alert status={preferencesApplied ? "warning" : "info"} size="sm" borderRadius="md">
-              <AlertIcon />
-              <Text fontSize="sm">
-                {preferencesApplied ? (
-                  <>
-                    <strong>Modalidad expirada:</strong> Tu modalidad anterior ya no está activa. Elige una nueva modalidad de pago para este mes.
-                  </>
-                ) : (
-                  <>
-                    <strong>Contraentrega:</strong> Pagas cuando recibes el pedido<br/>
-                    <strong>A Crédito:</strong> Se anota en tu vale y pagas al final del mes<br/>
-                    <strong>Suscripción:</strong> Pedido recurrente mensual
-                  </>
-                )}
+      return (
+        <Card maxW={{ base: "100%", sm: "lg" }} mx="auto" w="100%">
+          <CardHeader textAlign="center" p={{ base: 4, md: 6 }}>
+            <VStack spacing={{ base: 3, md: 4 }}>
+              <Icon as={FaMoneyBillWave} boxSize={{ base: 10, md: 12 }} color="green.500" />
+              <Heading size={{ base: "md", md: "lg" }}>Modalidad de Pago</Heading>
+              <Text color="gray.600" textAlign="center" fontSize={{ base: "sm", md: "md" }}>
+                {preferencesApplied ? 'Tu modalidad anterior expiró. Elige una nueva modalidad:' : 'Selecciona cómo deseas pagar tu pedido'}
               </Text>
-            </Alert>
-          </VStack>
-        </CardHeader>
-        <CardBody>
-          <VStack spacing={6}>
-            <RadioGroup value={paymentMethod} onChange={setPaymentMethod}>
-              <Stack spacing={4}>
+              <Alert status={preferencesApplied ? "warning" : "info"} size="sm" borderRadius="md" w="100%">
+                <AlertIcon />
+                <Text fontSize={{ base: "xs", md: "sm" }}>
+                  {preferencesApplied ? (
+                    <>
+                      <strong>Modalidad expirada:</strong> Tu modalidad anterior ya no está activa. Elige una nueva modalidad de pago para este mes.
+                    </>
+                  ) : (
+                    <>
+                      <strong>Contraentrega:</strong> Pagas cuando recibes el pedido<br/>
+                      <strong>A Crédito:</strong> Se anota en tu vale y pagas al final del mes<br/>
+                      <strong>Suscripción:</strong> Pedido recurrente mensual
+                    </>
+                  )}
+                </Text>
+              </Alert>
+            </VStack>
+          </CardHeader>
+          <CardBody p={{ base: 4, md: 6 }}>
+            <VStack spacing={{ base: 4, md: 6 }} w="100%">
+              <RadioGroup value={paymentMethod} onChange={setPaymentMethod} w="100%">
+                <Stack spacing={{ base: 3, md: 4 }} w="100%">
                 <Card 
                   variant={paymentMethod === 'contraentrega' ? 'filled' : 'outline'}
                   borderColor={paymentMethod === 'contraentrega' ? 'blue.500' : 'gray.200'}
                   cursor="pointer"
                   onClick={() => setPaymentMethod('contraentrega')}
+                  w="100%"
                 >
-                  <CardBody>
-                    <HStack spacing={4}>
-                      <Radio value="contraentrega" />
-                      <VStack align="start" spacing={1}>
-                        <Text fontWeight="bold">Contraentrega</Text>
-                        <Text fontSize="sm" color="gray.600">
+                  <CardBody p={{ base: 3, md: 4 }}>
+                    <HStack spacing={{ base: 3, md: 4 }} w="100%">
+                      <Radio value="contraentrega" flexShrink={0} />
+                      <VStack align="start" spacing={1} flex={1} minW={0}>
+                        <Text fontWeight="bold" fontSize={{ base: "sm", md: "md" }}>Contraentrega</Text>
+                        <Text fontSize={{ base: "xs", md: "sm" }} color="gray.600" noOfLines={2}>
                           Pagas en efectivo o PLIN cuando recibes tu pedido
                         </Text>
                       </VStack>
@@ -1693,13 +1701,14 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
                   borderColor={paymentMethod === 'vale' ? 'blue.500' : 'gray.200'}
                   cursor="pointer"
                   onClick={() => setPaymentMethod('vale')}
+                  w="100%"
                 >
-                  <CardBody>
-                    <HStack spacing={4}>
-                      <Radio value="vale" />
-                      <VStack align="start" spacing={1}>
-                        <Text fontWeight="bold">A Crédito (Vale)</Text>
-                        <Text fontSize="sm" color="gray.600">
+                  <CardBody p={{ base: 3, md: 4 }}>
+                    <HStack spacing={{ base: 3, md: 4 }} w="100%">
+                      <Radio value="vale" flexShrink={0} />
+                      <VStack align="start" spacing={1} flex={1} minW={0}>
+                        <Text fontWeight="bold" fontSize={{ base: "sm", md: "md" }}>A Crédito (Vale)</Text>
+                        <Text fontSize={{ base: "xs", md: "sm" }} color="gray.600" noOfLines={2}>
                           Paga al final del mes - Se anota en tu vale
                         </Text>
                       </VStack>
@@ -1712,16 +1721,17 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
                   borderColor={paymentMethod === 'suscripcion' ? 'blue.500' : 'gray.200'}
                   cursor="pointer"
                   onClick={() => setPaymentMethod('suscripcion')}
+                  w="100%"
                 >
-                  <CardBody>
-                    <HStack spacing={4}>
-                      <Radio value="suscripcion" />
-                      <VStack align="start" spacing={1}>
-                        <Text fontWeight="bold">Suscripción con Beneficios</Text>
-                        <Text fontSize="sm" color="gray.600">
+                  <CardBody p={{ base: 3, md: 4 }}>
+                    <HStack spacing={{ base: 3, md: 4 }} w="100%" align="start">
+                      <Radio value="suscripcion" flexShrink={0} mt={1} />
+                      <VStack align="start" spacing={1} flex={1} minW={0}>
+                        <Text fontWeight="bold" fontSize={{ base: "sm", md: "md" }}>Suscripción con Beneficios</Text>
+                        <Text fontSize={{ base: "xs", md: "sm" }} color="gray.600" noOfLines={2}>
                           Pedido recurrente mensual con bidones extra
                         </Text>
-                        <VStack spacing={1} align="start" fontSize="xs" color="green.600">
+                        <VStack spacing={1} align="start" fontSize={{ base: "2xs", md: "xs" }} color="green.600">
                           <Text>• 150 por 30 bidones = +1 bidón extra</Text>
                           <Text>• 250 por 50 bidones = +2 bidones extra</Text>
                           <Text>• 500 por 100 bidones = +5 bidones extra</Text>
@@ -2180,41 +2190,47 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
 
   // Modal para pago PLIN
   const renderPlinModal = () => (
-    <Modal isOpen={isPlinModalOpen} onClose={handlePlinModalClose} size="md">
+    <Modal isOpen={isPlinModalOpen} onClose={handlePlinModalClose} size={{ base: "full", sm: "md" }} isCentered>
       <ModalOverlay />
-      <ModalContent>
-        <ModalHeader textAlign="center">
+      <ModalContent 
+        mx={{ base: 0, sm: 4 }} 
+        my={{ base: 0, sm: 4 }} 
+        maxH={{ base: "100vh", sm: "90vh" }}
+        maxW={{ base: "100vw", sm: "500px" }}
+        w={{ base: "100%", sm: "auto" }}
+      >
+        <ModalHeader textAlign="center" p={{ base: 3, md: 4 }}>
           <VStack spacing={2}>
-            <Icon as={FaQrcode} boxSize={8} color="purple.500" />
-            <Text>Pago con PLIN</Text>
+            <Icon as={FaQrcode} boxSize={{ base: 6, md: 8 }} color="purple.500" />
+            <Text fontSize={{ base: "md", md: "lg" }}>Pago con PLIN</Text>
           </VStack>
         </ModalHeader>
         <ModalCloseButton />
-        <ModalBody pb={6}>
-          <VStack spacing={6}>
-            <Alert status="info">
+        <ModalBody pb={{ base: 3, md: 4 }} px={{ base: 3, md: 4 }} overflowY="auto">
+          <VStack spacing={{ base: 3, md: 4 }} w="100%">
+            <Alert status="info" fontSize={{ base: "xs", md: "sm" }} w="100%">
               <AlertIcon />
-              Escanea el código QR con tu app PLIN
+              <Text>Escanea el código QR con tu app PLIN</Text>
             </Alert>
 
-            <Box textAlign="center">
+            <Box textAlign="center" w="100%" maxW="250px" mx="auto">
               <Image
                 src={plinQrImage}
                 alt="QR PLIN"
-                maxW="200px"
-                mx="auto"
+                w="100%"
+                h="auto"
                 borderRadius="md"
               />
             </Box>
 
-            <VStack spacing={2}>
-              <Text fontWeight="bold" fontSize="lg">
+            <VStack spacing={2} w="100%">
+              <Text fontWeight="bold" fontSize={{ base: "md", md: "lg" }} textAlign="center">
                 Total a pagar: S/ {paymentMethod === 'suscripcion' && selectedSubscriptionPlan 
                   ? parseFloat(selectedSubscriptionPlan.price).toFixed(2)
                   : parseFloat(getTotal()).toFixed(2)
                 }
               </Text>
-              <Text fontSize="sm" color="gray.600">
+              <Text fontSize={{ base: "xs", md: "sm" }} color="gray.600" textAlign="center">
                 {paymentMethod === 'suscripcion' && selectedSubscriptionPlan 
                   ? `Plan ${selectedSubscriptionPlan.name} - ${selectedSubscriptionPlan.bottles + selectedSubscriptionPlan.bonus} bidones`
                   : "Incluye productos + flete de envío"
@@ -2222,9 +2238,9 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
               </Text>
             </VStack>
 
-            <Alert status={whatsappSent ? "success" : "warning"}>
+            <Alert status={whatsappSent ? "success" : "warning"} fontSize={{ base: "xs", md: "sm" }}>
               <AlertIcon />
-              <Text fontSize="sm">
+              <Text>
                 {whatsappSent 
                   ? "✅ Comprobante enviado por WhatsApp. Ahora puedes confirmar el pago."
                   : "Después de pagar, envía el comprobante por WhatsApp"
@@ -2232,20 +2248,21 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
               </Text>
             </Alert>
 
-            <VStack spacing={3} w="full">
+            <VStack spacing={{ base: 2, md: 3 }} w="full">
               <Button
                 colorScheme="green"
-                size="lg"
+                size={{ base: "md", md: "lg" }}
                 w="full"
                 leftIcon={<FaWhatsapp />}
                 onClick={handleWhatsAppSend}
+                fontSize={{ base: "sm", md: "md" }}
               >
                 Enviar Comprobante por WhatsApp
               </Button>
               
               <Button
                 colorScheme="purple"
-                size="lg"
+                size={{ base: "md", md: "lg" }}
                 w="full"
                 leftIcon={<FaCheckCircle />}
                 onClick={handleConfirmPLINPayment}
@@ -2253,6 +2270,7 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
                 loadingText="Creando pedido..."
                 isDisabled={!whatsappSent}
                 opacity={whatsappSent ? 1 : 0.5}
+                fontSize={{ base: "sm", md: "md" }}
               >
                 {whatsappSent ? 'Confirmar Pago y Crear Pedido' : 'Primero envía el comprobante por WhatsApp'}
               </Button>
@@ -2264,46 +2282,59 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
   );
 
   return (
-    <Box minH="100vh" bg="gray.50" py={8}>
-      <Box maxW="1200px" mx="auto" px={4}>
-        <VStack spacing={8}>
+    <Box minH="100vh" bg="gray.50" py={{ base: 4, md: 8 }}>
+      <Box maxW="1200px" mx="auto" px={{ base: 2, sm: 4 }}>
+        <VStack spacing={{ base: 4, md: 8 }}>
           {/* Header */}
-          <Box textAlign="center">
-            <Heading size="xl" color="blue.600" mb={2}>
+          <Box textAlign="center" w="100%">
+            <Heading size={{ base: "lg", md: "xl" }} color="blue.600" mb={2}>
               Pedido Rápido de Agua
             </Heading>
-            <Text color="gray.600" fontSize="lg">
+            <Text color="gray.600" fontSize={{ base: "md", md: "lg" }}>
               Proceso simplificado en 5 pasos
             </Text>
           </Box>
 
           {/* Indicador de pasos */}
-          <HStack spacing={4} justify="center" flexWrap="wrap">
-            {[1, 2, 3, 4, 5].map((step) => (
-              <HStack key={step} spacing={2}>
-                <Box
-                  w={8}
-                  h={8}
-                  borderRadius="full"
-                  bg={step <= currentStep ? 'blue.500' : 'gray.200'}
-                  color={step <= currentStep ? 'white' : 'gray.500'}
-                  display="flex"
-                  alignItems="center"
-                  justifyContent="center"
-                  fontSize="sm"
-                  fontWeight="bold"
-                >
-                  {step}
-                </Box>
-                <Text fontSize="sm" color={step <= currentStep ? 'blue.600' : 'gray.500'}>
-                  {step === 1 ? 'DNI' : 
-                   step === 2 ? 'Datos' : 
-                   step === 3 ? 'Productos' : 
-                   step === 4 ? 'Modalidad' : 'Pago'}
-                </Text>
-              </HStack>
-            ))}
-          </HStack>
+          <Box w="100%" overflowX="auto" pb={2}>
+            <HStack 
+              spacing={{ base: 1, sm: 2, md: 4 }} 
+              justify="center" 
+              minW="max-content"
+              px={{ base: 2, md: 0 }}
+            >
+              {[1, 2, 3, 4, 5].map((step) => (
+                <VStack key={step} spacing={1} minW={{ base: "60px", sm: "70px" }}>
+                  <Box
+                    w={{ base: 8, sm: 10, md: 12 }}
+                    h={{ base: 8, sm: 10, md: 12 }}
+                    borderRadius="full"
+                    bg={step <= currentStep ? 'blue.500' : 'gray.200'}
+                    color={step <= currentStep ? 'white' : 'gray.500'}
+                    display="flex"
+                    alignItems="center"
+                    justifyContent="center"
+                    fontSize={{ base: "xs", sm: "sm", md: "md" }}
+                    fontWeight="bold"
+                    flexShrink={0}
+                  >
+                    {step}
+                  </Box>
+                  <Text 
+                    fontSize={{ base: "2xs", sm: "xs", md: "sm" }} 
+                    color={step <= currentStep ? 'blue.600' : 'gray.500'}
+                    textAlign="center"
+                    whiteSpace="nowrap"
+                  >
+                    {step === 1 ? 'DNI' : 
+                     step === 2 ? 'Datos' : 
+                     step === 3 ? 'Productos' : 
+                     step === 4 ? 'Modalidad' : 'Pago'}
+                  </Text>
+                </VStack>
+              ))}
+            </HStack>
+          </Box>
 
           {/* Contenido del paso actual */}
           {currentStep === 1 && renderStep1()}

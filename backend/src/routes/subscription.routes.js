@@ -5,6 +5,7 @@ const {
   createSubscription, 
   useSubscriptionBottles, 
   getAllSubscriptions,
+  updateSubscription,
   getSubscriptionStats 
 } = require('../controllers/subscription.controller');
 const { authMiddleware, requireAdmin } = require('../middlewares/auth.middleware');
@@ -17,5 +18,6 @@ router.post('/use-bottles', useSubscriptionBottles);
 // Rutas protegidas (requieren autenticación de admin)
 router.get('/stats', authMiddleware, requireAdmin, getSubscriptionStats);
 router.get('/', authMiddleware, requireAdmin, getAllSubscriptions);
+router.put('/:id', authMiddleware, requireAdmin, updateSubscription);
 
 module.exports = router;

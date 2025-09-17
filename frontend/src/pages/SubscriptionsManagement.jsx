@@ -103,7 +103,7 @@ const SubscriptionsManagement = () => {
   const [editForm, setEditForm] = useState({
     id: '',
     status: '',
-    remainingBidons: '',
+    remainingBottles: '',
     notes: ''
   });
 
@@ -201,7 +201,34 @@ const SubscriptionsManagement = () => {
 
   const handleCreateSubscription = async () => {
     try {
-      await axios.post('/api/subscriptions', createForm);
+      // Obtener el cliente seleccionado para obtener el DNI
+      const selectedClient = clients.find(client => client.id === parseInt(createForm.clientId));
+      const selectedPlan = subscriptionPlans.find(plan => plan.id === parseInt(createForm.planId));
+      
+      if (!selectedClient || !selectedPlan) {
+        toast({
+          title: 'Error',
+          description: 'Cliente o plan no encontrado',
+          status: 'error',
+          duration: 3000,
+          isClosable: true,
+        });
+        return;
+      }
+
+      // Preparar datos según el modelo del backend
+      const subscriptionData = {
+        clientId: selectedClient.id,
+        clientDni: selectedClient.documentNumber,
+        subscriptionType: selectedPlan.name,
+        totalBottles: selectedPlan.bottles + selectedPlan.bonus,
+        totalAmount: selectedPlan.price,
+        paidAmount: selectedPlan.price,
+        expiryDate: null, // Las suscripciones duran hasta que se acaben los bidones
+        notes: createForm.notes
+      };
+
+      await axios.post('/api/subscriptions', subscriptionData);
       toast({
         title: 'Suscripción creada',
         description: 'La suscripción se ha creado correctamente',
@@ -235,7 +262,7 @@ const SubscriptionsManagement = () => {
         isClosable: true,
       });
       onEditClose();
-      setEditForm({ id: '', status: '', remainingBidons: '', notes: '' });
+      setEditForm({ id: '', status: '', remainingBottles: '', notes: '' });
       fetchData();
     } catch (error) {
       console.error('Error al actualizar suscripción:', error);
@@ -258,7 +285,7 @@ const SubscriptionsManagement = () => {
     setEditForm({
       id: subscription.id,
       status: subscription.status,
-      remainingBidons: subscription.remainingBidons,
+      remainingBottles: subscription.remainingBottles,
       notes: subscription.notes || ''
     });
     onEditOpen();
@@ -387,7 +414,7 @@ const SubscriptionsManagement = () => {
                       <Th>Estado</Th>
                       <Th>Bidones Restantes</Th>
                       <Th>Fecha Inicio</Th>
-                      <Th>Próximo Pago</Th>
+                      <Th>Duración</Th>
                       <Th>Acciones</Th>
                     </Tr>
                   </Thead>
@@ -407,10 +434,10 @@ const SubscriptionsManagement = () => {
                         <Td>
                           <VStack align="start" spacing={1}>
                             <Text fontWeight="bold">
-                              {subscription.plan?.name || 'N/A'}
+                              {subscription.subscriptionType || 'N/A'}
                             </Text>
                             <Text fontSize="sm" color="gray.600">
-                              S/ {subscription.plan?.price || 0}
+                              S/ {subscription.totalAmount || 0}
                             </Text>
                           </VStack>
                         </Td>
@@ -421,11 +448,15 @@ const SubscriptionsManagement = () => {
                         </Td>
                         <Td>
                           <Text fontWeight="bold" color="blue.600">
-                            {subscription.remainingBidons || 0}
+                            {subscription.remainingBottles || 0}
                           </Text>
                         </Td>
-                        <Td>{formatDate(subscription.startDate)}</Td>
-                        <Td>{formatDate(subscription.nextPaymentDate)}</Td>
+                        <Td>{formatDate(subscription.purchaseDate)}</Td>
+                        <Td>
+                          <Text color="green.600" fontWeight="bold">
+                            Hasta agotar bidones
+                          </Text>
+                        </Td>
                         <Td>
                           <Menu>
                             <MenuButton as={Button} size="sm" variant="ghost">
@@ -457,7 +488,7 @@ const SubscriptionsManagement = () => {
         </Card>
 
         {/* Modal Crear Suscripción */}
-        <Modal isOpen={isCreateOpen} onClose={onCreateClose} size="lg">
+        <Modal isOpen={isCreateOpen} onClose={onCreateClose} size="lg" isCentered>
           <ModalOverlay />
           <ModalContent>
             <ModalHeader>Nueva Suscripción</ModalHeader>
@@ -487,7 +518,7 @@ const SubscriptionsManagement = () => {
                   >
                     {(Array.isArray(subscriptionPlans) ? subscriptionPlans : []).map(plan => (
                       <option key={plan.id} value={plan.id}>
-                        {plan.name} - S/ {plan.price} ({plan.bidonsQuantity} bidones)
+                        {plan.name} - S/ {plan.price} ({plan.bottles + plan.bonus} bidones)
                       </option>
                     ))}
                   </Select>
@@ -522,7 +553,7 @@ const SubscriptionsManagement = () => {
         </Modal>
 
         {/* Modal Editar Suscripción */}
-        <Modal isOpen={isEditOpen} onClose={onEditClose} size="lg">
+        <Modal isOpen={isEditOpen} onClose={onEditClose} size="lg" isCentered>
           <ModalOverlay />
           <ModalContent>
             <ModalHeader>Editar Suscripción</ModalHeader>
@@ -544,8 +575,8 @@ const SubscriptionsManagement = () => {
                 <FormControl>
                   <FormLabel>Bidones Restantes</FormLabel>
                   <NumberInput
-                    value={editForm.remainingBidons}
-                    onChange={(value) => setEditForm({ ...editForm, remainingBidons: value })}
+                    value={editForm.remainingBottles}
+                    onChange={(value) => setEditForm({ ...editForm, remainingBottles: value })}
                     min={0}
                   >
                     <NumberInputField />
@@ -577,7 +608,7 @@ const SubscriptionsManagement = () => {
         </Modal>
 
         {/* Modal Ver Detalles */}
-        <Modal isOpen={isViewOpen} onClose={onViewClose} size="lg">
+        <Modal isOpen={isViewOpen} onClose={onViewClose} size="lg" isCentered>
           <ModalOverlay />
           <ModalContent>
             <ModalHeader>Detalles de la Suscripción</ModalHeader>
@@ -595,12 +626,12 @@ const SubscriptionsManagement = () => {
                       <Text>{selectedSubscription.client?.email || 'N/A'}</Text>
                     </Box>
                     <Box>
-                      <Text fontWeight="bold" color="gray.600">Plan:</Text>
-                      <Text>{selectedSubscription.plan?.name || 'N/A'}</Text>
+                      <Text fontWeight="bold" color="gray.600">Tipo de Suscripción:</Text>
+                      <Text>{selectedSubscription.subscriptionType || 'N/A'}</Text>
                     </Box>
                     <Box>
-                      <Text fontWeight="bold" color="gray.600">Precio:</Text>
-                      <Text>S/ {selectedSubscription.plan?.price || 0}</Text>
+                      <Text fontWeight="bold" color="gray.600">Total Pagado:</Text>
+                      <Text>S/ {selectedSubscription.totalAmount || 0}</Text>
                     </Box>
                     <Box>
                       <Text fontWeight="bold" color="gray.600">Estado:</Text>
@@ -611,16 +642,16 @@ const SubscriptionsManagement = () => {
                     <Box>
                       <Text fontWeight="bold" color="gray.600">Bidones Restantes:</Text>
                       <Text fontWeight="bold" color="blue.600">
-                        {selectedSubscription.remainingBidons || 0}
+                        {selectedSubscription.remainingBottles || 0}
                       </Text>
                     </Box>
                     <Box>
-                      <Text fontWeight="bold" color="gray.600">Fecha de Inicio:</Text>
-                      <Text>{formatDate(selectedSubscription.startDate)}</Text>
+                      <Text fontWeight="bold" color="gray.600">Fecha de Compra:</Text>
+                      <Text>{formatDate(selectedSubscription.purchaseDate)}</Text>
                     </Box>
                     <Box>
-                      <Text fontWeight="bold" color="gray.600">Próximo Pago:</Text>
-                      <Text>{formatDate(selectedSubscription.nextPaymentDate)}</Text>
+                      <Text fontWeight="bold" color="gray.600">Duración:</Text>
+                      <Text color="green.600" fontWeight="bold">Hasta agotar bidones</Text>
                     </Box>
                   </SimpleGrid>
                   

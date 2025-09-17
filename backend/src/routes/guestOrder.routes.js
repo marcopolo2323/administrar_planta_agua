@@ -5,10 +5,11 @@ const { authMiddleware, requireRole } = require('../middlewares/auth.middleware'
 
 // Rutas públicas (sin autenticación)
 router.post('/', guestOrderController.createGuestOrder);
-router.get('/:id', guestOrderController.getGuestOrderById);
+router.get('/token/:token', guestOrderController.getGuestOrderByToken); // Ruta segura por token
 
 // Rutas de pedidos de invitados (requieren autenticación y roles específicos)
 router.get('/', [authMiddleware, requireRole(['admin', 'vendedor'])], guestOrderController.getGuestOrders);
+router.get('/:id', [authMiddleware, requireRole(['admin', 'vendedor', 'repartidor'])], guestOrderController.getGuestOrderById); // Ruta protegida por ID
 router.get('/stats', [authMiddleware, requireRole(['admin', 'vendedor'])], guestOrderController.getOrderStats);
 router.put('/:id', [authMiddleware, requireRole(['admin', 'vendedor', 'repartidor'])], guestOrderController.updateGuestOrder);
 router.put('/:id/status', [authMiddleware, requireRole(['admin', 'vendedor'])], guestOrderController.updateOrderStatus);
