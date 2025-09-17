@@ -353,7 +353,7 @@ const Dashboard = () => {
                     flexShrink={0}
                   >
                     <action.icon 
-                      size={{ base: "14px", sm: "16px", md: "18px" }} 
+                      size={16} 
                       color={`${action.color}.600`}
                     />
                   </Box>

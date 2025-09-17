@@ -108,35 +108,56 @@ app.get('/migrate-supabase', async (req, res) => {
   try {
     console.log('🔄 Iniciando migración de Supabase...');
     
-    // Verificar si la columna reference existe
-    const result = await sequelize.query(`
+    const migrations = [];
+    
+    // Verificar si la columna reference existe en Clients
+    const referenceResult = await sequelize.query(`
       SELECT column_name 
       FROM information_schema.columns 
       WHERE table_name = 'Clients' 
       AND column_name = 'reference'
     `, { type: sequelize.QueryTypes.SELECT });
     
-    if (result.length === 0) {
+    if (referenceResult.length === 0) {
       console.log('🔄 Agregando columna reference a la tabla Clients...');
       
-      // Agregar la columna reference
       await sequelize.query(`
         ALTER TABLE "Clients" 
         ADD COLUMN "reference" VARCHAR(255)
       `);
       
-      console.log('✅ Columna reference agregada exitosamente');
+      migrations.push('Columna reference agregada a Clients');
+    }
+    
+    // Verificar si la columna accessToken existe en GuestOrder
+    const accessTokenResult = await sequelize.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'GuestOrder' 
+      AND column_name = 'accessToken'
+    `, { type: sequelize.QueryTypes.SELECT });
+    
+    if (accessTokenResult.length === 0) {
+      console.log('🔄 Agregando columna accessToken a la tabla GuestOrder...');
       
+      await sequelize.query(`
+        ALTER TABLE "GuestOrder" 
+        ADD COLUMN "accessToken" VARCHAR(255) UNIQUE
+      `);
+      
+      migrations.push('Columna accessToken agregada a GuestOrder');
+    }
+    
+    if (migrations.length === 0) {
       res.json({ 
         success: true, 
-        message: 'Migración completada: Columna reference agregada'
+        message: 'Migración no necesaria: Todas las columnas ya existen'
       });
     } else {
-      console.log('✅ Columna reference ya existe');
-      
       res.json({ 
         success: true, 
-        message: 'Migración no necesaria: Columna reference ya existe'
+        message: 'Migración completada',
+        migrations: migrations
       });
     }
     
@@ -169,6 +190,7 @@ app.get('/diagnose', async (req, res) => {
     const clientCount = await sequelize.query('SELECT COUNT(*) as count FROM "Clients"', { type: sequelize.QueryTypes.SELECT });
     const userCount = await sequelize.query('SELECT COUNT(*) as count FROM "Users"', { type: sequelize.QueryTypes.SELECT });
     const productCount = await sequelize.query('SELECT COUNT(*) as count FROM "Products"', { type: sequelize.QueryTypes.SELECT });
+    const guestOrderCount = await sequelize.query('SELECT COUNT(*) as count FROM "GuestOrder"', { type: sequelize.QueryTypes.SELECT });
     
     res.json({
       success: true,
@@ -185,6 +207,9 @@ app.get('/diagnose', async (req, res) => {
           },
           products: {
             count: productCount[0].count
+          },
+          guestOrders: {
+            count: guestOrderCount[0].count
           }
         }
       }
