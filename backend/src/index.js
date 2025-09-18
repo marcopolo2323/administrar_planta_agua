@@ -634,6 +634,45 @@ app.get('/api/notifications', async (req, res) => {
   }
 });
 
+// Ruta para generar PDF de pago de invitados
+app.post('/api/guest-payments/generate-pdf', async (req, res) => {
+  try {
+    console.log('📄 Generando PDF para pago de invitado...');
+    const { orderData, documentType = 'boleta' } = req.body;
+    
+    if (!orderData) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Datos del pedido requeridos' 
+      });
+    }
+
+    // Por ahora, devolver un PDF simple o redirigir
+    // TODO: Implementar generación real de PDF
+    console.log('📋 Datos del pedido para PDF:', orderData);
+    console.log('📄 Tipo de documento:', documentType);
+    
+    // Respuesta temporal - en producción debería generar un PDF real
+    res.json({ 
+      success: true, 
+      message: 'PDF generado exitosamente (funcionalidad en desarrollo)',
+      data: {
+        orderId: orderData.id || 'N/A',
+        documentType: documentType,
+        status: 'generated'
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Error al generar PDF:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error al generar PDF',
+      error: error.message 
+    });
+  }
+});
+
 // Inicializar base de datos y servidor
 async function startServer() {
   try {
