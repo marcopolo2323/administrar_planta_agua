@@ -97,6 +97,18 @@ app.get('/fix-guest-order-products', async (req, res) => {
   }
 });
 
+app.get('/fix-foreign-keys-completely', async (req, res) => {
+  try {
+    console.log('🔧 Arreglando foreign keys completamente...');
+    const { fixForeignKeysCompletely } = require('./scripts/fixForeignKeysCompletely');
+    await fixForeignKeysCompletely();
+    res.json({ success: true, message: 'Foreign keys arregladas completamente' });
+  } catch (error) {
+    console.error('❌ Error arreglando foreign keys:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Conectar a MongoDB para las notificaciones (opcional)
 if (process.env.MONGODB_URI) {
   mongoose.connect(process.env.MONGODB_URI, {

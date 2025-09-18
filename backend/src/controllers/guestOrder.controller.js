@@ -162,6 +162,7 @@ exports.createGuestOrder = async (req, res) => {
 
     // Confirmar la transacción
     await transaction.commit();
+    console.log('✅ Transacción confirmada exitosamente');
 
     // Obtener el pedido completo con productos para la respuesta
     const completeOrder = await GuestOrder.findByPk(guestOrder.id, {
