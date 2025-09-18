@@ -39,8 +39,14 @@ class PDFGeneratorService {
         // Número de documento (usar ID del pedido)
         doc.font(normalFont).fontSize(12).text(`N° ${orderData.id || 'N/A'}`, 450, 130);
         
-        // Fecha
-        const currentDate = new Date().toLocaleDateString('es-PE');
+        // Fecha (corregir zona horaria)
+        const now = new Date();
+        const peruDate = new Date(now.getTime() - (5 * 60 * 60 * 1000)); // UTC-5 para Perú
+        const currentDate = peruDate.toLocaleDateString('es-PE', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric'
+        });
         doc.font(normalFont).fontSize(10).text(`Fecha: ${currentDate}`, 450, 150);
 
         // Información del cliente
@@ -77,10 +83,29 @@ class PDFGeneratorService {
         let currentY = tableY + 30;
         if (orderData.items && orderData.items.length > 0) {
           orderData.items.forEach((item, index) => {
-            doc.font(normalFont).fontSize(9).text(item.name || 'Producto', colX[0], currentY);
-            doc.font(normalFont).fontSize(9).text(item.quantity?.toString() || '1', colX[1], currentY);
-            doc.font(normalFont).fontSize(9).text(`S/ ${item.price || '0.00'}`, colX[2], currentY);
-            doc.font(normalFont).fontSize(9).text(`S/ ${item.subtotal || '0.00'}`, colX[3], currentY);
+            const productName = item.name || item.productName || 'Producto';
+            const quantity = item.quantity || 1;
+            const price = parseFloat(item.price || item.unitPrice || 0).toFixed(2);
+            const subtotal = parseFloat(item.subtotal || (item.price || item.unitPrice || 0) * quantity).toFixed(2);
+            
+            doc.font(normalFont).fontSize(9).text(productName, colX[0], currentY);
+            doc.font(normalFont).fontSize(9).text(quantity.toString(), colX[1], currentY);
+            doc.font(normalFont).fontSize(9).text(`S/ ${price}`, colX[2], currentY);
+            doc.font(normalFont).fontSize(9).text(`S/ ${subtotal}`, colX[3], currentY);
+            currentY += 20;
+          });
+        } else if (orderData.products && orderData.products.length > 0) {
+          // Si los productos están en orderData.products
+          orderData.products.forEach((item, index) => {
+            const productName = item.name || item.productName || 'Producto';
+            const quantity = item.quantity || 1;
+            const price = parseFloat(item.price || item.unitPrice || 0).toFixed(2);
+            const subtotal = parseFloat(item.subtotal || (item.price || item.unitPrice || 0) * quantity).toFixed(2);
+            
+            doc.font(normalFont).fontSize(9).text(productName, colX[0], currentY);
+            doc.font(normalFont).fontSize(9).text(quantity.toString(), colX[1], currentY);
+            doc.font(normalFont).fontSize(9).text(`S/ ${price}`, colX[2], currentY);
+            doc.font(normalFont).fontSize(9).text(`S/ ${subtotal}`, colX[3], currentY);
             currentY += 20;
           });
         } else {
@@ -119,7 +144,29 @@ class PDFGeneratorService {
         // Información de pago
         const paymentY = totalsY + 100;
         doc.font(titleFont).fontSize(12).text('MÉTODO DE PAGO', 50, paymentY);
-        doc.font(normalFont).fontSize(11).text(orderData.paymentMethod || 'Efectivo', 50, paymentY + 20);
+        
+        // Mapear métodos de pago
+        let paymentMethodText = 'Efectivo';
+        if (orderData.paymentMethod) {
+          switch (orderData.paymentMethod.toLowerCase()) {
+            case 'plin':
+              paymentMethodText = 'Plin';
+              break;
+            case 'yape':
+              paymentMethodText = 'Yape';
+              break;
+            case 'transferencia':
+              paymentMethodText = 'Transferencia bancaria';
+              break;
+            case 'vale':
+              paymentMethodText = 'Vale';
+              break;
+            default:
+              paymentMethodText = orderData.paymentMethod;
+          }
+        }
+        
+        doc.font(normalFont).fontSize(11).text(paymentMethodText, 50, paymentY + 20);
 
         // Pie de página
         const footerY = 750;
