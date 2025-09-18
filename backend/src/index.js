@@ -34,6 +34,45 @@ app.options('*', cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Endpoints de sincronización manual (GET para acceso directo)
+app.get('/fix-foreign-keys', async (req, res) => {
+  try {
+    console.log('🔧 Iniciando reparación de foreign keys...');
+    const { fixForeignKeys } = require('./scripts/fixForeignKeys');
+    await fixForeignKeys();
+    res.json({ success: true, message: 'Foreign keys reparadas exitosamente' });
+  } catch (error) {
+    console.error('❌ Error reparando foreign keys:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.get('/full-sync', async (req, res) => {
+  try {
+    console.log('🔄 Iniciando sincronización completa...');
+    const { fixForeignKeys } = require('./scripts/fixForeignKeys');
+    const { addPaymentTypeColumn } = require('./scripts/addPaymentTypeColumn');
+    await fixForeignKeys();
+    await addPaymentTypeColumn();
+    res.json({ success: true, message: 'Sincronización completa exitosa' });
+  } catch (error) {
+    console.error('❌ Error en sincronización completa:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.get('/run-seed', async (req, res) => {
+  try {
+    console.log('🌱 Ejecutando seed completo...');
+    const { deployUpdate } = require('./scripts/deployUpdate');
+    await deployUpdate();
+    res.json({ success: true, message: 'Seed ejecutado exitosamente' });
+  } catch (error) {
+    console.error('❌ Error ejecutando seed:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Conectar a MongoDB para las notificaciones (opcional)
 if (process.env.MONGODB_URI) {
   mongoose.connect(process.env.MONGODB_URI, {
@@ -463,44 +502,6 @@ app.use('/api/vales', valeRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/documents', documentRoutes);
-// Endpoints de sincronización manual (GET para acceso directo)
-app.get('/fix-foreign-keys', async (req, res) => {
-  try {
-    console.log('🔧 Iniciando reparación de foreign keys...');
-    const { fixForeignKeys } = require('./scripts/fixForeignKeys');
-    await fixForeignKeys();
-    res.json({ success: true, message: 'Foreign keys reparadas exitosamente' });
-  } catch (error) {
-    console.error('❌ Error reparando foreign keys:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-app.get('/full-sync', async (req, res) => {
-  try {
-    console.log('🔄 Iniciando sincronización completa...');
-    const { fixForeignKeys } = require('./scripts/fixForeignKeys');
-    const { addPaymentTypeColumn } = require('./scripts/addPaymentTypeColumn');
-    await fixForeignKeys();
-    await addPaymentTypeColumn();
-    res.json({ success: true, message: 'Sincronización completa exitosa' });
-  } catch (error) {
-    console.error('❌ Error en sincronización completa:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
-app.get('/run-seed', async (req, res) => {
-  try {
-    console.log('🌱 Ejecutando seed completo...');
-    const { deployUpdate } = require('./scripts/deployUpdate');
-    await deployUpdate();
-    res.json({ success: true, message: 'Seed ejecutado exitosamente' });
-  } catch (error) {
-    console.error('❌ Error ejecutando seed:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
 
 // Endpoint alternativo para generar PDF
 app.post('/api/admin/generate-pdf', async (req, res) => {
