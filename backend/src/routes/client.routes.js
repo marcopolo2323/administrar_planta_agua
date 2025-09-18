@@ -4,7 +4,7 @@ const clientController = require('../controllers/client.controller');
 const { authMiddleware, requireAdmin } = require('../middlewares/auth.middleware');
 
 // Rutas públicas (requieren autenticación pero no admin)
-router.get('/', authMiddleware, clientController.getAllClients);
+router.get('/', clientController.getAllClients); // Ruta pública para el dashboard
 router.get('/document/:documentNumber', clientController.findClientByDocument); // Ruta pública para buscar cliente por documento
 router.get('/search', authMiddleware, clientController.searchClients);
 router.get('/:id', authMiddleware, clientController.getClientById);

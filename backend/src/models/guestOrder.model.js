@@ -88,7 +88,7 @@ const GuestOrder = sequelize.define('GuestOrder', {
     allowNull: true
   }
 }, {
-  tableName: 'GuestOrders',
+  tableName: 'GuestOrder',
   timestamps: true,
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
