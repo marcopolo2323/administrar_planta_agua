@@ -103,6 +103,38 @@ app.get('/run-seed', async (req, res) => {
   }
 });
 
+// Ruta para importar clientes desde JSON (solo en producción)
+app.get('/import-clients', async (req, res) => {
+  try {
+    console.log('📥 Iniciando importación de clientes desde JSON...');
+    
+    const importClientsFromJson = require('./scripts/importClientsFromJson');
+    const result = await importClientsFromJson();
+    
+    if (result.success) {
+      res.json({
+        success: true,
+        message: 'Clientes importados exitosamente',
+        stats: result.stats
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: 'Error en la importación',
+        error: result.error
+      });
+    }
+    
+  } catch (error) {
+    console.error('❌ Error en importación:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+});
+
 // Ruta para sincronizar todas las tablas
 app.get('/sync-tables', async (req, res) => {
   try {
