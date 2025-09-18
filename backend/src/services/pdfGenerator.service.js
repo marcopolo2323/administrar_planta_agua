@@ -6,6 +6,13 @@ class PDFGeneratorService {
   static generateGuestOrderPDF(orderData, documentType = 'boleta') {
     return new Promise((resolve, reject) => {
       try {
+        // Debug: Mostrar todos los datos recibidos
+        console.log('🔍 PDF Generator - Datos recibidos:', JSON.stringify(orderData, null, 2));
+        console.log('🔍 PDF Generator - Tipo de documento:', documentType);
+        console.log('🔍 PDF Generator - Items:', orderData.items);
+        console.log('🔍 PDF Generator - Products:', orderData.products);
+        console.log('🔍 PDF Generator - Payment Method:', orderData.paymentMethod);
+        
         // Crear un nuevo documento PDF
         const doc = new PDFDocument({
           size: 'A4',
@@ -81,34 +88,61 @@ class PDFGeneratorService {
 
         // Productos (si hay items)
         let currentY = tableY + 30;
-        if (orderData.items && orderData.items.length > 0) {
-          orderData.items.forEach((item, index) => {
-            const productName = item.name || item.productName || 'Producto';
-            const quantity = item.quantity || 1;
-            const price = parseFloat(item.price || item.unitPrice || 0).toFixed(2);
-            const subtotal = parseFloat(item.subtotal || (item.price || item.unitPrice || 0) * quantity).toFixed(2);
-            
-            doc.font(normalFont).fontSize(9).text(productName, colX[0], currentY);
-            doc.font(normalFont).fontSize(9).text(quantity.toString(), colX[1], currentY);
-            doc.font(normalFont).fontSize(9).text(`S/ ${price}`, colX[2], currentY);
-            doc.font(normalFont).fontSize(9).text(`S/ ${subtotal}`, colX[3], currentY);
-            currentY += 20;
-          });
-        } else if (orderData.products && orderData.products.length > 0) {
-          // Si los productos están en orderData.products
-          orderData.products.forEach((item, index) => {
-            const productName = item.name || item.productName || 'Producto';
-            const quantity = item.quantity || 1;
-            const price = parseFloat(item.price || item.unitPrice || 0).toFixed(2);
-            const subtotal = parseFloat(item.subtotal || (item.price || item.unitPrice || 0) * quantity).toFixed(2);
-            
-            doc.font(normalFont).fontSize(9).text(productName, colX[0], currentY);
-            doc.font(normalFont).fontSize(9).text(quantity.toString(), colX[1], currentY);
-            doc.font(normalFont).fontSize(9).text(`S/ ${price}`, colX[2], currentY);
-            doc.font(normalFont).fontSize(9).text(`S/ ${subtotal}`, colX[3], currentY);
-            currentY += 20;
-          });
+        let hasProducts = false;
+        
+        // Función para procesar un item de producto
+        const processProductItem = (item, index) => {
+          console.log(`🔍 Procesando producto ${index}:`, item);
+          
+          // Mapear diferentes estructuras de datos
+          const productName = item.name || 
+                             item.productName || 
+                             item.product?.name || 
+                             item.Product?.name || 
+                             'Producto de agua';
+          
+          const quantity = item.quantity || 
+                          item.amount || 
+                          item.qty || 
+                          1;
+          
+          const price = parseFloat(item.price || 
+                                  item.unitPrice || 
+                                  item.pricePerUnit || 
+                                  item.product?.price || 
+                                  item.Product?.price || 
+                                  0).toFixed(2);
+          
+          const subtotal = parseFloat(item.subtotal || 
+                                     item.total || 
+                                     item.totalPrice || 
+                                     (item.price || item.unitPrice || 0) * quantity).toFixed(2);
+          
+          console.log(`🔍 Producto procesado: ${productName} x${quantity} @S/${price} = S/${subtotal}`);
+          
+          doc.font(normalFont).fontSize(9).text(productName, colX[0], currentY);
+          doc.font(normalFont).fontSize(9).text(quantity.toString(), colX[1], currentY);
+          doc.font(normalFont).fontSize(9).text(`S/ ${price}`, colX[2], currentY);
+          doc.font(normalFont).fontSize(9).text(`S/ ${subtotal}`, colX[3], currentY);
+          currentY += 20;
+          hasProducts = true;
+        };
+        
+        // Intentar diferentes fuentes de productos
+        if (orderData.items && Array.isArray(orderData.items) && orderData.items.length > 0) {
+          console.log('🔍 Usando orderData.items');
+          orderData.items.forEach(processProductItem);
+        } else if (orderData.products && Array.isArray(orderData.products) && orderData.products.length > 0) {
+          console.log('🔍 Usando orderData.products');
+          orderData.products.forEach(processProductItem);
+        } else if (orderData.orderDetails && Array.isArray(orderData.orderDetails) && orderData.orderDetails.length > 0) {
+          console.log('🔍 Usando orderData.orderDetails');
+          orderData.orderDetails.forEach(processProductItem);
+        } else if (orderData.GuestOrderProducts && Array.isArray(orderData.GuestOrderProducts) && orderData.GuestOrderProducts.length > 0) {
+          console.log('🔍 Usando orderData.GuestOrderProducts');
+          orderData.GuestOrderProducts.forEach(processProductItem);
         } else {
+          console.log('🔍 No se encontraron productos específicos, usando información general');
           // Si no hay items específicos, mostrar información general
           doc.font(normalFont).fontSize(9).text('Producto de agua', colX[0], currentY);
           doc.font(normalFont).fontSize(9).text('1', colX[1], currentY);
@@ -147,8 +181,12 @@ class PDFGeneratorService {
         
         // Mapear métodos de pago
         let paymentMethodText = 'Efectivo';
-        if (orderData.paymentMethod) {
-          switch (orderData.paymentMethod.toLowerCase()) {
+        const paymentMethod = orderData.paymentMethod || orderData.paymentType || orderData.payment;
+        
+        console.log('🔍 Método de pago detectado:', paymentMethod);
+        
+        if (paymentMethod) {
+          switch (paymentMethod.toLowerCase()) {
             case 'plin':
               paymentMethodText = 'Plin';
               break;
@@ -161,10 +199,21 @@ class PDFGeneratorService {
             case 'vale':
               paymentMethodText = 'Vale';
               break;
+            case 'efectivo':
+              paymentMethodText = 'Efectivo';
+              break;
+            case 'contraentrega':
+              paymentMethodText = 'Contraentrega';
+              break;
+            case 'suscripcion':
+              paymentMethodText = 'Suscripción';
+              break;
             default:
-              paymentMethodText = orderData.paymentMethod;
+              paymentMethodText = paymentMethod;
           }
         }
+        
+        console.log('🔍 Método de pago final:', paymentMethodText);
         
         doc.font(normalFont).fontSize(11).text(paymentMethodText, 50, paymentY + 20);
 
