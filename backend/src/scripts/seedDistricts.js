@@ -12,11 +12,11 @@ const seedDistricts = async () => {
     }
 
     const districts = [
-      { name: 'Manantay', deliveryFee: 1.00 },
-      { name: 'Yarinacocha', deliveryFee: 1.00 },
-      { name: 'Calleria', deliveryFee: 1.00 },
-      { name: 'San Jose', deliveryFee: 1.00 },
-      { name: 'Cashibo', deliveryFee: 1.00 },
+      { name: 'Manantay', deliveryFee: 0.00 },
+      { name: 'Yarinacocha', deliveryFee: 0.00 },
+      { name: 'Calleria', deliveryFee: 0.00 },
+      { name: 'San Jose', deliveryFee: 0.00 },
+      { name: 'Cashibo', deliveryFee: 0.00 },
     ];
 
     await District.bulkCreate(districts);

@@ -135,6 +135,52 @@ app.get('/import-clients', async (req, res) => {
   }
 });
 
+// Ruta para obtener preferencias de cliente por DNI (placeholder)
+app.get('/api/client-preferences/dni/:dni', async (req, res) => {
+  try {
+    const { dni } = req.params;
+    
+    // Por ahora, devolver que no hay preferencias
+    // En el futuro se puede implementar la funcionalidad completa
+    res.json({
+      success: true,
+      data: null,
+      message: 'No se encontraron preferencias para este cliente'
+    });
+    
+  } catch (error) {
+    console.error('❌ Error al obtener preferencias:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+});
+
+// Ruta para crear preferencias de cliente (placeholder)
+app.post('/api/client-preferences', async (req, res) => {
+  try {
+    const preferencesData = req.body;
+    
+    // Por ahora, solo confirmar que se recibieron los datos
+    // En el futuro se puede implementar la funcionalidad completa
+    res.json({
+      success: true,
+      message: 'Preferencias recibidas (funcionalidad en desarrollo)',
+      data: preferencesData
+    });
+    
+  } catch (error) {
+    console.error('❌ Error al crear preferencias:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+});
+
 // Ruta para corregir distritos de clientes
 app.get('/fix-districts', async (req, res) => {
   try {

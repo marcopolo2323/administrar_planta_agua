@@ -132,7 +132,7 @@ const deployUpdate = async () => {
           type: 'botella',
           unitPrice: 10.00,
           wholesalePrice: 9.00,
-          wholesaleMinQuantity: 60,
+          wholesaleMinQuantity: 50,
           stock: 200,
           active: true
         }
