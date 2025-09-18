@@ -11,7 +11,7 @@ const Voucher = sequelize.define('Voucher', {
     type: DataTypes.INTEGER,
     allowNull: true,
     references: {
-      model: 'Clients',
+      model: 'Client',
       key: 'id'
     }
   },
@@ -19,7 +19,7 @@ const Voucher = sequelize.define('Voucher', {
     type: DataTypes.INTEGER,
     allowNull: true,
     references: {
-      model: 'Users',
+      model: 'User',
       key: 'id'
     }
   },
@@ -27,7 +27,7 @@ const Voucher = sequelize.define('Voucher', {
     type: DataTypes.INTEGER,
     allowNull: true,
     references: {
-      model: 'Orders',
+      model: 'Order',
       key: 'id'
     }
   },
@@ -35,7 +35,7 @@ const Voucher = sequelize.define('Voucher', {
     type: DataTypes.INTEGER,
     allowNull: true,
     references: {
-      model: 'GuestOrders',
+      model: 'GuestOrder',
       key: 'id'
     }
   },
@@ -43,7 +43,7 @@ const Voucher = sequelize.define('Voucher', {
     type: DataTypes.INTEGER,
     allowNull: true,
     references: {
-      model: 'Products',
+      model: 'Product',
       key: 'id'
     }
   },
