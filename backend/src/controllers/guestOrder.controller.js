@@ -125,28 +125,33 @@ exports.createGuestOrder = async (req, res) => {
       console.log('Creando vales para cliente frecuente:', clientId);
       
       try {
-        // Crear un vale por cada producto en el pedido
-        const vouchers = await Promise.all(
-          finalProducts.map(async (item) => {
-            const product = await Product.findByPk(item.productId);
-            if (product) {
-              return await Voucher.create({
-                clientId: clientId,
-                deliveryPersonId: null, // Se asignará cuando se asigne el pedido
-                productId: item.productId,
-                quantity: item.quantity,
-                unitPrice: parseFloat(item.price || item.unitPrice),
-                totalAmount: parseFloat(item.subtotal || (item.price || item.unitPrice) * item.quantity),
-                status: 'pending',
-                notes: `Vale generado automáticamente para pedido #${guestOrder.id}`,
-                guestOrderId: guestOrder.id
-              });
-            }
-            return null;
-          })
-        );
+        // Solo crear vales si hay productos en el pedido
+        if (finalProducts && finalProducts.length > 0) {
+          // Crear un vale por cada producto en el pedido
+          const vouchers = await Promise.all(
+            finalProducts.map(async (item) => {
+              const product = await Product.findByPk(item.productId);
+              if (product) {
+                return await Voucher.create({
+                  clientId: clientId,
+                  deliveryPersonId: null, // Se asignará cuando se asigne el pedido
+                  productId: item.productId,
+                  quantity: item.quantity,
+                  unitPrice: parseFloat(item.price || item.unitPrice),
+                  totalAmount: parseFloat(item.subtotal || (item.price || item.unitPrice) * item.quantity),
+                  status: 'pending',
+                  notes: `Vale generado automáticamente para pedido #${guestOrder.id}`,
+                  guestOrderId: guestOrder.id
+                });
+              }
+              return null;
+            })
+          );
 
-        console.log('Vales creados:', vouchers.filter(v => v !== null).length);
+          console.log('Vales creados:', vouchers.filter(v => v !== null).length);
+        } else {
+          console.log('No hay productos para crear vales');
+        }
       } catch (voucherError) {
         console.warn('⚠️ Error al crear vales (continuando sin vales):', voucherError.message);
         // Continuar sin crear vales si hay error

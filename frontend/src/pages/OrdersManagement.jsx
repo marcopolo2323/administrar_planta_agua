@@ -632,6 +632,17 @@ const OrdersManagement = () => {
                 Entregado
               </Button>
             )}
+            
+            {(order.status === 'pendiente' || order.status === 'asignado' || order.status === 'en_camino') && (
+              <Button
+                size="sm"
+                colorScheme="red"
+                variant="outline"
+                onClick={() => handleStatusUpdate(order, 'cancelado')}
+              >
+                Anular
+              </Button>
+            )}
           </HStack>
         </VStack>
       </CardBody>

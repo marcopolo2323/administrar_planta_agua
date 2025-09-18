@@ -322,6 +322,14 @@ const DeliveryDashboardNew = () => {
                 />
               </Tooltip>
             </HStack>
+            
+            {/* Distrito del cliente */}
+            <HStack spacing={2} w="full">
+              <FaMapMarkerAlt size={12} color="#718096" />
+              <Text fontSize={{ base: "xs", md: "sm" }} noOfLines={1} flex={1}>
+                Distrito: {order.clientDistrict || order.client?.district || order.deliveryDistrict || 'Sin distrito'}
+              </Text>
+            </HStack>
           </VStack>
 
           {/* Información de pago optimizada */}
