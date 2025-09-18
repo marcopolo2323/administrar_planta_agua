@@ -56,6 +56,8 @@ const Receipt = () => {
             const response = await axios.get(`/api/guest-orders/token/${id}`);
             if (response.data.success) {
               const orderData = response.data.data;
+              console.log('🔍 OrderData recibido del servidor:', orderData);
+              console.log('🔍 Products en orderData:', orderData.products);
               // Transformar los datos para que coincidan con el formato esperado
               setOrder({
                 id: orderData.id,

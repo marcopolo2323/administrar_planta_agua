@@ -2,6 +2,7 @@ const { sequelize } = require('../models');
 const importClientsFromJson = require('./importClientsFromJson');
 const convertExcelToJson = require('./convertExcelToJson');
 const { addPaymentTypeColumn } = require('./addPaymentTypeColumn');
+const { fixForeignKeys } = require('./fixForeignKeys');
 
 const deployUpdate = async () => {
   try {
@@ -39,20 +40,48 @@ const deployUpdate = async () => {
     const District = require('../models/district.model');
     
     // Sincronizar sin forzar (mantener datos existentes)
+    // IMPORTANTE: Sincronizar en orden correcto para evitar problemas de foreign keys
     await User.sync();
     await Product.sync();
     await Client.sync();
     await District.sync();
     await DeliveryFee.sync();
     await DeliveryPerson.sync();
+    
+    // Sincronizar GuestOrder primero
     await GuestOrder.sync();
+    
+    // Luego sincronizar GuestOrderProduct (depende de GuestOrder)
     await GuestOrderProduct.sync();
+    
+    // Finalmente Voucher (depende de Client)
     await Voucher.sync();
     
     console.log('✅ Modelos sincronizados');
     
-    // 3.5. Agregar columna paymentType si no existe
-    console.log('\n🔧 PASO 3.5: Verificando columna paymentType...');
+    // 3.5. Verificar foreign keys
+    console.log('\n🔗 PASO 3.5: Verificando foreign keys...');
+    try {
+      // Verificar que las tablas existen y tienen las columnas correctas
+      const guestOrderTable = await sequelize.query("SELECT column_name FROM information_schema.columns WHERE table_name = 'GuestOrders' AND column_name = 'id'");
+      const guestOrderProductTable = await sequelize.query("SELECT column_name FROM information_schema.columns WHERE table_name = 'GuestOrderProducts' AND column_name = 'guestOrderId'");
+      
+      if (guestOrderTable[0].length > 0 && guestOrderProductTable[0].length > 0) {
+        console.log('✅ Foreign keys verificadas correctamente');
+      } else {
+        console.log('⚠️ Problemas con foreign keys detectados');
+      }
+    } catch (error) {
+      console.log('⚠️ Error verificando foreign keys:', error.message);
+    }
+    
+    // 3.6. Arreglar foreign keys
+    console.log('\n🔧 PASO 3.6: Arreglando foreign keys...');
+    await fixForeignKeys();
+    console.log('✅ Foreign keys arregladas');
+    
+    // 3.7. Agregar columna paymentType si no existe
+    console.log('\n🔧 PASO 3.7: Verificando columna paymentType...');
     await addPaymentTypeColumn();
     console.log('✅ Columna paymentType verificada');
     

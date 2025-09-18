@@ -17,6 +17,7 @@
     "convert-excel": "node src/scripts/convertExcelToJson.js",
     "verify-deploy": "node src/scripts/verifyDeploy.js",
     "migrate-supabase": "node src/scripts/migrateSupabase.js",
+    "fix-foreign-keys": "node src/scripts/fixForeignKeys.js",
     "init-production": "node init-production.js"
   },
   "keywords": [
