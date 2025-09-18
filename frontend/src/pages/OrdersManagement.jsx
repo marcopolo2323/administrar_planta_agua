@@ -388,17 +388,29 @@ const OrdersManagement = () => {
   // Función para descargar boleta
   const downloadReceipt = async (order) => {
     try {
-      const response = await fetch('/api/documents/generate', {
+      // Usar la misma ruta que funciona para guest orders
+      const response = await fetch('/api/guest-payments/generate-pdf', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify({
-          orderId: order.id,
-          orderType: order.type === 'guest' ? 'guest' : 'regular',
-          documentType: 'boleta',
-          orderData: order // Enviar los datos del pedido directamente
+          orderData: {
+            id: order.id,
+            customerName: order.clientName || order.customerName,
+            customerPhone: order.clientPhone || order.customerPhone,
+            customerEmail: order.customerEmail || order.client?.email,
+            deliveryAddress: order.clientAddress || order.deliveryAddress,
+            deliveryDistrict: order.clientDistrict || order.deliveryDistrict,
+            subtotal: order.subtotal || order.total || order.totalAmount,
+            deliveryFee: order.deliveryFee || 0,
+            total: order.total || order.totalAmount,
+            paymentMethod: order.paymentMethod || order.paymentType,
+            items: order.products || order.orderDetails || [],
+            products: order.products || order.orderDetails || []
+          },
+          documentType: 'boleta'
         })
       });
 
