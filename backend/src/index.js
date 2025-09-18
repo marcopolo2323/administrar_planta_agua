@@ -135,6 +135,65 @@ app.get('/import-clients', async (req, res) => {
   }
 });
 
+// Ruta para corregir distritos de clientes
+app.get('/fix-districts', async (req, res) => {
+  try {
+    console.log('🔧 Iniciando corrección de distritos...');
+    
+    const fs = require('fs');
+    const path = require('path');
+    const Client = require('./models/client.model');
+    
+    // Leer el archivo JSON
+    const jsonPath = path.join(__dirname, '../data/clientes.json');
+    const jsonData = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+    console.log(`📊 Datos leídos: ${jsonData.length} registros`);
+    
+    // Crear un mapa de DNI/RUC a distrito
+    const distritoMap = new Map();
+    jsonData.forEach(cliente => {
+      const documento = cliente['DNI O RUC'] ? String(cliente['DNI O RUC']) : '';
+      const distrito = (cliente['Distrito '] || '').trim();
+      if (documento && distrito) {
+        distritoMap.set(documento, distrito);
+      }
+    });
+    
+    console.log(`🗺️ Mapa de distritos creado: ${distritoMap.size} entradas`);
+    
+    // Actualizar clientes en la base de datos
+    const clientes = await Client.findAll();
+    
+    let actualizados = 0;
+    for (const cliente of clientes) {
+      if (distritoMap.has(cliente.documentNumber)) {
+        const distrito = distritoMap.get(cliente.documentNumber);
+        if (cliente.district !== distrito) {
+          await cliente.update({ district: distrito });
+          actualizados++;
+          console.log(`✅ Actualizado: ${cliente.name} - ${distrito}`);
+        }
+      }
+    }
+    
+    console.log(`\n🎉 Corrección completada: ${actualizados} clientes actualizados`);
+    
+    res.json({
+      success: true,
+      message: 'Distritos corregidos exitosamente',
+      actualizados: actualizados
+    });
+    
+  } catch (error) {
+    console.error('❌ Error en corrección de distritos:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+});
+
 // Ruta para sincronizar todas las tablas
 app.get('/sync-tables', async (req, res) => {
   try {
