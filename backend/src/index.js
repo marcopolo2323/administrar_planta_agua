@@ -85,6 +85,18 @@ app.get('/add-payment-type', async (req, res) => {
   }
 });
 
+app.get('/fix-guest-order-products', async (req, res) => {
+  try {
+    console.log('🔧 Arreglando columnas de GuestOrderProducts...');
+    const { fixGuestOrderProductsColumns } = require('./scripts/fixGuestOrderProductsColumns');
+    await fixGuestOrderProductsColumns();
+    res.json({ success: true, message: 'GuestOrderProducts arreglado exitosamente' });
+  } catch (error) {
+    console.error('❌ Error arreglando GuestOrderProducts:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Conectar a MongoDB para las notificaciones (opcional)
 if (process.env.MONGODB_URI) {
   mongoose.connect(process.env.MONGODB_URI, {
