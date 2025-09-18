@@ -25,7 +25,7 @@ User.hasOne(DeliveryPerson, { foreignKey: 'userId' });
 // Relaciones de pedidos de invitados
 GuestOrder.hasMany(GuestOrderProduct, { 
   foreignKey: 'guestOrderId', 
-  as: 'products' 
+  as: 'orderProducts' 
 });
 GuestOrderProduct.belongsTo(GuestOrder, { 
   foreignKey: 'guestOrderId', 

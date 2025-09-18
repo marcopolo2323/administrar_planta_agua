@@ -109,6 +109,18 @@ app.get('/fix-foreign-keys-completely', async (req, res) => {
   }
 });
 
+app.get('/test-associations', async (req, res) => {
+  try {
+    console.log('🧪 Probando asociaciones...');
+    const { testAssociations } = require('./scripts/testAssociations');
+    await testAssociations();
+    res.json({ success: true, message: 'Asociaciones funcionan correctamente' });
+  } catch (error) {
+    console.error('❌ Error probando asociaciones:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Conectar a MongoDB para las notificaciones (opcional)
 if (process.env.MONGODB_URI) {
   mongoose.connect(process.env.MONGODB_URI, {
