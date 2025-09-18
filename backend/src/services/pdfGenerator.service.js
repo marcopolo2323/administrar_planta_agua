@@ -11,7 +11,19 @@ class PDFGeneratorService {
         console.log('🔍 PDF Generator - Tipo de documento:', documentType);
         console.log('🔍 PDF Generator - Items:', orderData.items);
         console.log('🔍 PDF Generator - Products:', orderData.products);
+        console.log('🔍 PDF Generator - Order Details:', orderData.orderDetails);
         console.log('🔍 PDF Generator - Payment Method:', orderData.paymentMethod);
+        
+        // Verificar duplicados en items
+        if (orderData.items && Array.isArray(orderData.items)) {
+          const itemCounts = {};
+          orderData.items.forEach((item, index) => {
+            const key = `${item.name || item.productName}-${item.unitPrice || item.price}`;
+            itemCounts[key] = (itemCounts[key] || 0) + 1;
+            console.log(`🔍 Item ${index}:`, item);
+          });
+          console.log('🔍 Conteo de items:', itemCounts);
+        }
         
         // Crear un nuevo documento PDF
         const doc = new PDFDocument({
