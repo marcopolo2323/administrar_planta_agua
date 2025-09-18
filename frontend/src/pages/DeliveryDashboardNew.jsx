@@ -54,6 +54,8 @@ import {
   FaPhone,
   FaMapMarkerAlt,
   FaMoneyBillWave,
+  FaQrcode,
+  FaCalendarAlt,
   FaDirections,
   FaWhatsapp,
   FaPlay,
@@ -68,6 +70,7 @@ import axios from '../utils/axios';
 
 const DeliveryDashboardNew = () => {
   const { user } = useAuthStore();
+  const { updateGuestOrder } = useGuestOrderStore();
   const toast = useToast();
   
   // Estados
@@ -209,8 +212,25 @@ const DeliveryDashboardNew = () => {
     }
   };
 
-  const getPaymentIcon = (paymentType) => {
-    return paymentType === 'efectivo' ? FaMoneyBillWave : FaCreditCard;
+  const getPaymentIcon = (paymentType, paymentMethod) => {
+    // Para suscripciones, usar un icono específico
+    if (paymentMethod === 'suscripcion') {
+      return FaCalendarAlt;
+    }
+    
+    switch (paymentType) {
+      case 'cash':
+      case 'efectivo': 
+        return FaMoneyBillWave;
+      case 'plin': 
+        return FaQrcode;
+      case 'yape': 
+        return FaQrcode;
+      case 'transfer': 
+        return FaCreditCard;
+      default: 
+        return FaMoneyBillWave;
+    }
   };
 
   // Estadísticas
@@ -252,6 +272,37 @@ const DeliveryDashboardNew = () => {
   const openStatusModal = (order, newStatus) => {
     setSelectedOrder({ ...order, newStatus });
     onStatusOpen();
+  };
+
+  const handleStatusUpdate = async () => {
+    if (!selectedOrder) return;
+    
+    try {
+      const updateData = { status: selectedOrder.newStatus };
+      await updateGuestOrder(selectedOrder.id, updateData);
+
+      toast({
+        title: 'Estado actualizado',
+        description: `El pedido ahora está ${getStatusText(selectedOrder.newStatus).toLowerCase()}`,
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+
+      onStatusClose();
+      setSelectedOrder(null);
+      
+      // Actualizar la lista de pedidos
+      fetchOrders();
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'No se pudo actualizar el estado',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    }
   };
 
   // Renderizar tarjeta de pedido optimizada para móviles
@@ -333,20 +384,53 @@ const DeliveryDashboardNew = () => {
           </VStack>
 
           {/* Información de pago optimizada */}
-          <HStack justify="space-between" w="full">
-            <HStack spacing={2} flex={1} minW={0}>
-              <Icon as={getPaymentIcon(order.paymentType)} size={14} />
-              <Text fontSize={{ base: "xs", md: "sm" }} noOfLines={1}>
-                {order.paymentMethod === 'vale' ? 'A Crédito (Vale)' :
-                 order.paymentMethod === 'suscripcion' ? 'Suscripción' :
-                 order.paymentMethod === 'contraentrega' ? 'Contraentrega' :
-                 order.paymentType === 'efectivo' ? 'Efectivo' : 'PLIN'}
+          <VStack spacing={2} align="stretch" w="full">
+            {/* Debug info - remover después */}
+            {process.env.NODE_ENV === 'development' && (
+              <Text fontSize="2xs" color="gray.500">
+                DEBUG: paymentMethod={order.paymentMethod}, paymentType={order.paymentType}
+              </Text>
+            )}
+            
+            <HStack justify="space-between" w="full">
+              <HStack spacing={2} flex={1} minW={0}>
+                <Icon as={getPaymentIcon(order.paymentType, order.paymentMethod)} size={14} />
+                <Text fontSize={{ base: "xs", md: "sm" }} noOfLines={1}>
+                  {order.paymentMethod === 'vale' ? 'A Crédito (Vale)' :
+                   order.paymentMethod === 'suscripcion' ? 'Suscripción' :
+                   order.paymentMethod === 'contraentrega' ? 
+                     (order.paymentType === 'plin' ? 'Contraentrega - PLIN' :
+                      order.paymentType === 'yape' ? 'Contraentrega - Yape' :
+                      order.paymentType === 'cash' ? 'Contraentrega - Efectivo' : 'Contraentrega') :
+                   order.paymentType === 'plin' ? 'PLIN' :
+                   order.paymentType === 'yape' ? 'Yape' :
+                   order.paymentType === 'cash' ? 'Efectivo' : 'Efectivo'}
+                </Text>
+              </HStack>
+              <Text fontWeight="bold" fontSize={{ base: "xs", md: "sm" }} color={order.paymentMethod === 'vale' ? 'orange.600' : 'green.600'}>
+                {order.paymentMethod === 'vale' ? 'Sin cobro' : `S/ ${parseFloat(order.total || order.totalAmount || 0).toFixed(2)}`}
               </Text>
             </HStack>
-            <Text fontWeight="bold" fontSize={{ base: "xs", md: "sm" }} color={order.paymentMethod === 'vale' ? 'orange.600' : 'green.600'}>
-              {order.paymentMethod === 'vale' ? 'Sin cobro' : `S/ ${parseFloat(order.total || order.totalAmount || 0).toFixed(2)}`}
-            </Text>
-          </HStack>
+            
+            {/* Instrucción clara para el repartidor */}
+            <Badge 
+              colorScheme={
+                order.paymentMethod === 'vale' ? 'orange' :
+                order.paymentMethod === 'suscripcion' ? 'purple' :
+                order.paymentType === 'plin' || order.paymentType === 'yape' ? 'blue' : 'green'
+              }
+              fontSize={{ base: "2xs", md: "xs" }}
+              px={2}
+              py={1}
+              borderRadius="md"
+            >
+              {order.paymentMethod === 'vale' ? '💳 NO COBRAR - A Crédito' :
+               order.paymentMethod === 'suscripcion' ? '📅 NO COBRAR - Suscripción' :
+               order.paymentType === 'plin' ? '📱 NO COBRAR - Pago Digital' :
+               order.paymentType === 'yape' ? '📱 NO COBRAR - Pago Digital' :
+               '💰 COBRAR - Efectivo'}
+            </Badge>
+          </VStack>
 
           {/* Productos del pedido optimizados */}
           {order.products && order.products.length > 0 && (
@@ -470,7 +554,7 @@ const DeliveryDashboardNew = () => {
           <Button variant="ghost" mr={3} onClick={onStatusClose}>
             Cancelar
           </Button>
-          <Button colorScheme="blue" onClick={onStatusClose}>
+          <Button colorScheme="blue" onClick={handleStatusUpdate}>
             Confirmar
           </Button>
         </ModalFooter>
@@ -487,9 +571,102 @@ const DeliveryDashboardNew = () => {
         <ModalBody>
           {selectedOrder && (
             <VStack spacing={4} align="stretch">
-              <Text>Pedido #{selectedOrder.id}</Text>
-              <Text>Cliente: {selectedOrder.clientName}</Text>
-              <Text>Estado: {getStatusText(selectedOrder.status)}</Text>
+              <Text fontWeight="bold" fontSize="lg">Pedido #{selectedOrder.id}</Text>
+              
+              <Divider />
+              
+              <VStack spacing={3} align="stretch">
+                <HStack justify="space-between">
+                  <Text fontWeight="bold">Cliente:</Text>
+                  <Text>{selectedOrder.clientName || selectedOrder.client?.name || 'Sin nombre'}</Text>
+                </HStack>
+                
+                <HStack justify="space-between">
+                  <Text fontWeight="bold">Teléfono:</Text>
+                  <Text>{selectedOrder.clientPhone || selectedOrder.client?.phone || 'Sin teléfono'}</Text>
+                </HStack>
+                
+                <HStack justify="space-between">
+                  <Text fontWeight="bold">Dirección:</Text>
+                  <Text>{selectedOrder.clientAddress || selectedOrder.client?.address || 'Sin dirección'}</Text>
+                </HStack>
+                
+                <HStack justify="space-between">
+                  <Text fontWeight="bold">Distrito:</Text>
+                  <Text>{selectedOrder.clientDistrict || selectedOrder.client?.district || selectedOrder.deliveryDistrict || 'Sin distrito'}</Text>
+                </HStack>
+                
+                <HStack justify="space-between">
+                  <Text fontWeight="bold">Estado:</Text>
+                  <Badge colorScheme={getStatusColor(selectedOrder.status)}>
+                    {getStatusText(selectedOrder.status)}
+                  </Badge>
+                </HStack>
+                
+                <HStack justify="space-between">
+                  <Text fontWeight="bold">Método de pago:</Text>
+                  <HStack>
+                    <Icon as={getPaymentIcon(selectedOrder.paymentType, selectedOrder.paymentMethod)} size={16} />
+                    <Text>
+                      {selectedOrder.paymentMethod === 'vale' ? 'A Crédito (Vale)' :
+                       selectedOrder.paymentMethod === 'suscripcion' ? 'Suscripción' :
+                       selectedOrder.paymentMethod === 'contraentrega' ? 
+                         (selectedOrder.paymentType === 'plin' ? 'Contraentrega - PLIN' :
+                          selectedOrder.paymentType === 'yape' ? 'Contraentrega - Yape' :
+                          selectedOrder.paymentType === 'cash' ? 'Contraentrega - Efectivo' : 'Contraentrega') :
+                       selectedOrder.paymentType === 'plin' ? 'PLIN' :
+                       selectedOrder.paymentType === 'yape' ? 'Yape' :
+                       selectedOrder.paymentType === 'cash' ? 'Efectivo' : 'Efectivo'}
+                    </Text>
+                  </HStack>
+                </HStack>
+                
+                <HStack justify="space-between">
+                  <Text fontWeight="bold">Total:</Text>
+                  <Text fontWeight="bold" color={selectedOrder.paymentMethod === 'vale' ? 'orange.600' : 'green.600'}>
+                    {selectedOrder.paymentMethod === 'vale' ? 'Sin cobro' : `S/ ${parseFloat(selectedOrder.total || selectedOrder.totalAmount || 0).toFixed(2)}`}
+                  </Text>
+                </HStack>
+                
+                {/* Instrucción clara para el repartidor */}
+                <Alert 
+                  status={
+                    selectedOrder.paymentMethod === 'vale' ? 'warning' :
+                    selectedOrder.paymentMethod === 'suscripcion' ? 'info' :
+                    selectedOrder.paymentType === 'plin' || selectedOrder.paymentType === 'yape' ? 'info' : 'success'
+                  }
+                  borderRadius="md"
+                >
+                  <AlertIcon />
+                  <Text fontSize="sm" fontWeight="bold">
+                    {selectedOrder.paymentMethod === 'vale' ? '💳 NO COBRAR - Este pedido es a crédito' :
+                     selectedOrder.paymentMethod === 'suscripcion' ? '📅 NO COBRAR - Este pedido es por suscripción' :
+                     selectedOrder.paymentType === 'plin' ? '📱 NO COBRAR - El cliente pagará por PLIN' :
+                     selectedOrder.paymentType === 'yape' ? '📱 NO COBRAR - El cliente pagará por Yape' :
+                     '💰 COBRAR - El cliente pagará en efectivo'}
+                  </Text>
+                </Alert>
+              </VStack>
+              
+              {/* Productos del pedido */}
+              {selectedOrder.products && selectedOrder.products.length > 0 && (
+                <>
+                  <Divider />
+                  <VStack spacing={2} align="stretch">
+                    <Text fontWeight="bold">Productos:</Text>
+                    {Array.isArray(selectedOrder.products) && selectedOrder.products.map((product, index) => (
+                      <HStack key={index} justify="space-between" fontSize="sm">
+                        <Text flex={1}>
+                          {product.product?.name || product.name || 'Producto desconocido'}
+                        </Text>
+                        <Text fontWeight="bold">
+                          {product.quantity} x S/ {parseFloat(product.price || product.unitPrice || 0).toFixed(2)}
+                        </Text>
+                      </HStack>
+                    ))}
+                  </VStack>
+                </>
+              )}
             </VStack>
           )}
         </ModalBody>

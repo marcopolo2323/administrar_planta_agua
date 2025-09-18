@@ -19,8 +19,14 @@ function calculateProductPrice(product, quantity) {
   let discountApplied = null;
   let priceLevel = 'normal';
 
+  // Descuento especial para Paquete de Botellas de Agua (50+ unidades = S/ 9.00)
+  if (product.name === 'Paquete de Botellas de Agua' && quantity >= 50) {
+    finalPrice = 9.00;
+    discountApplied = unitPrice - 9.00;
+    priceLevel = 'especial50';
+  }
   // Verificar tercer nivel de mayoreo (si existe)
-  if (wholesalePrice3 && wholesaleMinQuantity3 && quantity >= wholesaleMinQuantity3) {
+  else if (wholesalePrice3 && wholesaleMinQuantity3 && quantity >= wholesaleMinQuantity3) {
     finalPrice = wholesalePrice3;
     discountApplied = unitPrice - wholesalePrice3;
     priceLevel = 'mayoreo3';

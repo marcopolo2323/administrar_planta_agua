@@ -75,6 +75,7 @@ const Receipt = () => {
                   subtotal: product.subtotal
                 })) || [],
                 paymentMethod: orderData.paymentMethod,
+                paymentType: orderData.paymentType,
                 subtotal: orderData.totalAmount - orderData.deliveryFee,
                 deliveryFee: orderData.deliveryFee,
                 total: orderData.totalAmount,
@@ -147,11 +148,24 @@ const Receipt = () => {
       
       // Verificar si hay productos duplicados
       const productCounts = {};
-      order.items.forEach(item => {
+      order.items.forEach((item, index) => {
         const key = `${item.name}-${item.unitPrice}`;
         productCounts[key] = (productCounts[key] || 0) + 1;
+        console.log(`🔍 Item ${index}:`, {
+          name: item.name,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          subtotal: item.subtotal,
+          key: key
+        });
       });
       console.log('Conteo de productos:', productCounts);
+      
+      // Verificar duplicados
+      const duplicates = Object.entries(productCounts).filter(([key, count]) => count > 1);
+      if (duplicates.length > 0) {
+        console.warn('⚠️ Productos duplicados detectados:', duplicates);
+      }
       
       const orderData = {
         id: order.id,
@@ -162,7 +176,8 @@ const Receipt = () => {
         deliveryDistrict: order.client.district,
         deliveryNotes: order.client.reference || null,
         paymentMethod: order.paymentMethod || 'contraentrega',
-        // Usar orderDetails en lugar de items para que el generador lo reconozca
+        paymentType: order.paymentType || 'cash',
+        // Usar solo orderDetails para evitar duplicados
         orderDetails: order.items.map(item => {
           console.log('Mapeando item para orderDetails:', item);
           return {
@@ -173,17 +188,8 @@ const Receipt = () => {
             subtotal: parseFloat(item.subtotal)
           };
         }),
-        // También mantener items por compatibilidad
-        items: order.items.map(item => {
-          console.log('Mapeando item para items:', item);
-          return {
-            product: { name: item.name },
-            productName: item.name,
-            quantity: parseInt(item.quantity),
-            unitPrice: parseFloat(item.unitPrice),
-            subtotal: parseFloat(item.subtotal)
-          };
-        }),
+        // No enviar items para evitar duplicados
+        items: [],
         subtotal: parseFloat(order.subtotal),
         deliveryFee: parseFloat(order.deliveryFee),
         total: parseFloat(order.total),

@@ -60,6 +60,7 @@ import {
   FaPhone as FaPhoneIcon,
   FaMoneyBillWave,
   FaQrcode,
+  FaCalendarAlt,
   FaCheckCircle,
   FaClock,
   FaExclamationTriangle,
@@ -94,6 +95,7 @@ const OrdersManagement = () => {
   // Modales
   const { isOpen: isAssignOpen, onOpen: onAssignOpen, onClose: onAssignClose } = useDisclosure();
   const { isOpen: isDetailOpen, onOpen: onDetailOpen, onClose: onDetailClose } = useDisclosure();
+  const { isOpen: isCancelOpen, onOpen: onCancelOpen, onClose: onCancelClose } = useDisclosure();
   
   const toast = useToast();
 
@@ -237,11 +239,24 @@ const OrdersManagement = () => {
     }
   };
 
-  const getPaymentIcon = (paymentType) => {
+  const getPaymentIcon = (paymentType, paymentMethod) => {
+    // Para suscripciones, usar un icono específico
+    if (paymentMethod === 'suscripcion') {
+      return FaCalendarAlt;
+    }
+    
     switch (paymentType) {
-      case 'efectivo': return FaMoneyBillWave;
-      case 'plin': return FaQrcode;
-      default: return FaMoneyBillWave;
+      case 'cash':
+      case 'efectivo': 
+        return FaMoneyBillWave;
+      case 'plin': 
+        return FaQrcode;
+      case 'yape': 
+        return FaQrcode;
+      case 'transfer': 
+        return FaCreditCard;
+      default: 
+        return FaMoneyBillWave;
     }
   };
 
@@ -306,6 +321,19 @@ const OrdersManagement = () => {
       return;
     }
 
+    // No permitir asignar repartidor a pedidos cancelados
+    if (selectedOrder.status === 'cancelled') {
+      toast({
+        title: 'Acción no permitida',
+        description: 'No se puede asignar repartidor a un pedido cancelado',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+      onAssignClose();
+      return;
+    }
+
     try {
       const updateData = {
         status: 'confirmed',
@@ -349,6 +377,42 @@ const OrdersManagement = () => {
     }
   };
 
+  // Función para abrir modal de confirmación de anulación
+  const openCancelModal = (order) => {
+    setSelectedOrder(order);
+    onCancelOpen();
+  };
+
+  // Función para confirmar anulación
+  const handleConfirmCancel = async () => {
+    if (!selectedOrder) return;
+    
+    try {
+      const updateData = { status: 'cancelled' };
+      await updateGuestOrder(selectedOrder.id, updateData);
+
+      toast({
+        title: 'Pedido anulado',
+        description: `El pedido #${selectedOrder.id} ha sido anulado exitosamente`,
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+
+      onCancelClose();
+      setSelectedOrder(null);
+      fetchGuestOrders(); // Actualizar la lista
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'No se pudo anular el pedido',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+  };
+
   const handleStatusUpdate = async (order, newStatus) => {
     try {
       const updateData = { status: newStatus };
@@ -374,6 +438,18 @@ const OrdersManagement = () => {
   };
 
   const openAssignModal = (order) => {
+    // No permitir asignar repartidor a pedidos cancelados
+    if (order.status === 'cancelled') {
+      toast({
+        title: 'Acción no permitida',
+        description: 'No se puede asignar repartidor a un pedido cancelado',
+        status: 'warning',
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+    
     setSelectedOrder(order);
     setSelectedDeliveryPerson(order.deliveryPersonId || '');
     setNotes(order.notes || '');
@@ -406,7 +482,8 @@ const OrdersManagement = () => {
             subtotal: order.subtotal || order.total || order.totalAmount,
             deliveryFee: order.deliveryFee || 0,
             total: order.total || order.totalAmount,
-            paymentMethod: order.paymentMethod || order.paymentType,
+            paymentMethod: order.paymentMethod,
+            paymentType: order.paymentType,
             // Mapear productos correctamente
             items: (order.products || order.orderDetails || []).map(item => ({
               name: item.product?.name || item.name || 'Producto',
@@ -529,12 +606,17 @@ const OrdersManagement = () => {
           <VStack spacing={2} align="stretch">
             <HStack justify="space-between">
               <HStack spacing={2}>
-                <Icon as={getPaymentIcon(order.paymentType)} size={14} />
+                <Icon as={getPaymentIcon(order.paymentType, order.paymentMethod)} size={14} />
                 <Text fontSize="sm">
                   {order.paymentMethod === 'vale' ? 'A Crédito (Vale)' :
                    order.paymentMethod === 'suscripcion' ? 'Suscripción' :
-                   order.paymentMethod === 'contraentrega' ? 'Contraentrega' :
-                   order.paymentType === 'efectivo' ? 'Efectivo' : 'PLIN'}
+                   order.paymentMethod === 'contraentrega' ? 
+                     (order.paymentType === 'plin' ? 'Contraentrega - PLIN' :
+                      order.paymentType === 'yape' ? 'Contraentrega - Yape' :
+                      order.paymentType === 'cash' ? 'Contraentrega - Efectivo' : 'Contraentrega') :
+                   order.paymentType === 'plin' ? 'PLIN' :
+                   order.paymentType === 'yape' ? 'Yape' :
+                   order.paymentType === 'cash' ? 'Efectivo' : 'Efectivo'}
                 </Text>
               </HStack>
               <Text fontWeight="bold" fontSize="sm" color="green.600">
@@ -601,7 +683,7 @@ const OrdersManagement = () => {
               />
             </Tooltip>
             
-            {(!order.deliveryPersonId || order.status === 'pendiente') && (
+            {(!order.deliveryPersonId || order.status === 'pending') && order.status !== 'cancelled' && (
               <Tooltip label="Asignar repartidor">
                 <IconButton
                   size="sm"
@@ -613,32 +695,32 @@ const OrdersManagement = () => {
               </Tooltip>
             )}
             
-            {order.status === 'asignado' && (
+            {order.status === 'confirmed' && (
               <Button
                 size="sm"
                 colorScheme="purple"
-                onClick={() => handleStatusUpdate(order, 'en_camino')}
+                onClick={() => handleStatusUpdate(order, 'preparing')}
               >
                 Enviar
               </Button>
             )}
             
-            {order.status === 'en_camino' && (
+            {(order.status === 'preparing' || order.status === 'ready') && (
               <Button
                 size="sm"
                 colorScheme="green"
-                onClick={() => handleStatusUpdate(order, 'entregado')}
+                onClick={() => handleStatusUpdate(order, 'delivered')}
               >
                 Entregado
               </Button>
             )}
             
-            {(order.status === 'pendiente' || order.status === 'asignado' || order.status === 'en_camino') && (
+            {(order.status === 'pending' || order.status === 'confirmed' || order.status === 'preparing' || order.status === 'ready') && (
               <Button
                 size="sm"
                 colorScheme="red"
                 variant="outline"
-                onClick={() => handleStatusUpdate(order, 'cancelado')}
+                onClick={() => openCancelModal(order)}
               >
                 Anular
               </Button>
@@ -785,12 +867,17 @@ const OrdersManagement = () => {
                     <HStack justify="space-between">
                       <Text fontWeight="bold">Método:</Text>
                       <HStack>
-                        <Icon as={getPaymentIcon(selectedOrder.paymentType)} size={16} />
+                        <Icon as={getPaymentIcon(selectedOrder.paymentType, selectedOrder.paymentMethod)} size={16} />
                         <Text>
                           {selectedOrder.paymentMethod === 'vale' ? 'A Crédito (Vale)' :
                            selectedOrder.paymentMethod === 'suscripcion' ? 'Suscripción' :
-                           selectedOrder.paymentMethod === 'contraentrega' ? 'Contraentrega' :
-                           selectedOrder.paymentType === 'efectivo' ? 'Efectivo' : 'PLIN'}
+                           selectedOrder.paymentMethod === 'contraentrega' ? 
+                             (selectedOrder.paymentType === 'plin' ? 'Contraentrega - PLIN' :
+                              selectedOrder.paymentType === 'yape' ? 'Contraentrega - Yape' :
+                              selectedOrder.paymentType === 'cash' ? 'Contraentrega - Efectivo' : 'Contraentrega') :
+                           selectedOrder.paymentType === 'plin' ? 'PLIN' :
+                           selectedOrder.paymentType === 'yape' ? 'Yape' :
+                           selectedOrder.paymentType === 'cash' ? 'Efectivo' : 'Efectivo'}
                         </Text>
                       </HStack>
                     </HStack>
@@ -843,6 +930,70 @@ const OrdersManagement = () => {
         </ModalBody>
         <ModalFooter>
           <Button onClick={onDetailClose}>Cerrar</Button>
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
+  );
+
+  // Modal de confirmación de anulación
+  const renderCancelModal = () => (
+    <Modal isOpen={isCancelOpen} onClose={onCancelClose} size="md" isCentered>
+      <ModalOverlay />
+      <ModalContent>
+        <ModalHeader>Confirmar Anulación</ModalHeader>
+        <ModalCloseButton />
+        <ModalBody>
+          {selectedOrder && (
+            <VStack spacing={4} align="stretch">
+              <Alert status="warning" borderRadius="md">
+                <AlertIcon />
+                <VStack align="start" spacing={2}>
+                  <Text fontWeight="bold">
+                    ¿Estás seguro de que deseas anular este pedido?
+                  </Text>
+                  <Text fontSize="sm">
+                    Esta acción no se puede deshacer.
+                  </Text>
+                </VStack>
+              </Alert>
+              
+              <Card variant="outline" p={3}>
+                <VStack spacing={2} align="stretch">
+                  <HStack justify="space-between">
+                    <Text fontWeight="bold">Pedido:</Text>
+                    <Text>#{selectedOrder.id}</Text>
+                  </HStack>
+                  
+                  <HStack justify="space-between">
+                    <Text fontWeight="bold">Cliente:</Text>
+                    <Text>{selectedOrder.clientName || 'Sin nombre'}</Text>
+                  </HStack>
+                  
+                  <HStack justify="space-between">
+                    <Text fontWeight="bold">Estado actual:</Text>
+                    <Badge colorScheme={getStatusColor(selectedOrder.status)}>
+                      {getStatusText(selectedOrder.status)}
+                    </Badge>
+                  </HStack>
+                  
+                  <HStack justify="space-between">
+                    <Text fontWeight="bold">Total:</Text>
+                    <Text fontWeight="bold" color="green.600">
+                      S/ {parseFloat(selectedOrder.total || selectedOrder.totalAmount || 0).toFixed(2)}
+                    </Text>
+                  </HStack>
+                </VStack>
+              </Card>
+            </VStack>
+          )}
+        </ModalBody>
+        <ModalFooter>
+          <Button variant="outline" mr={3} onClick={onCancelClose}>
+            Cancelar
+          </Button>
+          <Button colorScheme="red" onClick={handleConfirmCancel}>
+            Sí, Anular Pedido
+          </Button>
         </ModalFooter>
       </ModalContent>
     </Modal>
@@ -981,6 +1132,7 @@ const OrdersManagement = () => {
       {/* Modales */}
       {renderAssignModal()}
       {renderDetailModal()}
+      {renderCancelModal()}
     </Box>
   );
 };

@@ -89,6 +89,7 @@ exports.createGuestOrder = async (req, res) => {
       deliveryFee: calculatedDeliveryFee,
       status: 'pending',
       paymentMethod: paymentMethod,
+      paymentType: req.body.paymentType || 'cash',
       paymentStatus: paymentMethod === 'voucher' ? 'pending' : 'pending',
       clientId: clientId || null,
       subscriptionId: req.body.subscriptionId || null
@@ -103,6 +104,11 @@ exports.createGuestOrder = async (req, res) => {
     // Crear los productos del pedido
     let orderProducts = [];
     try {
+      // Primero eliminar productos existentes para este pedido (por si hay duplicados)
+      await GuestOrderProduct.destroy({
+        where: { guestOrderId: guestOrder.id }
+      });
+      
       orderProducts = await Promise.all(
         finalProducts.map(async (item) => {
           return await GuestOrderProduct.create({
@@ -127,6 +133,11 @@ exports.createGuestOrder = async (req, res) => {
       try {
         // Solo crear vales si hay productos en el pedido
         if (finalProducts && finalProducts.length > 0) {
+          // Primero eliminar vales existentes para este pedido (por si hay duplicados)
+          await Voucher.destroy({
+            where: { guestOrderId: guestOrder.id }
+          });
+          
           // Crear un vale por cada producto en el pedido
           const vouchers = await Promise.all(
             finalProducts.map(async (item) => {
@@ -403,6 +414,18 @@ exports.getGuestOrderByToken = async (req, res) => {
         message: 'Pedido no encontrado o token inválido'
       });
     }
+
+    console.log('🔍 Pedido encontrado:', {
+      id: order.id,
+      productsCount: order.products?.length || 0,
+      products: order.products?.map(p => ({
+        id: p.id,
+        productId: p.productId,
+        quantity: p.quantity,
+        price: p.price,
+        productName: p.product?.name
+      })) || []
+    });
 
     res.json({
       success: true,

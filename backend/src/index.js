@@ -331,6 +331,28 @@ app.get('/migrate-supabase', async (req, res) => {
   }
 });
 
+// Ruta para agregar columna paymentType
+app.get('/add-payment-type', async (req, res) => {
+  try {
+    console.log('🔧 Agregando columna paymentType...');
+    
+    const { addPaymentTypeColumn } = require('./scripts/addPaymentTypeColumn');
+    await addPaymentTypeColumn();
+    
+    res.json({ 
+      success: true, 
+      message: 'Columna paymentType agregada exitosamente'
+    });
+    
+  } catch (error) {
+    console.error('❌ Error al agregar paymentType:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message
+    });
+  }
+});
+
 // Ruta de diagnóstico
 app.get('/diagnose', async (req, res) => {
   try {
@@ -670,6 +692,26 @@ app.post('/api/guest-payments/generate-pdf', async (req, res) => {
       success: false, 
       message: 'Error al generar PDF',
       error: error.message 
+    });
+  }
+});
+
+// Ruta para limpiar productos duplicados
+app.post('/api/clean-duplicates', async (req, res) => {
+  try {
+    const { cleanDuplicateProducts } = require('./scripts/cleanDuplicateProducts');
+    await cleanDuplicateProducts();
+    
+    res.json({
+      success: true,
+      message: 'Limpieza de duplicados completada'
+    });
+  } catch (error) {
+    console.error('Error al limpiar duplicados:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al limpiar duplicados',
+      error: error.message
     });
   }
 });

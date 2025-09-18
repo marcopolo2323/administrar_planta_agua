@@ -140,16 +140,16 @@ class PDFGeneratorService {
           hasProducts = true;
         };
         
-        // Intentar diferentes fuentes de productos
-        if (orderData.items && Array.isArray(orderData.items) && orderData.items.length > 0) {
+        // Priorizar orderDetails para evitar duplicados
+        if (orderData.orderDetails && Array.isArray(orderData.orderDetails) && orderData.orderDetails.length > 0) {
+          console.log('🔍 Usando orderData.orderDetails (prioridad)');
+          orderData.orderDetails.forEach(processProductItem);
+        } else if (orderData.items && Array.isArray(orderData.items) && orderData.items.length > 0) {
           console.log('🔍 Usando orderData.items');
           orderData.items.forEach(processProductItem);
         } else if (orderData.products && Array.isArray(orderData.products) && orderData.products.length > 0) {
           console.log('🔍 Usando orderData.products');
           orderData.products.forEach(processProductItem);
-        } else if (orderData.orderDetails && Array.isArray(orderData.orderDetails) && orderData.orderDetails.length > 0) {
-          console.log('🔍 Usando orderData.orderDetails');
-          orderData.orderDetails.forEach(processProductItem);
         } else if (orderData.GuestOrderProducts && Array.isArray(orderData.GuestOrderProducts) && orderData.GuestOrderProducts.length > 0) {
           console.log('🔍 Usando orderData.GuestOrderProducts');
           orderData.GuestOrderProducts.forEach(processProductItem);
@@ -191,43 +191,63 @@ class PDFGeneratorService {
         const paymentY = totalsY + 100;
         doc.font(titleFont).fontSize(12).text('MÉTODO DE PAGO', 50, paymentY);
         
-        // Mapear métodos de pago
-        let paymentMethodText = 'Efectivo';
-        const paymentMethod = orderData.paymentMethod || orderData.paymentType || orderData.payment;
+        // Mapear modalidad y método de pago
+        const paymentMethod = orderData.paymentMethod || 'contraentrega'; // Modalidad (contraentrega/suscripción/vale)
+        const paymentType = orderData.paymentType || 'cash'; // Método (cash/plin/yape)
         
-        console.log('🔍 Método de pago detectado:', paymentMethod);
+        console.log('🔍 Modalidad de pago:', paymentMethod);
+        console.log('🔍 Método de pago:', paymentType);
+        console.log('🔍 Todos los datos de pago:', {
+          paymentMethod: orderData.paymentMethod,
+          paymentType: orderData.paymentType,
+          payment: orderData.payment,
+          paymentStatus: orderData.paymentStatus
+        });
         
-        if (paymentMethod) {
-          switch (paymentMethod.toLowerCase()) {
-            case 'plin':
-              paymentMethodText = 'Plin';
-              break;
-            case 'yape':
-              paymentMethodText = 'Yape';
-              break;
-            case 'transferencia':
-              paymentMethodText = 'Transferencia bancaria';
-              break;
-            case 'vale':
-              paymentMethodText = 'Vale';
-              break;
-            case 'efectivo':
-              paymentMethodText = 'Efectivo';
-              break;
-            case 'contraentrega':
-              paymentMethodText = 'Contraentrega';
-              break;
-            case 'suscripcion':
-              paymentMethodText = 'Suscripción';
-              break;
-            default:
-              paymentMethodText = paymentMethod;
-          }
+        // Mapear modalidad de pago
+        let paymentModalityText = 'Contraentrega';
+        switch (paymentMethod.toLowerCase()) {
+          case 'contraentrega':
+            paymentModalityText = 'Contraentrega';
+            break;
+          case 'suscripcion':
+            paymentModalityText = 'Suscripción';
+            break;
+          case 'vale':
+            paymentModalityText = 'Vale';
+            break;
+          default:
+            paymentModalityText = paymentMethod;
         }
         
-        console.log('🔍 Método de pago final:', paymentMethodText);
+        // Mapear método de pago
+        let paymentMethodText = 'Efectivo';
+        switch (paymentType.toLowerCase()) {
+          case 'cash':
+          case 'efectivo':
+            paymentMethodText = 'Efectivo';
+            break;
+          case 'plin':
+            paymentMethodText = 'Plin';
+            break;
+          case 'yape':
+            paymentMethodText = 'Yape';
+            break;
+          case 'transferencia':
+            paymentMethodText = 'Transferencia bancaria';
+            break;
+          default:
+            paymentMethodText = paymentType;
+        }
         
-        doc.font(normalFont).fontSize(11).text(paymentMethodText, 50, paymentY + 20);
+        // Combinar modalidad y método
+        const finalPaymentText = `${paymentModalityText} - ${paymentMethodText}`;
+        
+        console.log('🔍 Modalidad final:', paymentModalityText);
+        console.log('🔍 Método final:', paymentMethodText);
+        console.log('🔍 Texto final:', finalPaymentText);
+        
+        doc.font(normalFont).fontSize(11).text(finalPaymentText, 50, paymentY + 20);
 
         // Pie de página
         const footerY = 750;

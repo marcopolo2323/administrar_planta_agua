@@ -96,11 +96,7 @@ exports.getAssignedOrders = async (req, res) => {
       total: parseFloat(order.totalAmount || 0),
       status: order.status,
       paymentMethod: order.paymentMethod,
-      paymentType: order.paymentMethod === 'cash' ? 'efectivo' : 
-                   order.paymentMethod === 'plin' ? 'plin' :
-                   order.paymentMethod === 'vale' ? 'vale' :
-                   order.paymentMethod === 'suscripcion' ? 'suscripcion' :
-                   order.paymentMethod === 'contraentrega' ? 'contraentrega' : 'efectivo',
+      paymentType: order.paymentType,
       paymentReference: order.paymentReference,
       createdAt: order.createdAt,
       updatedAt: order.updatedAt

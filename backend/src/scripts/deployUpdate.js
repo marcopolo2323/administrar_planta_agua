@@ -1,6 +1,7 @@
 const { sequelize } = require('../models');
 const importClientsFromJson = require('./importClientsFromJson');
 const convertExcelToJson = require('./convertExcelToJson');
+const { addPaymentTypeColumn } = require('./addPaymentTypeColumn');
 
 const deployUpdate = async () => {
   try {
@@ -49,6 +50,11 @@ const deployUpdate = async () => {
     await Voucher.sync();
     
     console.log('✅ Modelos sincronizados');
+    
+    // 3.5. Agregar columna paymentType si no existe
+    console.log('\n🔧 PASO 3.5: Verificando columna paymentType...');
+    await addPaymentTypeColumn();
+    console.log('✅ Columna paymentType verificada');
     
     // 4. Verificar si ya existen clientes
     console.log('\n👥 PASO 4: Verificando clientes existentes...');

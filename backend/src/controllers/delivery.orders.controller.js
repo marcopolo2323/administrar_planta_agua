@@ -46,6 +46,7 @@ exports.getDeliveryOrders = async (req, res) => {
     }
 
     // Formatear respuesta
+    console.log('🔍 Primer pedido completo:', JSON.stringify(guestOrders[0], null, 2));
     const formattedOrders = guestOrders.map(order => ({
       id: order.id,
       orderNumber: `PED-${order.id.toString().padStart(3, '0')}`,
@@ -76,7 +77,7 @@ exports.getDeliveryOrders = async (req, res) => {
       deliveryFee: order.deliveryFee,
       status: order.status,
       paymentMethod: order.paymentMethod,
-      paymentType: order.paymentMethod === 'cash' ? 'efectivo' : 'plin',
+      paymentType: order.paymentType,
       orderDate: order.createdAt,
       deliveryDate: order.deliveryDate,
       notes: order.notes,
@@ -84,6 +85,7 @@ exports.getDeliveryOrders = async (req, res) => {
       isGuestOrder: true
     }));
 
+    console.log('🔍 Primer pedido formateado:', JSON.stringify(formattedOrders[0], null, 2));
     res.status(200).json({
       success: true,
       data: formattedOrders

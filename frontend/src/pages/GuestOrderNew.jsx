@@ -518,6 +518,36 @@ const GuestOrderNew = () => {
     }
   };
 
+  // Función para manejar cambios en el input de cantidad
+  const handleQuantityChange = (itemId, value) => {
+    const newQuantity = parseInt(value) || 0;
+    
+    // Solo actualizar si la cantidad es válida y mayor a 0
+    if (newQuantity > 0) {
+      updateQuantity(itemId, newQuantity);
+    } else if (value === '' || value === '0') {
+      // Si está vacío o es 0, solo actualizar el estado visual sin eliminar
+      setCart(cart.map(item => 
+        item.id === itemId 
+          ? { ...item, quantity: 0 }
+          : item
+      ));
+    }
+  };
+
+  // Función para manejar cuando se pierde el foco del input
+  const handleQuantityBlur = (itemId, value) => {
+    const newQuantity = parseInt(value) || 0;
+    
+    if (newQuantity <= 0) {
+      // Si es 0 o inválido, eliminar del carrito
+      setCart(cart.filter(item => item.id !== itemId));
+    } else {
+      // Actualizar con la cantidad válida
+      updateQuantity(itemId, newQuantity);
+    }
+  };
+
   const getDeliveryFee = () => {
     if (!clientData.district) return 0;
     const district = districts.find(d => d.name === clientData.district);
@@ -630,7 +660,7 @@ const GuestOrderNew = () => {
           deliveryFee: getDeliveryFee(),
           totalAmount: getTotal(),
           paymentMethod: 'suscripcion',
-          paymentType: 'subscription',
+          paymentType: 'cash',
           clientId: clientId,
           subscriptionId: selectedSubscription.id
         };
@@ -803,7 +833,7 @@ const GuestOrderNew = () => {
             deliveryFee: getDeliveryFee(),
             totalAmount: getTotal(),
             paymentMethod: paymentMethod,
-            paymentType: paymentType === 'efectivo' ? 'cash' : 'plin',
+            paymentType: paymentType === 'efectivo' ? 'cash' : paymentType,
             clientId: clientId
           };
 
@@ -1189,6 +1219,11 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
                             <Text color="gray.600" fontSize="sm">
                               {product.description}
                             </Text>
+                            {product.name === 'Paquete de Botellas de Agua' && (
+                              <Badge colorScheme="green" size="sm">
+                                ¡50+ unidades = S/ 9.00 c/u!
+                              </Badge>
+                            )}
                           </VStack>
                           <Badge colorScheme={getTypeColor(product.type)}>
                             {getTypeText(product.type)}
@@ -1257,9 +1292,16 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
                       </HStack>
                     
                       <HStack justify="space-between" w="full">
-                        <Text color="gray.600" fontSize="sm">
-                          S/ {parseFloat(item.unitPrice).toFixed(2)} c/u
-                        </Text>
+                        <VStack align="start" spacing={0}>
+                          <Text color="gray.600" fontSize="sm">
+                            S/ {parseFloat(item.unitPrice).toFixed(2)} c/u
+                          </Text>
+                          {item.pricing?.priceLevel === 'especial50' && (
+                            <Badge colorScheme="green" size="sm">
+                              ¡Descuento 50+ unidades!
+                            </Badge>
+                          )}
+                        </VStack>
                         <HStack spacing={2}>
                           <Button
                             size="sm"
@@ -1267,9 +1309,17 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
                           >
                             -
                           </Button>
-                          <Text minW="20px" textAlign="center">
-                            {item.quantity}
-                          </Text>
+                          <Input
+                            value={item.quantity}
+                            onChange={(e) => handleQuantityChange(item.id, e.target.value)}
+                            onBlur={(e) => handleQuantityBlur(item.id, e.target.value)}
+                            size="sm"
+                            w="60px"
+                            textAlign="center"
+                            type="number"
+                            min="0"
+                            placeholder="0"
+                          />
                           <Button
                             size="sm"
                             onClick={() => updateQuantity(item.id, item.quantity + 1)}

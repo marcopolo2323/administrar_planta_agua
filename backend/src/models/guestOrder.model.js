@@ -59,6 +59,10 @@ const GuestOrder = sequelize.define('GuestOrder', {
     type: DataTypes.ENUM('cash', 'card', 'transfer', 'yape', 'plin', 'vale', 'suscripcion', 'contraentrega'),
     defaultValue: 'cash'
   },
+  paymentType: {
+    type: DataTypes.ENUM('cash', 'plin', 'yape', 'transfer'),
+    defaultValue: 'cash'
+  },
   paymentStatus: {
     type: DataTypes.ENUM('pending', 'paid', 'failed'),
     defaultValue: 'pending'

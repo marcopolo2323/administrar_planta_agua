@@ -40,7 +40,7 @@ const useGuestOrderStore = create((set, get) => ({
   fetchOrders: async () => {
     set({ loading: true, error: null });
     try {
-      const response = await axios.get('/api/guest-orders');
+      const response = await axios.get('/api/guest-orders?limit=1000');
       console.log('Respuesta completa del servidor:', response);
       console.log('Datos de la respuesta:', response.data);
       
