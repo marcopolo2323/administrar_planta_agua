@@ -74,6 +74,7 @@ const Receipt = () => {
                   unitPrice: product.price,
                   subtotal: product.subtotal
                 })) || [],
+                paymentMethod: orderData.paymentMethod,
                 subtotal: orderData.totalAmount - orderData.deliveryFee,
                 deliveryFee: orderData.deliveryFee,
                 total: orderData.totalAmount,
@@ -142,6 +143,15 @@ const Receipt = () => {
       // Preparar datos para el backend
       console.log('Datos del order original:', order);
       console.log('Items del order:', order.items);
+      console.log('Payment method del order:', order.paymentMethod);
+      
+      // Verificar si hay productos duplicados
+      const productCounts = {};
+      order.items.forEach(item => {
+        const key = `${item.name}-${item.unitPrice}`;
+        productCounts[key] = (productCounts[key] || 0) + 1;
+      });
+      console.log('Conteo de productos:', productCounts);
       
       const orderData = {
         id: order.id,
@@ -151,7 +161,7 @@ const Receipt = () => {
         deliveryAddress: order.client.address,
         deliveryDistrict: order.client.district,
         deliveryNotes: order.client.reference || null,
-        paymentMethod: order.paymentMethod || 'Efectivo',
+        paymentMethod: order.paymentMethod || 'contraentrega',
         // Usar orderDetails en lugar de items para que el generador lo reconozca
         orderDetails: order.items.map(item => {
           console.log('Mapeando item para orderDetails:', item);
