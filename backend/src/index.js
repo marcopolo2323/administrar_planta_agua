@@ -73,6 +73,18 @@ app.get('/run-seed', async (req, res) => {
   }
 });
 
+app.get('/add-payment-type', async (req, res) => {
+  try {
+    console.log('🔧 Agregando columna paymentType...');
+    const { addPaymentTypeColumn } = require('./scripts/addPaymentTypeColumn');
+    await addPaymentTypeColumn();
+    res.json({ success: true, message: 'Columna paymentType agregada exitosamente' });
+  } catch (error) {
+    console.error('❌ Error agregando paymentType:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Conectar a MongoDB para las notificaciones (opcional)
 if (process.env.MONGODB_URI) {
   mongoose.connect(process.env.MONGODB_URI, {
