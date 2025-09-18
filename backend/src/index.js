@@ -463,8 +463,8 @@ app.use('/api/vales', valeRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/documents', documentRoutes);
-// Endpoints de sincronización manual
-app.post('/api/sync/fix-foreign-keys', async (req, res) => {
+// Endpoints de sincronización manual (GET para acceso directo)
+app.get('/fix-foreign-keys', async (req, res) => {
   try {
     console.log('🔧 Iniciando reparación de foreign keys...');
     const { fixForeignKeys } = require('./scripts/fixForeignKeys');
@@ -476,7 +476,7 @@ app.post('/api/sync/fix-foreign-keys', async (req, res) => {
   }
 });
 
-app.post('/api/sync/full-sync', async (req, res) => {
+app.get('/full-sync', async (req, res) => {
   try {
     console.log('🔄 Iniciando sincronización completa...');
     const { fixForeignKeys } = require('./scripts/fixForeignKeys');
@@ -486,6 +486,18 @@ app.post('/api/sync/full-sync', async (req, res) => {
     res.json({ success: true, message: 'Sincronización completa exitosa' });
   } catch (error) {
     console.error('❌ Error en sincronización completa:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.get('/run-seed', async (req, res) => {
+  try {
+    console.log('🌱 Ejecutando seed completo...');
+    const { deployUpdate } = require('./scripts/deployUpdate');
+    await deployUpdate();
+    res.json({ success: true, message: 'Seed ejecutado exitosamente' });
+  } catch (error) {
+    console.error('❌ Error ejecutando seed:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
