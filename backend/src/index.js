@@ -463,6 +463,7 @@ app.use('/api/vales', valeRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/documents', documentRoutes);
+app.use('/api/sync', require('./routes/sync'));
 
 // Rutas de productos (mantener compatibilidad)
 app.get('/api/products', async (req, res) => {

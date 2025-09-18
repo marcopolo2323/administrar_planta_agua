@@ -464,6 +464,7 @@ const OrdersManagement = () => {
   // Función para descargar boleta
   const downloadReceipt = async (order) => {
     try {
+      console.log('🔍 Descargando boleta para pedido:', order);
       // Usar la misma ruta que funciona para guest orders
       const response = await fetch('/api/guest-payments/generate-pdf', {
         method: 'POST',
@@ -505,11 +506,16 @@ const OrdersManagement = () => {
         })
       });
 
+      console.log('🔍 Respuesta del servidor:', response.status, response.statusText);
+      
       if (!response.ok) {
-        throw new Error('Error al generar la boleta');
+        const errorText = await response.text();
+        console.error('❌ Error del servidor:', errorText);
+        throw new Error(`Error al generar la boleta: ${response.status} ${response.statusText}`);
       }
 
       const blob = await response.blob();
+      console.log('✅ Blob generado, tamaño:', blob.size);
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -551,6 +557,16 @@ const OrdersManagement = () => {
               </Text>
               <Text fontSize="xs" color="gray.500">
                 {order.type === 'regular' ? 'Cliente Frecuente' : 'Cliente Visitante'}
+              </Text>
+              {/* Fecha y hora */}
+              <Text fontSize="2xs" color="gray.400">
+                {order.createdAt ? new Date(order.createdAt).toLocaleString('es-PE', {
+                  year: 'numeric',
+                  month: '2-digit',
+                  day: '2-digit',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                }) : 'Sin fecha'}
               </Text>
             </VStack>
             <Badge colorScheme={getStatusColor(order.status)}>
