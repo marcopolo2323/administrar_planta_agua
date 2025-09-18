@@ -647,21 +647,22 @@ app.post('/api/guest-payments/generate-pdf', async (req, res) => {
       });
     }
 
-    // Por ahora, devolver un PDF simple o redirigir
-    // TODO: Implementar generación real de PDF
     console.log('📋 Datos del pedido para PDF:', orderData);
     console.log('📄 Tipo de documento:', documentType);
     
-    // Respuesta temporal - en producción debería generar un PDF real
-    res.json({ 
-      success: true, 
-      message: 'PDF generado exitosamente (funcionalidad en desarrollo)',
-      data: {
-        orderId: orderData.id || 'N/A',
-        documentType: documentType,
-        status: 'generated'
-      }
-    });
+    // Generar PDF real usando el servicio
+    const PDFGeneratorService = require('./services/pdfGenerator.service');
+    const pdfBuffer = await PDFGeneratorService.generateGuestOrderPDF(orderData, documentType);
+    
+    // Configurar headers para descarga de PDF
+    const fileName = `${documentType}_${orderData.id || 'pedido'}_${Date.now()}.pdf`;
+    
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader('Content-Length', pdfBuffer.length);
+    
+    // Enviar el PDF
+    res.send(pdfBuffer);
     
   } catch (error) {
     console.error('❌ Error al generar PDF:', error);
