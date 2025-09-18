@@ -101,44 +101,56 @@ exports.createGuestOrder = async (req, res) => {
     console.log('Pedido creado con ID:', guestOrder.id, 'y token:', accessToken);
 
     // Crear los productos del pedido
-    const orderProducts = await Promise.all(
-      finalProducts.map(async (item) => {
-        return await GuestOrderProduct.create({
-          guestOrderId: guestOrder.id,
-          productId: item.productId,
-          quantity: item.quantity,
-          price: parseFloat(item.price || item.unitPrice),
-          subtotal: parseFloat(item.subtotal || (item.price || item.unitPrice) * item.quantity)
-        });
-      })
-    );
+    let orderProducts = [];
+    try {
+      orderProducts = await Promise.all(
+        finalProducts.map(async (item) => {
+          return await GuestOrderProduct.create({
+            guestOrderId: guestOrder.id,
+            productId: item.productId,
+            quantity: item.quantity,
+            price: parseFloat(item.price || item.unitPrice),
+            subtotal: parseFloat(item.subtotal || (item.price || item.unitPrice) * item.quantity)
+          });
+        })
+      );
+      console.log('Productos del pedido creados:', orderProducts.length);
+    } catch (productError) {
+      console.warn('⚠️ Error al crear productos del pedido (continuando):', productError.message);
+      // Continuar sin productos si hay error
+    }
 
     // Si es un cliente frecuente (clientId existe), crear vales automáticamente
     if (clientId) {
       console.log('Creando vales para cliente frecuente:', clientId);
       
-      // Crear un vale por cada producto en el pedido
-      const vouchers = await Promise.all(
-        finalProducts.map(async (item) => {
-          const product = await Product.findByPk(item.productId);
-          if (product) {
-            return await Voucher.create({
-              clientId: clientId,
-              deliveryPersonId: null, // Se asignará cuando se asigne el pedido
-              productId: item.productId,
-              quantity: item.quantity,
-              unitPrice: parseFloat(item.price || item.unitPrice),
-              totalAmount: parseFloat(item.subtotal || (item.price || item.unitPrice) * item.quantity),
-              status: 'pending',
-              notes: `Vale generado automáticamente para pedido #${guestOrder.id}`,
-              guestOrderId: guestOrder.id
-            });
-          }
-          return null;
-        })
-      );
+      try {
+        // Crear un vale por cada producto en el pedido
+        const vouchers = await Promise.all(
+          finalProducts.map(async (item) => {
+            const product = await Product.findByPk(item.productId);
+            if (product) {
+              return await Voucher.create({
+                clientId: clientId,
+                deliveryPersonId: null, // Se asignará cuando se asigne el pedido
+                productId: item.productId,
+                quantity: item.quantity,
+                unitPrice: parseFloat(item.price || item.unitPrice),
+                totalAmount: parseFloat(item.subtotal || (item.price || item.unitPrice) * item.quantity),
+                status: 'pending',
+                notes: `Vale generado automáticamente para pedido #${guestOrder.id}`,
+                guestOrderId: guestOrder.id
+              });
+            }
+            return null;
+          })
+        );
 
-      console.log('Vales creados:', vouchers.filter(v => v !== null).length);
+        console.log('Vales creados:', vouchers.filter(v => v !== null).length);
+      } catch (voucherError) {
+        console.warn('⚠️ Error al crear vales (continuando sin vales):', voucherError.message);
+        // Continuar sin crear vales si hay error
+      }
     }
 
     // Si el método de pago es 'vale', crear un vale en la tabla Vales
