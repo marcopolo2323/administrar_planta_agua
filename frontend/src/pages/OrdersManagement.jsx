@@ -407,8 +407,22 @@ const OrdersManagement = () => {
             deliveryFee: order.deliveryFee || 0,
             total: order.total || order.totalAmount,
             paymentMethod: order.paymentMethod || order.paymentType,
-            items: order.products || order.orderDetails || [],
-            products: order.products || order.orderDetails || []
+            // Mapear productos correctamente
+            items: (order.products || order.orderDetails || []).map(item => ({
+              name: item.product?.name || item.name || 'Producto',
+              quantity: item.quantity || 1,
+              price: item.price || item.unitPrice || 0,
+              subtotal: item.subtotal || (item.price || item.unitPrice || 0) * (item.quantity || 1)
+            })),
+            products: (order.products || order.orderDetails || []).map(item => ({
+              name: item.product?.name || item.name || 'Producto',
+              quantity: item.quantity || 1,
+              price: item.price || item.unitPrice || 0,
+              subtotal: item.subtotal || (item.price || item.unitPrice || 0) * (item.quantity || 1)
+            })),
+            // También incluir los datos originales para debugging
+            originalProducts: order.products,
+            originalOrderDetails: order.orderDetails
           },
           documentType: 'boleta'
         })
