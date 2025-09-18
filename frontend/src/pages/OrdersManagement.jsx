@@ -465,8 +465,8 @@ const OrdersManagement = () => {
   const downloadReceipt = async (order) => {
     try {
       console.log('🔍 Descargando boleta para pedido:', order);
-      // Usar la misma ruta que funciona para guest orders
-      const response = await fetch('/api/guest-payments/generate-pdf', {
+      // Usar endpoint alternativo para admin
+      const response = await fetch('/api/admin/generate-pdf', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

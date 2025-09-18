@@ -463,7 +463,61 @@ app.use('/api/vales', valeRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/documents', documentRoutes);
-app.use('/api/sync', require('./routes/sync'));
+// Endpoints de sincronización manual
+app.post('/api/sync/fix-foreign-keys', async (req, res) => {
+  try {
+    console.log('🔧 Iniciando reparación de foreign keys...');
+    const { fixForeignKeys } = require('./scripts/fixForeignKeys');
+    await fixForeignKeys();
+    res.json({ success: true, message: 'Foreign keys reparadas exitosamente' });
+  } catch (error) {
+    console.error('❌ Error reparando foreign keys:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/sync/full-sync', async (req, res) => {
+  try {
+    console.log('🔄 Iniciando sincronización completa...');
+    const { fixForeignKeys } = require('./scripts/fixForeignKeys');
+    const { addPaymentTypeColumn } = require('./scripts/addPaymentTypeColumn');
+    await fixForeignKeys();
+    await addPaymentTypeColumn();
+    res.json({ success: true, message: 'Sincronización completa exitosa' });
+  } catch (error) {
+    console.error('❌ Error en sincronización completa:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Endpoint alternativo para generar PDF
+app.post('/api/admin/generate-pdf', async (req, res) => {
+  try {
+    console.log('📄 Generando PDF desde admin...');
+    const { orderData, documentType = 'boleta' } = req.body;
+    
+    if (!orderData) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Datos del pedido requeridos' 
+      });
+    }
+
+    const { generatePDF } = require('./services/pdfGenerator.service');
+    const pdfBuffer = await generatePDF(orderData, documentType);
+    
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="boleta_${orderData.id || 'pedido'}.pdf"`);
+    res.send(pdfBuffer);
+  } catch (error) {
+    console.error('❌ Error generando PDF:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Error al generar PDF',
+      error: error.message 
+    });
+  }
+});
 
 // Rutas de productos (mantener compatibilidad)
 app.get('/api/products', async (req, res) => {
@@ -661,6 +715,9 @@ app.get('/api/notifications', async (req, res) => {
 app.post('/api/guest-payments/generate-pdf', async (req, res) => {
   try {
     console.log('📄 Generando PDF para pago de invitado...');
+    console.log('📄 Método:', req.method);
+    console.log('📄 URL:', req.url);
+    console.log('📄 Headers:', req.headers);
     const { orderData, documentType = 'boleta' } = req.body;
     
     if (!orderData) {
