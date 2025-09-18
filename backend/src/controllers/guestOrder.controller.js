@@ -200,7 +200,7 @@ exports.createGuestOrder = async (req, res) => {
 };
 
 // Obtener pedido por token de acceso
-exports.getOrderByToken = async (req, res) => {
+exports.getGuestOrderByToken = async (req, res) => {
   try {
     const { token } = req.params;
     
@@ -239,7 +239,7 @@ exports.getOrderByToken = async (req, res) => {
 };
 
 // Obtener todos los pedidos (para admin)
-exports.getAllOrders = async (req, res) => {
+exports.getGuestOrders = async (req, res) => {
   try {
     const { page = 1, limit = 10, status, clientId } = req.query;
     const offset = (page - 1) * limit;
@@ -284,6 +284,102 @@ exports.getAllOrders = async (req, res) => {
   }
 };
 
+// Obtener pedido por ID
+exports.getGuestOrderById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const order = await GuestOrder.findByPk(id, {
+      include: [
+        {
+          model: Product,
+          as: 'products',
+          through: {
+            attributes: ['quantity', 'price', 'subtotal']
+          }
+        }
+      ]
+    });
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Pedido no encontrado'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: order
+    });
+
+  } catch (error) {
+    console.error('Error al obtener pedido:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor'
+    });
+  }
+};
+
+// Obtener estadísticas de pedidos
+exports.getOrderStats = async (req, res) => {
+  try {
+    const totalOrders = await GuestOrder.count();
+    const pendingOrders = await GuestOrder.count({ where: { status: 'pending' } });
+    const completedOrders = await GuestOrder.count({ where: { status: 'delivered' } });
+    const cancelledOrders = await GuestOrder.count({ where: { status: 'cancelled' } });
+
+    res.json({
+      success: true,
+      data: {
+        total: totalOrders,
+        pending: pendingOrders,
+        completed: completedOrders,
+        cancelled: cancelledOrders
+      }
+    });
+
+  } catch (error) {
+    console.error('Error al obtener estadísticas:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor'
+    });
+  }
+};
+
+// Actualizar pedido
+exports.updateGuestOrder = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateData = req.body;
+
+    const order = await GuestOrder.findByPk(id);
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Pedido no encontrado'
+      });
+    }
+
+    await order.update(updateData);
+
+    res.json({
+      success: true,
+      message: 'Pedido actualizado',
+      data: order
+    });
+
+  } catch (error) {
+    console.error('Error al actualizar pedido:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor'
+    });
+  }
+};
+
 // Actualizar estado del pedido
 exports.updateOrderStatus = async (req, res) => {
   try {
@@ -312,6 +408,69 @@ exports.updateOrderStatus = async (req, res) => {
 
   } catch (error) {
     console.error('Error al actualizar pedido:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor'
+    });
+  }
+};
+
+// Asignar repartidor
+exports.assignDeliveryPerson = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { deliveryPersonId } = req.body;
+
+    const order = await GuestOrder.findByPk(id);
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Pedido no encontrado'
+      });
+    }
+
+    await order.update({
+      deliveryPersonId,
+      status: 'assigned'
+    });
+
+    res.json({
+      success: true,
+      message: 'Repartidor asignado',
+      data: order
+    });
+
+  } catch (error) {
+    console.error('Error al asignar repartidor:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor'
+    });
+  }
+};
+
+// Eliminar pedido
+exports.deleteGuestOrder = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const order = await GuestOrder.findByPk(id);
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Pedido no encontrado'
+      });
+    }
+
+    await order.destroy();
+
+    res.json({
+      success: true,
+      message: 'Pedido eliminado'
+    });
+
+  } catch (error) {
+    console.error('Error al eliminar pedido:', error);
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor'
