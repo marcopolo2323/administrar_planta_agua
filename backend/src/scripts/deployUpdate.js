@@ -141,12 +141,45 @@ const deployUpdate = async () => {
     
     console.log('✅ Productos básicos verificados');
     
-    // 8. Estadísticas finales
-    console.log('\n📊 PASO 8: Estadísticas finales...');
+    // 8. Verificar distritos básicos
+    console.log('\n🏘️ PASO 8: Verificando distritos básicos...');
+    const distritosExistentes = await District.count();
+    
+    if (distritosExistentes === 0) {
+      console.log('🔄 Creando distritos básicos...');
+      await District.bulkCreate([
+        {
+          name: 'MANANTAY',
+          active: true
+        },
+        {
+          name: 'YARINACOCHA',
+          active: true
+        },
+        {
+          name: 'CALLERIA',
+          active: true
+        },
+        {
+          name: 'SAN JOSE',
+          active: true
+        },
+        {
+          name: 'CASHIBO',
+          active: true
+        }
+      ]);
+    }
+    
+    console.log('✅ Distritos básicos verificados');
+    
+    // 9. Estadísticas finales
+    console.log('\n📊 PASO 9: Estadísticas finales...');
     const stats = {
       usuarios: await User.count(),
       clientes: await Client.count(),
       productos: await Product.count(),
+      distritos: await District.count(),
       repartidores: await DeliveryPerson.count(),
       pedidos: await GuestOrder.count(),
       vales: await Voucher.count()
@@ -158,6 +191,7 @@ const deployUpdate = async () => {
     console.log(`   👥 Usuarios: ${stats.usuarios}`);
     console.log(`   👤 Clientes: ${stats.clientes}`);
     console.log(`   📦 Productos: ${stats.productos}`);
+    console.log(`   🏘️ Distritos: ${stats.distritos}`);
     console.log(`   🚚 Repartidores: ${stats.repartidores}`);
     console.log(`   📋 Pedidos: ${stats.pedidos}`);
     console.log(`   🎫 Vales: ${stats.vales}`);

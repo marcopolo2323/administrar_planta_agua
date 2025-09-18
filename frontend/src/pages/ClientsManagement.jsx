@@ -189,7 +189,7 @@ const ClientsManagement = () => {
     setSelectedClient(client);
     setFormData({
       name: client.name || '',
-      document: client.document || '',
+      document: client.documentNumber || '',
       phone: client.phone || '',
       email: client.email || '',
       address: client.address || '',
@@ -224,7 +224,7 @@ const ClientsManagement = () => {
   // Filtrar clientes
   const filteredClients = clients.filter(client => {
     const matchesSearch = client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         client.document.includes(searchTerm) ||
+                         client.documentNumber.includes(searchTerm) ||
                          client.phone.includes(searchTerm);
     return matchesSearch;
   });
@@ -359,7 +359,7 @@ const ClientsManagement = () => {
                         <VStack align="start" spacing={1} w="full">
                           <HStack>
                             <FaIdCard size={14} color="#718096" />
-                            <Text fontSize="sm" color="gray.600">DNI: {client.document}</Text>
+                            <Text fontSize="sm" color="gray.600">DNI: {client.documentNumber}</Text>
                           </HStack>
                           <HStack>
                             <FaPhone size={14} color="#718096" />
@@ -421,7 +421,7 @@ const ClientsManagement = () => {
                           <Text fontSize="sm" color="gray.600">{client.email}</Text>
                         </VStack>
                       </Td>
-                      <Td>{client.document}</Td>
+                      <Td>{client.documentNumber}</Td>
                       <Td>{client.phone}</Td>
                       <Td>{client.district}</Td>
                       <Td>
@@ -653,7 +653,7 @@ const ClientsManagement = () => {
                       </HStack>
                       <HStack justify="space-between">
                         <Text fontWeight="bold">DNI:</Text>
-                        <Text>{selectedClient.document}</Text>
+                        <Text>{selectedClient.documentNumber}</Text>
                       </HStack>
                       <HStack justify="space-between">
                         <Text fontWeight="bold">Teléfono:</Text>
