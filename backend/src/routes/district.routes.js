@@ -9,9 +9,9 @@ router.get('/', districtController.getDistricts);
 // Ruta pública para calcular flete automáticamente
 router.post('/calculate-delivery-fee', districtController.calculateDeliveryFee);
 
-// Rutas protegidas (requieren autenticación)
-router.post('/', authMiddleware, districtController.createDistrict);
-router.put('/:id', authMiddleware, districtController.updateDistrict);
-router.delete('/:id', authMiddleware, districtController.deleteDistrict);
+// Rutas públicas para gestión de distritos
+router.post('/', districtController.createDistrict);
+router.put('/:id', districtController.updateDistrict);
+router.delete('/:id', districtController.deleteDistrict);
 
 module.exports = router;

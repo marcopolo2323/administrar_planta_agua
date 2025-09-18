@@ -62,7 +62,7 @@ exports.updateDistrict = async (req, res) => {
 
     await district.update({
       name,
-      deliveryFee: parseFloat(deliveryFee) || district.deliveryFee,
+      deliveryFee: deliveryFee !== undefined ? parseFloat(deliveryFee) : district.deliveryFee,
       isActive: isActive !== undefined ? isActive : district.isActive
     });
 
