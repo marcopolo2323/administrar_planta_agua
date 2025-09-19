@@ -18,7 +18,7 @@ import {
   Badge
 } from '@chakra-ui/react';
 import { useNavigate } from 'react-router-dom';
-import { FaUsers, FaTruck, FaCreditCard, FaDollarSign, FaShoppingCart, FaCalendarAlt, FaFileAlt } from 'react-icons/fa';
+import { FaUsers, FaTruck, FaCreditCard, FaDollarSign, FaShoppingCart, FaCalendarAlt, FaFileAlt, FaUserTie } from 'react-icons/fa';
 import useProductStore from '../stores/productStore';
 import useClientStore from '../stores/clientStore';
 import useDeliveryStore from '../stores/deliveryStore';
@@ -98,12 +98,12 @@ const Dashboard = () => {
 
   const quickActions = [
     {
-      title: 'Gestión de Pedidos',
+      title: 'Pedidos',
       icon: FaTruck,
       color: 'orange',
       onClick: () => navigate('/dashboard/orders-management'),
       count: totalOrders,
-      description: 'Todos los pedidos'
+      description: 'Gestionar pedidos'
     },
     {
       title: 'Clientes',
@@ -111,7 +111,7 @@ const Dashboard = () => {
       color: 'green',
       onClick: () => navigate('/dashboard/clients'),
       count: totalClients,
-      description: 'Clientes registrados'
+      description: 'Base de clientes'
     },
     {
       title: 'Suscripciones',
@@ -119,7 +119,7 @@ const Dashboard = () => {
       color: 'purple',
       onClick: () => navigate('/dashboard/subscriptions'),
       count: totalSubscriptions,
-      description: 'Planes de suscripción'
+      description: 'Planes activos'
     },
     {
       title: 'Vales',
@@ -127,19 +127,19 @@ const Dashboard = () => {
       color: 'blue',
       onClick: () => navigate('/dashboard/vales'),
       count: totalVales,
-      description: 'Gestión de vales'
+      description: 'Vales pendientes'
     },
     {
-      title: 'Reporte de Cobranza',
+      title: 'Cobranza',
       icon: FaFileAlt,
       color: 'red',
       onClick: () => navigate('/dashboard/collection-report'),
-      count: totalVales, // Mostrar total de vales como indicador de deudas
-      description: 'Deudas pendientes'
+      count: totalVales,
+      description: 'Reportes de deuda'
     },
     {
       title: 'Repartidores',
-      icon: FaUsers,
+      icon: FaUserTie,
       color: 'indigo',
       onClick: () => navigate('/dashboard/delivery-persons'),
       count: totalDeliveryPersons,
@@ -315,84 +315,119 @@ const Dashboard = () => {
         <CardBody p={{ base: 3, md: 4 }}>
           <Heading size={{ base: 'sm', md: 'md' }} mb={{ base: 3, md: 4 }} color="gray.700">🚀 Acciones Rápidas</Heading>
           <SimpleGrid 
-            columns={{ base: 2, sm: 3, md: 3, lg: 6 }} 
-            spacing={{ base: 2, md: 4 }}
+            columns={{ base: 2, sm: 2, md: 3, lg: 6 }} 
+            spacing={{ base: 3, md: 4 }}
             maxW="100%"
           >
             {quickActions.map((action, index) => (
-              <Button
+              <Card
                 key={index}
-                colorScheme={action.color}
-                variant="outline"
-                size={{ base: "xs", sm: "sm", md: "md" }}
-                height={{ base: "70px", sm: "80px", md: "100px" }}
-                flexDirection="column"
+                borderColor={`${action.color}.200`}
+                borderWidth="2px"
+                cursor="pointer"
                 onClick={action.onClick}
                 _hover={{ 
                   transform: 'translateY(-2px)', 
                   boxShadow: 'lg',
+                  borderColor: `${action.color}.300`,
                   bg: `${action.color}.50`
                 }}
                 transition="all 0.2s"
-                borderWidth="2px"
                 borderRadius="lg"
-                minW="0"
-                w="100%"
-                maxW="100%"
-                p={{ base: 1, md: 2 }}
+                bg="white"
+                h={{ base: "130px", md: "140px" }}
               >
-                <VStack spacing={{ base: 0.5, md: 1 }} maxW="100%" h="100%" justify="space-between" p={1}>
-                  <Box 
-                    display="flex" 
-                    alignItems="center" 
-                    justifyContent="center" 
-                    h={{ base: "20px", sm: "22px", md: "24px" }}
-                    w={{ base: "20px", sm: "22px", md: "24px" }}
-                    borderRadius="md"
-                    bg={action.color + ".100"}
-                    flexShrink={0}
-                  >
-                    <action.icon 
-                      size={16} 
-                      color={`${action.color}.600`}
-                    />
-                  </Box>
-                  <VStack spacing={0.5} flex={1} minH={0} w="100%">
-                    <Text 
-                      fontSize={{ base: "2xs", sm: "xs", md: "sm" }} 
-                      fontWeight="bold" 
-                      textAlign="center" 
-                      noOfLines={1}
-                      lineHeight="shorter"
-                      w="100%"
+                <CardBody p={{ base: 3, md: 4 }} h="100%">
+                  <VStack spacing={{ base: 2, md: 3 }} h="100%" justify="space-between" align="center">
+                    {/* Icono */}
+                    <Box 
+                      display="flex" 
+                      alignItems="center" 
+                      justifyContent="center" 
+                      h={{ base: "32px", md: "40px" }}
+                      w={{ base: "32px", md: "40px" }}
+                      borderRadius="full"
+                      bg={`${action.color}.100`}
+                      flexShrink={0}
                     >
-                      {action.title}
-                    </Text>
-                    <Text 
-                      fontSize={{ base: "2xs", sm: "xs" }} 
-                      color="gray.500" 
-                      textAlign="center" 
-                      noOfLines={2}
-                      lineHeight="shorter"
-                      w="100%"
+                      <action.icon 
+                        size={{ base: 18, md: 22 }} 
+                        color={`${action.color}.600`}
+                      />
+                    </Box>
+                    
+                    {/* Contenido */}
+                    <VStack spacing={1} flex={1} w="100%" textAlign="center">
+                      <Text 
+                        fontSize={{ base: "xs", md: "sm" }} 
+                        fontWeight="bold" 
+                        color="gray.700"
+                        noOfLines={2}
+                        lineHeight="1.2"
+                        minH={{ base: "28px", md: "32px" }}
+                        display="flex"
+                        alignItems="center"
+                        justifyContent="center"
+                      >
+                        {action.title}
+                      </Text>
+                      <Text 
+                        fontSize={{ base: "2xs", md: "xs" }} 
+                        color="gray.500" 
+                        noOfLines={2}
+                        lineHeight="1.1"
+                        minH={{ base: "20px", md: "24px" }}
+                      >
+                        {action.description}
+                      </Text>
+                    </VStack>
+                    
+                    {/* Badge con contador estilo notificación */}
+                    <Box
+                      position="relative"
+                      display="inline-block"
                     >
-                      {action.description}
-                    </Text>
+                      <Box
+                        bg={`${action.color}.500`}
+                        color="white"
+                        borderRadius="full"
+                        px={{ base: 3, md: 4 }}
+                        py={{ base: 2, md: 2.5 }}
+                        fontSize={{ base: "lg", md: "xl" }}
+                        fontWeight="900"
+                        minW={{ base: "40px", md: "44px" }}
+                        h={{ base: "40px", md: "44px" }}
+                        display="flex"
+                        alignItems="center"
+                        justifyContent="center"
+                        boxShadow="lg"
+                        border="4px solid white"
+                        _hover={{
+                          transform: "scale(1.1)",
+                          boxShadow: "xl",
+                          bg: `${action.color}.600`
+                        }}
+                        transition="all 0.3s ease"
+                        cursor="pointer"
+                      >
+                        {action.count}
+                      </Box>
+                      {/* Efecto de brillo */}
+                      <Box
+                        position="absolute"
+                        top="-2px"
+                        right="-2px"
+                        w="12px"
+                        h="12px"
+                        bg="white"
+                        borderRadius="full"
+                        opacity={0.8}
+                        className="pulse-animation"
+                      />
+                    </Box>
                   </VStack>
-                  <Badge 
-                    colorScheme={action.color} 
-                    variant="solid" 
-                    fontSize={{ base: "2xs", sm: "xs" }}
-                    borderRadius="full"
-                    px={{ base: 1, md: 2 }}
-                    py={0.5}
-                    flexShrink={0}
-                    minW="fit-content"
-                  >
-                    {action.count}
-                  </Badge>
-                </VStack>
-              </Button>
+                </CardBody>
+              </Card>
             ))}
           </SimpleGrid>
         </CardBody>

@@ -29,8 +29,8 @@ import {
   Badge,
   Divider
 } from '@chakra-ui/react';
-import { HamburgerIcon, ChevronDownIcon } from '@chakra-ui/icons';
-import { useState } from 'react';
+import { HamburgerIcon, ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon } from '@chakra-ui/icons';
+import { useState, useEffect } from 'react';
 
 const DashboardLayout = () => {
   const { user, logout } = useAuthStore();
@@ -38,11 +38,20 @@ const DashboardLayout = () => {
   const navigate = useNavigate();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    const saved = localStorage.getItem('sidebarCollapsed');
+    return saved ? JSON.parse(saved) : false;
+  });
   
   // Hook para renovación automática del JWT
   useAutoRefresh();
   
   const isMobile = useBreakpointValue({ base: true, lg: false });
+  
+  // Persistir estado del sidebar en localStorage
+  useEffect(() => {
+    localStorage.setItem('sidebarCollapsed', JSON.stringify(isSidebarCollapsed));
+  }, [isSidebarCollapsed]);
   
   const handleLogout = () => {
     logout();
@@ -99,17 +108,23 @@ const DashboardLayout = () => {
     setIsMobileMenuOpen(false);
   };
 
-  const SidebarContent = () => (
+  const SidebarContent = ({ isCollapsed = false }) => (
     <VStack spacing={0} h="full" align="stretch">
       {/* Logo */}
-      <Box p={6} borderBottom="1px solid" borderColor="whiteAlpha.200">
-        <AquaYaraLogo 
-          size="md" 
-          variant="vertical" 
-          color="white" 
-          textColor="white" 
-          taglineColor="whiteAlpha.700"
-        />
+      <Box p={isCollapsed ? 3 : 6} borderBottom="1px solid" borderColor="whiteAlpha.200">
+        {isCollapsed ? (
+          <Text fontSize="2xl" textAlign="center" color="white">
+            🏠
+          </Text>
+        ) : (
+          <AquaYaraLogo 
+            size="md" 
+            variant="vertical" 
+            color="white" 
+            textColor="white" 
+            taglineColor="whiteAlpha.700"
+          />
+        )}
       </Box>
 
       {/* Navigation Menu */}
@@ -121,39 +136,43 @@ const DashboardLayout = () => {
             to={item.to}
             variant="ghost"
             color="white"
-            justifyContent="flex-start"
+            justifyContent={isCollapsed ? "center" : "flex-start"}
             leftIcon={<Text>{item.icon}</Text>}
             _hover={{ bg: 'whiteAlpha.200' }}
             _active={{ bg: 'whiteAlpha.300' }}
             size="sm"
             h="40px"
             onClick={closeMobileMenu}
+            title={isCollapsed ? item.label : undefined}
           >
-            {item.label}
+            {!isCollapsed && item.label}
           </Button>
         ))}
       </VStack>
 
       {/* User Section */}
-      <Box p={4} borderTop="1px solid" borderColor="whiteAlpha.200">
+      <Box p={isCollapsed ? 2 : 4} borderTop="1px solid" borderColor="whiteAlpha.200">
         <Menu>
           <MenuButton
             as={Button}
             variant="ghost"
             color="white"
             w="full"
-            justifyContent="flex-start"
+            justifyContent={isCollapsed ? "center" : "flex-start"}
             leftIcon={<Avatar size="sm" name={getUserInitials()} />}
-            rightIcon={<ChevronDownIcon />}
+            rightIcon={!isCollapsed ? <ChevronDownIcon /> : undefined}
+            title={isCollapsed ? `${user?.username} (${user?.role})` : undefined}
           >
-            <VStack spacing={0} align="flex-start">
-              <Text fontSize="sm" fontWeight="medium">
-                {user?.username}
-              </Text>
-              <Text fontSize="xs" color="whiteAlpha.700">
-                {user?.role}
-              </Text>
-            </VStack>
+            {!isCollapsed && (
+              <VStack spacing={0} align="flex-start">
+                <Text fontSize="sm" fontWeight="medium">
+                  {user?.username}
+                </Text>
+                <Text fontSize="xs" color="whiteAlpha.700">
+                  {user?.role}
+                </Text>
+              </VStack>
+            )}
           </MenuButton>
           <MenuList>
             <MenuItem onClick={() => { handleLogout(); closeMobileMenu(); }} color="red.500">
@@ -170,14 +189,37 @@ const DashboardLayout = () => {
       {/* Desktop Sidebar */}
       {!isMobile && (
         <Box
-          w="280px"
+          w={isSidebarCollapsed ? "60px" : "280px"}
           bg="purple.600"
           color="white"
           position="fixed"
           h="100vh"
           overflowY="auto"
+          zIndex={1000}
+          left={0}
+          top={0}
+          transition="width 0.3s ease"
         >
-          <SidebarContent />
+          <SidebarContent isCollapsed={isSidebarCollapsed} />
+          
+          {/* Botón de colapsar/expandir */}
+          <IconButton
+            icon={isSidebarCollapsed ? <ChevronRightIcon /> : <ChevronLeftIcon />}
+            variant="ghost"
+            color="white"
+            size="sm"
+            position="absolute"
+            right="-12px"
+            top="50%"
+            transform="translateY(-50%)"
+            bg="purple.600"
+            border="2px solid"
+            borderColor="purple.600"
+            borderRadius="full"
+            _hover={{ bg: 'purple.700' }}
+            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            zIndex={1001}
+          />
         </Box>
       )}
 
@@ -213,9 +255,10 @@ const DashboardLayout = () => {
       {/* Main Content */}
       <Box
         flex={1}
-        ml={!isMobile ? "280px" : 0}
+        ml={!isMobile ? (isSidebarCollapsed ? "60px" : "280px") : 0}
         display="flex"
         flexDirection="column"
+        transition="margin-left 0.3s ease"
       >
         {/* Header */}
         <Box
@@ -225,15 +268,26 @@ const DashboardLayout = () => {
           boxShadow="sm"
           borderBottom="1px solid"
           borderColor="gray.200"
+          position="sticky"
+          top={0}
+          zIndex={999}
         >
           <Flex align="center" justify="space-between">
             <HStack spacing={4}>
-              {isMobile && (
+              {isMobile ? (
                 <IconButton
                   icon={<HamburgerIcon />}
                   variant="ghost"
                   onClick={() => setIsMobileMenuOpen(true)}
                   aria-label="Abrir menú"
+                />
+              ) : (
+                <IconButton
+                  icon={isSidebarCollapsed ? <ChevronRightIcon /> : <ChevronLeftIcon />}
+                  variant="ghost"
+                  onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                  aria-label={isSidebarCollapsed ? "Expandir sidebar" : "Colapsar sidebar"}
+                  size="sm"
                 />
               )}
               <AquaYaraLogo size="sm" variant="horizontal" />
@@ -252,7 +306,13 @@ const DashboardLayout = () => {
         </Box>
 
         {/* Page Content */}
-        <Box flex={1} p={{ base: 4, md: 6 }} overflowY="auto">
+        <Box 
+          flex={1} 
+          p={{ base: 4, md: 6 }} 
+          overflowY="auto"
+          position="relative"
+          zIndex={1}
+        >
           <Outlet />
         </Box>
 

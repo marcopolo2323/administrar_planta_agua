@@ -43,7 +43,7 @@ exports.createVoucher = async (req, res) => {
     // Incluir información del cliente y producto
     const voucherWithDetails = await Voucher.findByPk(voucher.id, {
       include: [
-        { model: Client, as: 'Client', attributes: ['id', 'name', 'email'] },
+        { model: Client, as: 'client', attributes: ['id', 'name', 'email'] },
         { model: User, as: 'deliveryPerson', attributes: ['id', 'username'] },
         { model: Product, as: 'product', attributes: ['id', 'name', 'description'] }
       ]
@@ -67,24 +67,56 @@ exports.createVoucher = async (req, res) => {
 // Obtener todos los vales (para administradores)
 exports.getAllVouchers = async (req, res) => {
   try {
-    const { status, page = 1, limit = 10 } = req.query;
+    const { status, page = 1, limit = 100 } = req.query; // Aumentar límite por defecto
+
+    console.log('🔍 Obteniendo vales con filtros:', { status, page, limit });
 
     const whereClause = {};
     if (status && status !== 'all') {
       whereClause.status = status;
     }
 
+    console.log('🔍 Where clause para vales:', whereClause);
+
     const vouchers = await Voucher.findAndCountAll({
       where: whereClause,
       include: [
-        { model: Client, as: 'Client', attributes: ['id', 'name', 'email'] },
-        { model: User, as: 'deliveryPerson', attributes: ['id', 'username'] },
-        { model: Product, as: 'product', attributes: ['id', 'name', 'description', 'image'] }
+        { 
+          model: Client, 
+          as: 'client', 
+          attributes: ['id', 'name', 'email', 'phone', 'documentNumber'],
+          required: false // LEFT JOIN para incluir vales sin cliente
+        },
+        { 
+          model: User, 
+          as: 'deliveryPerson', 
+          attributes: ['id', 'username'],
+          required: false // LEFT JOIN para incluir vales sin repartidor
+        },
+        { 
+          model: Product, 
+          as: 'product', 
+          attributes: ['id', 'name', 'description', 'unitPrice'],
+          required: false // LEFT JOIN para incluir vales sin producto
+        }
       ],
       order: [['createdAt', 'DESC']],
       limit: parseInt(limit),
       offset: (parseInt(page) - 1) * parseInt(limit)
     });
+
+    console.log(`✅ Vales encontrados: ${vouchers.count} total, ${vouchers.rows.length} en esta página`);
+    
+    // Log de los primeros vales para debug
+    if (vouchers.rows.length > 0) {
+      console.log('🔍 Primer vale:', {
+        id: vouchers.rows[0].id,
+        clientId: vouchers.rows[0].clientId,
+        clientName: vouchers.rows[0].client?.name,
+        productName: vouchers.rows[0].product?.name,
+        status: vouchers.rows[0].status
+      });
+    }
 
     res.json({
       success: true,
@@ -169,7 +201,7 @@ exports.getDeliveryVouchers = async (req, res) => {
     const vouchers = await Voucher.findAll({
       where: whereClause,
       include: [
-        { model: Client, as: 'Client', attributes: ['id', 'name', 'email'] },
+        { model: Client, as: 'client', attributes: ['id', 'name', 'email'] },
         { model: Product, as: 'product', attributes: ['id', 'name', 'description', 'image'] }
       ],
       order: [['createdAt', 'DESC']]
@@ -378,7 +410,7 @@ exports.getVoucherById = async (req, res) => {
 
     const voucher = await Voucher.findByPk(id, {
       include: [
-        { model: Client, as: 'Client', attributes: ['id', 'name', 'email'] },
+        { model: Client, as: 'client', attributes: ['id', 'name', 'email'] },
         { model: User, as: 'deliveryPerson', attributes: ['id', 'username'] },
         { model: Product, as: 'product', attributes: ['id', 'name', 'description', 'image'] }
       ]

@@ -76,9 +76,13 @@ const CollectionReport = () => {
   const fetchReport = async () => {
     try {
       setLoading(true);
-      const response = await axios.get(`/api/vales/monthly-report?year=${selectedYear}&month=${selectedMonth}`);
+      const response = await axios.get(`/api/reports/collection?year=${selectedYear}&month=${selectedMonth}`);
       
       if (response.data.success) {
+        console.log('🔍 Datos del reporte de cobranza recibidos:', response.data.data);
+        if (response.data.data.clients && response.data.data.clients.length > 0) {
+          console.log('🔍 Primer cliente:', response.data.data.clients[0]);
+        }
         setReportData(response.data.data);
       }
     } catch (error) {
@@ -277,7 +281,14 @@ const CollectionReport = () => {
                       </Tr>
                     </Thead>
                     <Tbody>
-                      {reportData.clients.map((clientData) => (
+                      {reportData.clients.map((clientData) => {
+                        console.log('🔍 Renderizando cliente:', {
+                          name: clientData.client.name,
+                          remainingAmount: clientData.remainingAmount,
+                          totalAmount: clientData.totalAmount,
+                          valesCount: clientData.valesCount
+                        });
+                        return (
                         <Tr key={clientData.client.id}>
                           <Td>
                             <VStack align="start" spacing={1}>
@@ -302,16 +313,16 @@ const CollectionReport = () => {
                           <Td>
                             <VStack align="start" spacing={1}>
                               <Text fontWeight="bold" color="red.600" fontSize="lg">
-                                {formatCurrency(clientData.remainingAmount)}
+                                {formatCurrency(clientData.remainingAmount || 0)}
                               </Text>
                               <Text fontSize="xs" color="gray.500">
-                                De {formatCurrency(clientData.totalAmount)} total
+                                De {formatCurrency(clientData.totalAmount || 0)} total
                               </Text>
                             </VStack>
                           </Td>
                           <Td>
                             <Tag colorScheme="blue">
-                              <TagLabel>{clientData.valesCount} vales</TagLabel>
+                              <TagLabel>{clientData.valesCount || 0} vales</TagLabel>
                             </Tag>
                           </Td>
                           <Td>
@@ -324,7 +335,8 @@ const CollectionReport = () => {
                             </Tooltip>
                           </Td>
                         </Tr>
-                      ))}
+                        );
+                      })}
                     </Tbody>
                   </Table>
                 )}

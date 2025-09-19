@@ -1,4 +1,5 @@
-const { GuestOrder, Product, GuestOrderProduct, User, Voucher, Vale, sequelize } = require('../models');
+const { GuestOrder, Product, GuestOrderProduct, User, Voucher, Vale, Subscription, sequelize } = require('../models');
+const { Op } = require('sequelize');
 const { generateUniqueAccessToken } = require('../utils/security');
 
 // Crear un nuevo pedido de invitado o cliente frecuente
@@ -144,7 +145,7 @@ exports.createGuestOrder = async (req, res) => {
                 productId: item.productId,
                 quantity: item.quantity,
                 unitPrice: parseFloat(item.price || item.unitPrice),
-                totalPrice: parseFloat(item.subtotal || (item.price || item.unitPrice) * item.quantity),
+                totalAmount: parseFloat(item.subtotal || (item.price || item.unitPrice) * item.quantity),
                 status: 'pending',
                 guestOrderId: guestOrder.id,
                 notes: `Vale generado automáticamente para pedido #${guestOrder.id}`
@@ -157,6 +158,55 @@ exports.createGuestOrder = async (req, res) => {
         // Filtrar vales nulos
         const validVouchers = vouchers.filter(v => v !== null);
         console.log('Vales creados:', validVouchers.length);
+      }
+    }
+
+    // Si el método de pago es suscripción, descontar bidones de la suscripción activa del cliente
+    if (paymentMethod === 'suscripcion' && clientId && finalProducts && finalProducts.length > 0) {
+      console.log('Descontando bidones de suscripción para cliente:', clientId);
+      
+      try {
+        // Buscar suscripción activa del cliente
+        const activeSubscription = await Subscription.findOne({
+          where: {
+            clientId: clientId,
+            status: 'active',
+            remainingBottles: { [Op.gt]: 0 }
+          },
+          order: [['created_at', 'DESC']],
+          transaction
+        });
+
+        if (activeSubscription) {
+          // Calcular total de bidones a descontar
+          const totalBottlesToUse = finalProducts.reduce((sum, item) => sum + item.quantity, 0);
+          
+          console.log(`Suscripción encontrada: ${activeSubscription.id}, bidones disponibles: ${activeSubscription.remainingBottles}, a usar: ${totalBottlesToUse}`);
+          
+          if (activeSubscription.remainingBottles >= totalBottlesToUse) {
+            const newRemainingBottles = activeSubscription.remainingBottles - totalBottlesToUse;
+            const newStatus = newRemainingBottles === 0 ? 'completed' : 'active';
+            
+            await activeSubscription.update({
+              remainingBottles: newRemainingBottles,
+              status: newStatus
+            }, { transaction });
+            
+            // Actualizar el pedido con la referencia a la suscripción
+            await guestOrder.update({
+              subscriptionId: activeSubscription.id
+            }, { transaction });
+            
+            console.log(`✅ Bidones descontados: ${totalBottlesToUse}, restantes: ${newRemainingBottles}, estado: ${newStatus}`);
+          } else {
+            console.log(`⚠️ No hay suficientes bidones en la suscripción (disponibles: ${activeSubscription.remainingBottles}, necesarios: ${totalBottlesToUse})`);
+          }
+        } else {
+          console.log('⚠️ No se encontró suscripción activa para el cliente');
+        }
+      } catch (subscriptionError) {
+        console.error('Error al procesar suscripción:', subscriptionError);
+        // No cancelar la transacción por esto, solo loggear el error
       }
     }
 
@@ -209,11 +259,15 @@ exports.getGuestOrderByToken = async (req, res) => {
       where: { accessToken: token },
       include: [
         {
-          model: Product,
-          as: 'products',
-          through: {
-            attributes: ['quantity', 'price', 'subtotal']
-          }
+          model: GuestOrderProduct,
+          as: 'orderProducts',
+          include: [
+            {
+              model: Product,
+              as: 'product',
+              attributes: ['id', 'name', 'unitPrice']
+            }
+          ]
         }
       ]
     });
@@ -225,9 +279,24 @@ exports.getGuestOrderByToken = async (req, res) => {
       });
     }
 
+    // Transformar los datos para que coincidan con el formato esperado por el frontend
+    const transformedOrder = {
+      ...order.toJSON(),
+      products: order.orderProducts?.map(orderProduct => ({
+        id: orderProduct.id,
+        quantity: orderProduct.quantity,
+        price: orderProduct.price,
+        subtotal: orderProduct.subtotal,
+        product: orderProduct.product
+      })) || []
+    };
+
+    // Remover orderProducts ya que lo hemos transformado a products
+    delete transformedOrder.orderProducts;
+
     res.json({
       success: true,
-      data: order
+      data: transformedOrder
     });
 
   } catch (error) {
@@ -253,11 +322,15 @@ exports.getGuestOrders = async (req, res) => {
       where: whereClause,
       include: [
         {
-          model: Product,
-          as: 'products',
-          through: {
-            attributes: ['quantity', 'price', 'subtotal']
-          }
+          model: GuestOrderProduct,
+          as: 'orderProducts',
+          include: [
+            {
+              model: Product,
+              as: 'product',
+              attributes: ['id', 'name', 'unitPrice']
+            }
+          ]
         }
       ],
       order: [['createdAt', 'DESC']],
@@ -265,9 +338,27 @@ exports.getGuestOrders = async (req, res) => {
       offset: parseInt(offset)
     });
 
+    // Transformar los datos para que coincidan con el formato esperado por el frontend
+    const transformedOrders = orders.map(order => {
+      const transformed = {
+        ...order.toJSON(),
+        products: order.orderProducts?.map(orderProduct => ({
+          id: orderProduct.id,
+          quantity: orderProduct.quantity,
+          price: orderProduct.price,
+          subtotal: orderProduct.subtotal,
+          product: orderProduct.product
+        })) || []
+      };
+      
+      // Remover orderProducts ya que lo hemos transformado a products
+      delete transformed.orderProducts;
+      return transformed;
+    });
+
     res.json({
       success: true,
-      data: orders,
+      data: transformedOrders,
       pagination: {
         total: count,
         page: parseInt(page),
@@ -293,11 +384,15 @@ exports.getGuestOrderById = async (req, res) => {
     const order = await GuestOrder.findByPk(id, {
       include: [
         {
-          model: Product,
-          as: 'products',
-          through: {
-            attributes: ['quantity', 'price', 'subtotal']
-          }
+          model: GuestOrderProduct,
+          as: 'orderProducts',
+          include: [
+            {
+              model: Product,
+              as: 'product',
+              attributes: ['id', 'name', 'unitPrice']
+            }
+          ]
         }
       ]
     });
@@ -309,9 +404,24 @@ exports.getGuestOrderById = async (req, res) => {
       });
     }
 
+    // Transformar los datos para que coincidan con el formato esperado por el frontend
+    const transformedOrder = {
+      ...order.toJSON(),
+      products: order.orderProducts?.map(orderProduct => ({
+        id: orderProduct.id,
+        quantity: orderProduct.quantity,
+        price: orderProduct.price,
+        subtotal: orderProduct.subtotal,
+        product: orderProduct.product
+      })) || []
+    };
+
+    // Remover orderProducts ya que lo hemos transformado a products
+    delete transformedOrder.orderProducts;
+
     res.json({
       success: true,
-      data: order
+      data: transformedOrder
     });
 
   } catch (error) {

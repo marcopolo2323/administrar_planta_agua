@@ -57,29 +57,9 @@ exports.generateReport = async (req, res) => {
 
 // Reporte de Ventas
 exports.generateSalesReport = async function generateSalesReport(startDate, endDate) {
-  // Pedidos regulares
-  const regularOrders = await Order.findAll({
-    where: {
-      createdAt: {
-        [Op.between]: [startDate, endDate]
-      }
-    },
-    include: [
-      {
-        model: Client,
-        as: 'Client',
-        attributes: ['id', 'name', 'email']
-      },
-      {
-        model: User,
-        as: 'deliveryPerson',
-        attributes: ['id', 'username']
-      }
-    ],
-    order: [['createdAt', 'DESC']]
-  });
+  console.log('🔍 Generando reporte de ventas para período:', { startDate, endDate });
 
-  // Pedidos de visitantes
+  // Solo pedidos de visitantes (GuestOrder) ya que es el sistema principal
   const guestOrders = await GuestOrder.findAll({
     where: {
       createdAt: {
@@ -90,32 +70,25 @@ exports.generateSalesReport = async function generateSalesReport(startDate, endD
       {
         model: User,
         as: 'deliveryPerson',
-        attributes: ['id', 'username']
+        attributes: ['id', 'username'],
+        required: false
       }
     ],
     order: [['createdAt', 'DESC']]
   });
 
-  // Calcular estadísticas
-  const totalSales = regularOrders.reduce((sum, order) => sum + parseFloat(order.total || 0), 0) +
-                    guestOrders.reduce((sum, order) => sum + parseFloat(order.total || 0), 0);
+  console.log(`📦 Pedidos encontrados en el período: ${guestOrders.length}`);
 
-  const totalOrders = regularOrders.length + guestOrders.length;
-  const completedDeliveries = [...regularOrders, ...guestOrders].filter(order => order.status === 'entregado').length;
+  // Calcular estadísticas
+  const totalSales = guestOrders.reduce((sum, order) => sum + parseFloat(order.totalAmount || 0), 0);
+  const totalOrders = guestOrders.length;
+  const completedDeliveries = guestOrders.filter(order => order.status === 'delivered' || order.status === 'entregado').length;
   const deliverySuccessRate = totalOrders > 0 ? (completedDeliveries / totalOrders) * 100 : 0;
 
   // Período anterior para comparación
   const periodLength = endDate - startDate;
   const previousStart = new Date(startDate.getTime() - periodLength);
   const previousEnd = new Date(startDate.getTime() - 1);
-
-  const previousRegularOrders = await Order.findAll({
-    where: {
-      createdAt: {
-        [Op.between]: [previousStart, previousEnd]
-      }
-    }
-  });
 
   const previousGuestOrders = await GuestOrder.findAll({
     where: {
@@ -125,29 +98,38 @@ exports.generateSalesReport = async function generateSalesReport(startDate, endD
     }
   });
 
-  const previousTotalSales = previousRegularOrders.reduce((sum, order) => sum + parseFloat(order.total || 0), 0) +
-                            previousGuestOrders.reduce((sum, order) => sum + parseFloat(order.total || 0), 0);
+  const previousTotalSales = previousGuestOrders.reduce((sum, order) => sum + parseFloat(order.totalAmount || 0), 0);
 
   const growthPercentage = previousTotalSales > 0 ? 
     ((totalSales - previousTotalSales) / previousTotalSales) * 100 : 0;
 
+  // Contar clientes nuevos (clientes que hicieron su primer pedido en este período)
+  const clientIds = guestOrders.filter(order => order.clientId).map(order => order.clientId);
+  const uniqueClientIds = [...new Set(clientIds)];
+  
+  let newCustomers = 0;
+  for (const clientId of uniqueClientIds) {
+    const firstOrder = await GuestOrder.findOne({
+      where: { clientId },
+      order: [['createdAt', 'ASC']]
+    });
+    if (firstOrder && firstOrder.createdAt >= startDate && firstOrder.createdAt <= endDate) {
+      newCustomers++;
+    }
+  }
+
   // Detalles del reporte
-  const details = [
-    ...regularOrders.map(order => ({
-      date: order.createdAt.toISOString().split('T')[0],
-      description: `Pedido regular #${order.id} - ${order.Client?.name || 'Cliente'}`,
-      amount: parseFloat(order.total || 0),
-      status: order.status === 'entregado' ? 'completed' : 'pending',
-      type: 'regular'
-    })),
-    ...guestOrders.map(order => ({
-      date: order.createdAt.toISOString().split('T')[0],
-      description: `Pedido visitante #${order.id} - ${order.customerName}`,
-      amount: parseFloat(order.total || 0),
-      status: order.status === 'entregado' ? 'completed' : 'pending',
-      type: 'guest'
-    }))
-  ].sort((a, b) => new Date(b.date) - new Date(a.date));
+  const details = guestOrders.map(order => ({
+    date: order.createdAt.toISOString().split('T')[0],
+    description: `Pedido #${order.id} - ${order.customerName}`,
+    amount: parseFloat(order.totalAmount || 0),
+    status: (order.status === 'delivered' || order.status === 'entregado') ? 'completed' : 'pending',
+    type: order.clientId ? 'frequent_client' : 'guest',
+    paymentMethod: order.paymentMethod,
+    deliveryDistrict: order.deliveryDistrict
+  })).sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  console.log(`📈 Estadísticas calculadas: Ventas: ${totalSales}, Pedidos: ${totalOrders}, Entregados: ${completedDeliveries}, Nuevos clientes: ${newCustomers}`);
 
   return {
     totalSales,
@@ -156,7 +138,7 @@ exports.generateSalesReport = async function generateSalesReport(startDate, endD
     deliverySuccessRate,
     growthPercentage,
     averageOrderValue: totalOrders > 0 ? totalSales / totalOrders : 0,
-    newCustomers: 0, // Se puede implementar lógica para detectar clientes nuevos
+    newCustomers,
     totalCustomers: await Client.count(),
     details,
     period: {
@@ -177,7 +159,7 @@ async function generateOrdersReport(startDate, endDate) {
     include: [
       {
         model: Client,
-        as: 'Client',
+        as: 'client',
         attributes: ['id', 'name', 'email']
       },
       {
@@ -214,7 +196,7 @@ async function generateOrdersReport(startDate, endDate) {
       },
       {
         model: GuestOrderProduct,
-        as: 'products',
+        as: 'orderProducts',
         include: [
           {
             model: Product,
@@ -287,7 +269,7 @@ async function generateDeliveriesReport(startDate, endDate) {
     include: [
       {
         model: Client,
-        as: 'Client',
+        as: 'client',
         attributes: ['id', 'name', 'phone']
       },
       {
@@ -361,51 +343,106 @@ async function generateDeliveriesReport(startDate, endDate) {
 
 // Reporte de Clientes
 async function generateCustomersReport(startDate, endDate) {
-  // Clientes que hicieron pedidos en el período
-  const clientsWithOrders = await Client.findAll({
+  console.log('🔍 Generando reporte de clientes para período:', { startDate, endDate });
+
+  // Obtener todos los clientes
+  const allClients = await Client.findAll({
+    attributes: ['id', 'name', 'email', 'phone', 'district', 'documentNumber', 'createdAt'],
+    order: [['name', 'ASC']]
+  });
+
+  console.log(`📊 Total de clientes en la base de datos: ${allClients.length}`);
+
+  // Obtener pedidos de invitados del período que tienen clientId (clientes frecuentes)
+  const guestOrdersWithClients = await GuestOrder.findAll({
+    where: {
+      createdAt: {
+        [Op.between]: [startDate, endDate]
+      },
+      clientId: {
+        [Op.ne]: null // Solo pedidos con clientId (clientes frecuentes)
+      }
+    },
     include: [
       {
-        model: Order,
-        as: 'Orders',
-        where: {
-          createdAt: {
-            [Op.between]: [startDate, endDate]
-          }
-        },
-        required: true,
+        model: GuestOrderProduct,
+        as: 'orderProducts',
         include: [
           {
-            model: User,
-            as: 'deliveryPerson',
-            attributes: ['id', 'username']
+            model: Product,
+            as: 'product',
+            attributes: ['id', 'name', 'unitPrice']
           }
         ]
       }
     ],
-    order: [['name', 'ASC']]
+    order: [['createdAt', 'DESC']]
+  });
+
+  console.log(`📦 Pedidos de clientes frecuentes en el período: ${guestOrdersWithClients.length}`);
+
+  // Agrupar pedidos por cliente
+  const clientOrdersMap = {};
+  guestOrdersWithClients.forEach(order => {
+    if (!clientOrdersMap[order.clientId]) {
+      clientOrdersMap[order.clientId] = [];
+    }
+    clientOrdersMap[order.clientId].push(order);
   });
 
   // Estadísticas de clientes
-  const totalClients = await Client.count();
-  const activeClients = clientsWithOrders.length;
-  const newClients = await Client.count({
-    where: {
-      createdAt: {
-        [Op.between]: [startDate, endDate]
-      }
-    }
-  });
+  const totalClients = allClients.length;
+  const activeClients = Object.keys(clientOrdersMap).length;
+  const newClients = allClients.filter(client => {
+    const createdAt = new Date(client.createdAt);
+    return createdAt >= startDate && createdAt <= endDate;
+  }).length;
 
   // Clientes con vales pendientes
   const clientsWithPendingVouchers = await Client.findAll({
     include: [
       {
         model: Voucher,
-        as: 'Vouchers',
+        as: 'vouchers',
         where: { status: 'pending' },
         required: true
       }
     ]
+  });
+
+  console.log(`📈 Estadísticas: Total: ${totalClients}, Activos: ${activeClients}, Nuevos: ${newClients}, Con vales: ${clientsWithPendingVouchers.length}`);
+
+  // Construir reporte de clientes con actividad
+  const clientsWithActivity = allClients.map(client => {
+    const clientOrders = clientOrdersMap[client.id] || [];
+    const totalSpent = clientOrders.reduce((sum, order) => sum + parseFloat(order.totalAmount || 0), 0);
+    const totalOrders = clientOrders.length;
+    const lastOrder = clientOrders.length > 0 ? 
+      clientOrders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0] : null;
+    
+    // Incluir todos los clientes, no solo los que tienen pedidos en el período
+    return {
+      id: client.id,
+      name: client.name,
+      email: client.email,
+      phone: client.phone,
+      documentNumber: client.documentNumber,
+      totalSpent,
+      totalOrders,
+      averageOrderValue: totalOrders > 0 ? totalSpent / totalOrders : 0,
+      lastOrderDate: lastOrder?.createdAt,
+      lastOrderAmount: lastOrder ? parseFloat(lastOrder.totalAmount || 0) : 0,
+      district: client.district,
+      isActive: totalOrders > 0, // Cliente activo si tiene pedidos en el período
+      createdAt: client.createdAt
+    };
+  });
+
+  // Ordenar por actividad (clientes activos primero, luego por gasto total)
+  clientsWithActivity.sort((a, b) => {
+    if (a.isActive && !b.isActive) return -1;
+    if (!a.isActive && b.isActive) return 1;
+    return b.totalSpent - a.totalSpent;
   });
 
   return {
@@ -413,24 +450,11 @@ async function generateCustomersReport(startDate, endDate) {
     activeClients,
     newClients,
     clientsWithPendingVouchers: clientsWithPendingVouchers.length,
-    clients: clientsWithOrders.map(client => {
-      const totalSpent = client.Orders.reduce((sum, order) => sum + parseFloat(order.total || 0), 0);
-      const totalOrders = client.Orders.length;
-      const lastOrder = client.Orders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
-      
-      return {
-        id: client.id,
-        name: client.name,
-        email: client.email,
-        phone: client.phone,
-        totalSpent,
-        totalOrders,
-        averageOrderValue: totalOrders > 0 ? totalSpent / totalOrders : 0,
-        lastOrderDate: lastOrder?.createdAt,
-        lastOrderAmount: lastOrder ? parseFloat(lastOrder.total || 0) : 0,
-        district: client.district
-      };
-    })
+    clients: clientsWithActivity,
+    period: {
+      start: startDate.toISOString().split('T')[0],
+      end: endDate.toISOString().split('T')[0]
+    }
   };
 }
 
@@ -547,3 +571,117 @@ async function generateProductsReport(startDate, endDate) {
     products
   };
 }
+
+// Reporte de cobranza mensual (específico para vales pendientes)
+exports.generateCollectionReport = async (req, res) => {
+  try {
+    const { year, month } = req.query;
+    
+    if (!year || !month) {
+      return res.status(400).json({
+        success: false,
+        message: 'Año y mes son requeridos'
+      });
+    }
+
+    console.log('🔍 Generando reporte de cobranza para:', { year, month });
+
+    // Calcular fechas del mes
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0); // Último día del mes
+
+    // Obtener vales pendientes del período
+    const pendingVouchers = await Voucher.findAll({
+      where: {
+        status: 'pending',
+        createdAt: {
+          [Op.between]: [startDate, endDate]
+        }
+      },
+      include: [
+        {
+          model: Client,
+          as: 'client',
+          attributes: ['id', 'name', 'email', 'phone', 'documentNumber'],
+          required: true
+        },
+        {
+          model: Product,
+          as: 'product',
+          attributes: ['id', 'name', 'unitPrice'],
+          required: false
+        }
+      ],
+      order: [['createdAt', 'DESC']]
+    });
+
+    console.log(`📦 Vales pendientes encontrados: ${pendingVouchers.length}`);
+
+    // Agrupar por cliente
+    const clientDebts = {};
+    let totalDebt = 0;
+
+    pendingVouchers.forEach(voucher => {
+      const clientId = voucher.clientId;
+      const amount = parseFloat(voucher.totalAmount || 0);
+      
+      if (!clientDebts[clientId]) {
+        clientDebts[clientId] = {
+          client: voucher.client,
+          totalAmount: 0,
+          remainingAmount: 0,
+          totalDebt: 0,
+          voucherCount: 0,
+          valesCount: 0,
+          vouchers: []
+        };
+      }
+      
+      clientDebts[clientId].totalAmount += amount;
+      clientDebts[clientId].remainingAmount += amount; // Para vales pendientes, remaining = total
+      clientDebts[clientId].totalDebt += amount;
+      clientDebts[clientId].voucherCount += 1;
+      clientDebts[clientId].valesCount += 1;
+      clientDebts[clientId].vouchers.push({
+        id: voucher.id,
+        quantity: voucher.quantity,
+        unitPrice: voucher.unitPrice,
+        totalAmount: voucher.totalAmount,
+        product: voucher.product,
+        createdAt: voucher.createdAt
+      });
+      
+      totalDebt += amount;
+    });
+
+    // Convertir a array y ordenar por deuda
+    const clientsWithDebt = Object.values(clientDebts)
+      .sort((a, b) => b.remainingAmount - a.remainingAmount);
+
+    console.log(`💰 Reporte generado: ${clientsWithDebt.length} clientes, deuda total: ${totalDebt}`);
+
+    res.json({
+      success: true,
+      data: {
+        period: {
+          year: parseInt(year),
+          month: parseInt(month)
+        },
+        summary: {
+          totalClients: clientsWithDebt.length,
+          totalDebt: totalDebt,
+          totalVouchers: pendingVouchers.length
+        },
+        clients: clientsWithDebt
+      }
+    });
+
+  } catch (error) {
+    console.error('Error al generar reporte de cobranza:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+};

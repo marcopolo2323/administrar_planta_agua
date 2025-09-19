@@ -692,7 +692,7 @@ const GuestOrderNew = () => {
           });
 
           // Redirigir a la página de recibo usando el token de acceso
-          navigate(`/receipt/${response.data.accessToken}`);
+          navigate(`/receipt/${response.data.data.accessToken}`);
         } else {
           throw new Error(response.data.message || 'Error al crear el pedido');
         }
@@ -885,7 +885,7 @@ const GuestOrderNew = () => {
             });
 
             // Redirigir a la página de recibo usando el token de acceso
-            navigate(`/receipt/${response.data.accessToken}`);
+            navigate(`/receipt/${response.data.data.accessToken}`);
           } else {
             throw new Error(response.data.message || 'Error al crear el pedido');
           }

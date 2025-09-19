@@ -108,9 +108,12 @@ const ValesManagement = () => {
   const fetchVales = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/api/vales');
+      console.log('🔍 Cargando vales desde /api/vouchers...');
+      const response = await axios.get('/api/vouchers');
+      console.log('📦 Respuesta de vales:', response.data);
       if (response.data.success) {
         setVales(response.data.data || []);
+        console.log(`✅ Vales cargados: ${response.data.data?.length || 0}`);
       }
     } catch (error) {
       console.error('Error al cargar vales:', error);
@@ -128,7 +131,7 @@ const ValesManagement = () => {
 
   const handleCreateVale = async () => {
     try {
-      const response = await axios.post('/api/vales', formData);
+      const response = await axios.post('/api/vouchers', formData);
       if (response.data.success) {
         toast({
           title: 'Vale creado',
@@ -161,7 +164,7 @@ const ValesManagement = () => {
 
   const handleStatusUpdate = async (valeId, newStatus) => {
     try {
-      const response = await axios.put(`/api/vales/${valeId}`, { status: newStatus });
+      const response = await axios.put(`/api/vouchers/${valeId}`, { status: newStatus });
       if (response.data.success) {
         toast({
           title: 'Estado actualizado',
@@ -186,19 +189,19 @@ const ValesManagement = () => {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'active': return 'green';
-      case 'used': return 'blue';
-      case 'expired': return 'red';
-      case 'cancelled': return 'gray';
+      case 'pending': return 'yellow';
+      case 'delivered': return 'green';
+      case 'paid': return 'blue';
+      case 'cancelled': return 'red';
       default: return 'gray';
     }
   };
 
   const getStatusText = (status) => {
     switch (status) {
-      case 'active': return 'Activo';
-      case 'used': return 'Usado';
-      case 'expired': return 'Expirado';
+      case 'pending': return 'Pendiente';
+      case 'delivered': return 'Entregado';
+      case 'paid': return 'Pagado';
       case 'cancelled': return 'Cancelado';
       default: return status;
     }
@@ -206,9 +209,9 @@ const ValesManagement = () => {
 
   const getStatusIcon = (status) => {
     switch (status) {
-      case 'active': return FaCheckCircle;
-      case 'used': return FaMoneyBillWave;
-      case 'expired': return FaTimesCircle;
+      case 'pending': return FaCalendarAlt;
+      case 'delivered': return FaCheckCircle;
+      case 'paid': return FaMoneyBillWave;
       case 'cancelled': return FaTimesCircle;
       default: return FaCheckCircle;
     }
@@ -217,12 +220,12 @@ const ValesManagement = () => {
   // Estadísticas
   const stats = {
     total: vales.length,
-    active: vales.filter(v => v.status === 'active').length,
-    used: vales.filter(v => v.status === 'used').length,
-    expired: vales.filter(v => v.status === 'expired').length,
-    totalAmount: vales.reduce((sum, v) => sum + parseFloat(v.amount || 0), 0),
-    usedAmount: vales.reduce((sum, v) => sum + parseFloat(v.usedAmount || 0), 0),
-    remainingAmount: vales.reduce((sum, v) => sum + parseFloat(v.remainingAmount || 0), 0)
+    pending: vales.filter(v => v.status === 'pending').length,
+    delivered: vales.filter(v => v.status === 'delivered').length,
+    paid: vales.filter(v => v.status === 'paid').length,
+    totalAmount: vales.reduce((sum, v) => sum + parseFloat(v.totalAmount || 0), 0),
+    pendingAmount: vales.filter(v => v.status === 'pending').reduce((sum, v) => sum + parseFloat(v.totalAmount || 0), 0),
+    deliveredAmount: vales.filter(v => v.status === 'delivered').reduce((sum, v) => sum + parseFloat(v.totalAmount || 0), 0)
   };
 
   return (
@@ -270,9 +273,9 @@ const ValesManagement = () => {
           <Card>
             <CardBody>
               <Stat>
-                <StatLabel>Activos</StatLabel>
-                <StatNumber color="green.500">{stats.active}</StatNumber>
-                <StatHelpText>Disponibles</StatHelpText>
+                <StatLabel>Pendientes</StatLabel>
+                <StatNumber color="yellow.500">{stats.pending}</StatNumber>
+                <StatHelpText>Por entregar</StatHelpText>
               </Stat>
             </CardBody>
           </Card>
@@ -280,9 +283,19 @@ const ValesManagement = () => {
           <Card>
             <CardBody>
               <Stat>
-                <StatLabel>Usados</StatLabel>
-                <StatNumber color="blue.500">{stats.used}</StatNumber>
-                <StatHelpText>Utilizados</StatHelpText>
+                <StatLabel>Entregados</StatLabel>
+                <StatNumber color="green.500">{stats.delivered}</StatNumber>
+                <StatHelpText>Completados</StatHelpText>
+              </Stat>
+            </CardBody>
+          </Card>
+
+          <Card>
+            <CardBody>
+              <Stat>
+                <StatLabel>Pagados</StatLabel>
+                <StatNumber color="blue.500">{stats.paid}</StatNumber>
+                <StatHelpText>Cobrados</StatHelpText>
               </Stat>
             </CardBody>
           </Card>
@@ -300,19 +313,9 @@ const ValesManagement = () => {
           <Card>
             <CardBody>
               <Stat>
-                <StatLabel>Usado</StatLabel>
-                <StatNumber color="blue.500">S/ {stats.usedAmount.toFixed(2)}</StatNumber>
-                <StatHelpText>Consumido</StatHelpText>
-              </Stat>
-            </CardBody>
-          </Card>
-
-          <Card>
-            <CardBody>
-              <Stat>
-                <StatLabel>Disponible</StatLabel>
-                <StatNumber color="green.500">S/ {stats.remainingAmount.toFixed(2)}</StatNumber>
-                <StatHelpText>Saldo restante</StatHelpText>
+                <StatLabel>Pendiente</StatLabel>
+                <StatNumber color="yellow.500">S/ {stats.pendingAmount.toFixed(2)}</StatNumber>
+                <StatHelpText>Por entregar</StatHelpText>
               </Stat>
             </CardBody>
           </Card>
@@ -350,10 +353,11 @@ const ValesManagement = () => {
                 <Thead>
                   <Tr>
                     <Th>Cliente</Th>
+                    <Th>Producto</Th>
+                    <Th>Cantidad</Th>
                     <Th>Monto</Th>
                     <Th>Estado</Th>
-                    <Th>Fecha Vencimiento</Th>
-                    <Th>Descripción</Th>
+                    <Th>Fecha Creación</Th>
                     <Th>Acciones</Th>
                   </Tr>
                 </Thead>
@@ -361,23 +365,33 @@ const ValesManagement = () => {
                   {vales.map((vale) => (
                     <Tr key={vale.id}>
                       <Td>
-                        <HStack>
-                          <FaUser size={14} color="#718096" />
-                          <Text>{vale.client?.name || 'Cliente no encontrado'}</Text>
-                        </HStack>
-                      </Td>
-                      <Td>
                         <VStack spacing={1} align="start">
-                          <Text fontWeight="bold" color="green.600">
-                            S/ {parseFloat(vale.amount || 0).toFixed(2)}
-                          </Text>
+                          <HStack>
+                            <FaUser size={14} color="#718096" />
+                            <Text fontWeight="medium">{vale.client?.name || 'Cliente no encontrado'}</Text>
+                          </HStack>
                           <Text fontSize="xs" color="gray.500">
-                            Usado: S/ {parseFloat(vale.usedAmount || 0).toFixed(2)}
-                          </Text>
-                          <Text fontSize="xs" color="blue.500">
-                            Restante: S/ {parseFloat(vale.remainingAmount || 0).toFixed(2)}
+                            DNI: {vale.client?.documentNumber || 'N/A'}
                           </Text>
                         </VStack>
+                      </Td>
+                      <Td>
+                        <Text fontSize="sm" fontWeight="medium">
+                          {vale.product?.name || 'Producto no encontrado'}
+                        </Text>
+                      </Td>
+                      <Td>
+                        <Text fontWeight="bold" color="blue.600">
+                          {vale.quantity || 0}
+                        </Text>
+                      </Td>
+                      <Td>
+                        <Text fontWeight="bold" color="green.600">
+                          S/ {parseFloat(vale.totalAmount || 0).toFixed(2)}
+                        </Text>
+                        <Text fontSize="xs" color="gray.500">
+                          Unit: S/ {parseFloat(vale.unitPrice || 0).toFixed(2)}
+                        </Text>
                       </Td>
                       <Td>
                         <Tag colorScheme={getStatusColor(vale.status)}>
@@ -387,12 +401,10 @@ const ValesManagement = () => {
                       </Td>
                       <Td>
                         <Text fontSize="sm">
-                          {vale.dueDate ? new Date(vale.dueDate).toLocaleDateString() : 'Sin fecha'}
+                          {vale.createdAt ? new Date(vale.createdAt).toLocaleDateString() : 'Sin fecha'}
                         </Text>
-                      </Td>
-                      <Td>
-                        <Text fontSize="sm" noOfLines={2}>
-                          {vale.description || 'Sin descripción'}
+                        <Text fontSize="xs" color="gray.500">
+                          {vale.createdAt ? new Date(vale.createdAt).toLocaleTimeString() : ''}
                         </Text>
                       </Td>
                       <Td>
@@ -407,14 +419,13 @@ const ValesManagement = () => {
                               }}
                             />
                           </Tooltip>
-                          <Tooltip label="Editar">
+                          <Tooltip label="Marcar como entregado">
                             <IconButton
                               size="sm"
-                              icon={<FaEdit />}
-                              onClick={() => {
-                                setSelectedVale(vale);
-                                onEditOpen();
-                              }}
+                              icon={<FaCheckCircle />}
+                              colorScheme="green"
+                              isDisabled={vale.status === 'delivered'}
+                              onClick={() => handleStatusUpdate(vale.id, 'delivered')}
                             />
                           </Tooltip>
                         </HStack>

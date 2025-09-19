@@ -11,4 +11,7 @@ router.use(checkRole(['admin']));
 // Generar reporte
 router.get('/', reportController.generateReport);
 
+// Reporte de cobranza mensual
+router.get('/collection', reportController.generateCollectionReport);
+
 module.exports = router;

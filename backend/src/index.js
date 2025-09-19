@@ -165,6 +165,7 @@ const valeRoutes = require('./routes/vale.routes');
 const subscriptionRoutes = require('./routes/subscription.routes');
 const userRoutes = require('./routes/user.routes');
 const documentRoutes = require('./routes/document.routes');
+const clientPreferencesRoutes = require('./routes/clientPreferences.routes');
 const resetDatabase = require('./utils/seedDb');
 const deployUpdate = require('./scripts/deployUpdate');
 
@@ -222,51 +223,6 @@ app.get('/import-clients', async (req, res) => {
   }
 });
 
-// Ruta para obtener preferencias de cliente por DNI (placeholder)
-app.get('/api/client-preferences/dni/:dni', async (req, res) => {
-  try {
-    const { dni } = req.params;
-    
-    // Por ahora, devolver que no hay preferencias
-    // En el futuro se puede implementar la funcionalidad completa
-    res.json({
-      success: true,
-      data: null,
-      message: 'No se encontraron preferencias para este cliente'
-    });
-    
-  } catch (error) {
-    console.error('❌ Error al obtener preferencias:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error interno del servidor',
-      error: error.message
-    });
-  }
-});
-
-// Ruta para crear preferencias de cliente (placeholder)
-app.post('/api/client-preferences', async (req, res) => {
-  try {
-    const preferencesData = req.body;
-    
-    // Por ahora, solo confirmar que se recibieron los datos
-    // En el futuro se puede implementar la funcionalidad completa
-    res.json({
-      success: true,
-      message: 'Preferencias recibidas (funcionalidad en desarrollo)',
-      data: preferencesData
-    });
-    
-  } catch (error) {
-    console.error('❌ Error al crear preferencias:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error interno del servidor',
-      error: error.message
-    });
-  }
-});
 
 // Ruta para corregir distritos de clientes
 app.get('/fix-districts', async (req, res) => {
@@ -550,6 +506,7 @@ app.use('/api/vales', valeRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/documents', documentRoutes);
+app.use('/api/client-preferences', clientPreferencesRoutes);
 
 // Endpoint alternativo para generar PDF
 app.post('/api/admin/generate-pdf', async (req, res) => {
@@ -857,6 +814,8 @@ async function startServer() {
       console.log(`   - GET /api/delivery-fees - Obtener tarifas de envío`);
       console.log(`   - POST /api/guest-orders - Crear pedido de invitado`);
     });
+
+
   } catch (error) {
     console.error('❌ Error al inicializar:', error);
     process.exit(1);

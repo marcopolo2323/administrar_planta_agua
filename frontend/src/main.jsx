@@ -5,12 +5,13 @@ import { ChakraProvider } from '@chakra-ui/react';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import App from './App';
+import theme from './theme';
 import './index.css';
 import './utils/axios'; // Importar configuración de axios
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <ChakraProvider>
+    <ChakraProvider theme={theme}>
       <BrowserRouter>
         <App />
         <ToastContainer 
@@ -22,7 +23,8 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           rtl={false} 
           pauseOnFocusLoss 
           draggable 
-          pauseOnHover 
+          pauseOnHover
+          style={{ zIndex: 1700 }}
         />
       </BrowserRouter>
     </ChakraProvider>

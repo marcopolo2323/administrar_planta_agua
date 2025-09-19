@@ -12,6 +12,7 @@ const District = require('./district.model');
 const Voucher = require('./voucher.model');
 const Vale = require('./vale.model');
 const Subscription = require('./subscription.model');
+const ClientPreferences = require('./clientPreferences.model');
 
 // Definir relaciones después de que todos los modelos estén inicializados
 // Relaciones entre User y Client (comentadas - userId eliminado del modelo Client)
@@ -61,8 +62,8 @@ Product.belongsToMany(GuestOrder, {
 });
 
 // Relaciones de vales
-Client.hasMany(Voucher, { foreignKey: 'clientId', as: 'Vouchers' });
-Voucher.belongsTo(Client, { foreignKey: 'clientId', as: 'Client' });
+Client.hasMany(Voucher, { foreignKey: 'clientId', as: 'vouchers' });
+Voucher.belongsTo(Client, { foreignKey: 'clientId', as: 'client' });
 
 User.hasMany(Voucher, { foreignKey: 'deliveryPersonId', as: 'deliveryVouchers' });
 
@@ -83,6 +84,10 @@ District.hasMany(GuestOrder, { foreignKey: 'districtId', as: 'guestOrders' });
 GuestOrder.belongsTo(User, { foreignKey: 'deliveryPersonId', as: 'deliveryPerson' });
 User.hasMany(GuestOrder, { foreignKey: 'deliveryPersonId', as: 'assignedGuestOrders' });
 
+// Relaciones de pedidos regulares (si existen)
+// Client.hasMany(Order, { foreignKey: 'clientId', as: 'orders' });
+// Order.belongsTo(Client, { foreignKey: 'clientId', as: 'client' });
+
 // Relaciones de suscripciones
 Client.hasMany(Subscription, { foreignKey: 'clientId', as: 'subscriptions' });
 Subscription.belongsTo(Client, { foreignKey: 'clientId', as: 'client' });
@@ -91,6 +96,13 @@ Subscription.belongsTo(Client, { foreignKey: 'clientId', as: 'client' });
 // Relaciones de GuestOrder con Subscription
 GuestOrder.belongsTo(Subscription, { foreignKey: 'subscriptionId', as: 'subscription' });
 Subscription.hasMany(GuestOrder, { foreignKey: 'subscriptionId', as: 'orders' });
+
+// Relaciones de ClientPreferences
+Client.hasMany(ClientPreferences, { foreignKey: 'clientId', as: 'preferences' });
+ClientPreferences.belongsTo(Client, { foreignKey: 'clientId', as: 'client' });
+
+ClientPreferences.belongsTo(Subscription, { foreignKey: 'subscriptionPlanId', as: 'subscription' });
+Subscription.hasMany(ClientPreferences, { foreignKey: 'subscriptionPlanId', as: 'preferences' });
 
 
 // Exportar modelos y conexión
@@ -106,5 +118,6 @@ module.exports = {
   District,
   Voucher,
   Vale,
-  Subscription
+  Subscription,
+  ClientPreferences
 };
