@@ -26,7 +26,7 @@ async function cleanSeed() {
     // 2. Sincronizar todos los modelos (crear tablas) en orden específico
     console.log('🔄 Creando tablas en orden...');
     
-    // Primero las tablas independientes
+    // Primero las tablas independientes (sin foreign keys)
     await District.sync({ force: false });
     console.log('   ✅ District');
     
@@ -36,7 +36,6 @@ async function cleanSeed() {
     await User.sync({ force: false });
     console.log('   ✅ User');
     
-    // Luego las que dependen de otras
     await Client.sync({ force: false });
     console.log('   ✅ Client');
     
@@ -46,6 +45,10 @@ async function cleanSeed() {
     await Subscription.sync({ force: false });
     console.log('   ✅ Subscription');
     
+    await Vale.sync({ force: false });
+    console.log('   ✅ Vale');
+    
+    // Luego las que tienen foreign keys
     await ClientPreferences.sync({ force: false });
     console.log('   ✅ ClientPreferences');
     
@@ -57,9 +60,6 @@ async function cleanSeed() {
     
     await Voucher.sync({ force: false });
     console.log('   ✅ Voucher');
-    
-    await Vale.sync({ force: false });
-    console.log('   ✅ Vale');
     
     console.log('✅ Todas las tablas creadas correctamente');
     

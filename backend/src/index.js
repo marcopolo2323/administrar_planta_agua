@@ -207,18 +207,21 @@ app.get('/create-tables', async (req, res) => {
       GuestOrderProduct, Voucher, Vale 
     } = require('./models');
     
-    // Crear tablas en orden específico
+    // Crear tablas en orden específico (sin foreign keys primero)
+    console.log('🔨 Creando tablas independientes...');
     await District.sync({ force: false });
     await Product.sync({ force: false });
     await User.sync({ force: false });
     await Client.sync({ force: false });
     await DeliveryPerson.sync({ force: false });
     await Subscription.sync({ force: false });
+    await Vale.sync({ force: false });
+    
+    console.log('🔗 Creando tablas con foreign keys...');
     await ClientPreferences.sync({ force: false });
     await GuestOrder.sync({ force: false });
     await GuestOrderProduct.sync({ force: false });
     await Voucher.sync({ force: false });
-    await Vale.sync({ force: false });
     
     // Verificar tablas creadas
     const tables = await sequelize.getQueryInterface().showAllTables();
@@ -299,17 +302,22 @@ app.get('/full-reset', async (req, res) => {
       GuestOrderProduct, Voucher, Vale 
     } = require('./models');
     
+    // Crear tablas independientes primero
+    console.log('🔨 Creando tablas independientes...');
     await District.sync({ force: false });
     await Product.sync({ force: false });
     await User.sync({ force: false });
     await Client.sync({ force: false });
     await DeliveryPerson.sync({ force: false });
     await Subscription.sync({ force: false });
+    await Vale.sync({ force: false });
+    
+    // Luego las que tienen foreign keys
+    console.log('🔗 Creando tablas con foreign keys...');
     await ClientPreferences.sync({ force: false });
     await GuestOrder.sync({ force: false });
     await GuestOrderProduct.sync({ force: false });
     await Voucher.sync({ force: false });
-    await Vale.sync({ force: false });
     
     // 3. Ejecutar seed de datos
     console.log('🌱 Paso 3: Ejecutando seed de datos...');

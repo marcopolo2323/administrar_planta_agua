@@ -28,7 +28,7 @@ const ClientPreferences = sequelize.define('ClientPreferences', {
     type: DataTypes.INTEGER,
     allowNull: true,
     references: {
-      model: 'Subscriptions',
+      model: 'subscriptions',
       key: 'id'
     }
   },
