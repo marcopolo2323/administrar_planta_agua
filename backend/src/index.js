@@ -196,6 +196,79 @@ app.get('/drop-all-tables', async (req, res) => {
   }
 });
 
+app.get('/create-tables', async (req, res) => {
+  try {
+    console.log('🔨 Creando tablas solamente...');
+    
+    // Importar modelos
+    const { 
+      District, Product, User, Client, DeliveryPerson, 
+      Subscription, ClientPreferences, GuestOrder, 
+      GuestOrderProduct, Voucher, Vale 
+    } = require('./models');
+    
+    // Crear tablas en orden específico
+    await District.sync({ force: false });
+    await Product.sync({ force: false });
+    await User.sync({ force: false });
+    await Client.sync({ force: false });
+    await DeliveryPerson.sync({ force: false });
+    await Subscription.sync({ force: false });
+    await ClientPreferences.sync({ force: false });
+    await GuestOrder.sync({ force: false });
+    await GuestOrderProduct.sync({ force: false });
+    await Voucher.sync({ force: false });
+    await Vale.sync({ force: false });
+    
+    // Verificar tablas creadas
+    const tables = await sequelize.getQueryInterface().showAllTables();
+    console.log('📋 Tablas creadas:', tables.sort());
+    
+    res.json({ 
+      success: true, 
+      message: 'Tablas creadas exitosamente',
+      tables: tables.sort()
+    });
+  } catch (error) {
+    console.error('❌ Error creando tablas:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.get('/import-clients', async (req, res) => {
+  try {
+    console.log('👥 Importando clientes desde Excel...');
+    
+    // Convertir Excel a JSON si es necesario
+    const fs = require('fs');
+    const path = require('path');
+    const jsonPath = path.join(__dirname, '../data/clientes.json');
+    
+    if (!fs.existsSync(jsonPath)) {
+      console.log('🔄 Convirtiendo Excel a JSON...');
+      const { convertExcelToJson } = require('./scripts/convertExcelToJson');
+      await convertExcelToJson();
+    }
+    
+    // Importar clientes
+    const { importClientsFromJson } = require('./scripts/importClientsFromJson');
+    await importClientsFromJson();
+    
+    // Contar clientes importados
+    const { Client } = require('./models');
+    const clientCount = await Client.count();
+    
+    res.json({ 
+      success: true, 
+      message: 'Clientes importados exitosamente',
+      clientsTotal: clientCount
+    });
+  } catch (error) {
+    console.error('❌ Error importando clientes:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 app.get('/clean-seed', async (req, res) => {
   try {
     console.log('🌱 Ejecutando seed limpio...');
@@ -218,8 +291,28 @@ app.get('/full-reset', async (req, res) => {
     const { dropAllTablesPostgreSQL } = require('./scripts/dropAllTables');
     await dropAllTablesPostgreSQL();
     
-    // 2. Ejecutar seed limpio
-    console.log('🌱 Paso 2: Ejecutando seed limpio...');
+    // 2. Crear tablas en orden correcto
+    console.log('🔨 Paso 2: Creando tablas...');
+    const { 
+      District, Product, User, Client, DeliveryPerson, 
+      Subscription, ClientPreferences, GuestOrder, 
+      GuestOrderProduct, Voucher, Vale 
+    } = require('./models');
+    
+    await District.sync({ force: false });
+    await Product.sync({ force: false });
+    await User.sync({ force: false });
+    await Client.sync({ force: false });
+    await DeliveryPerson.sync({ force: false });
+    await Subscription.sync({ force: false });
+    await ClientPreferences.sync({ force: false });
+    await GuestOrder.sync({ force: false });
+    await GuestOrderProduct.sync({ force: false });
+    await Voucher.sync({ force: false });
+    await Vale.sync({ force: false });
+    
+    // 3. Ejecutar seed de datos
+    console.log('🌱 Paso 3: Ejecutando seed de datos...');
     const { cleanSeed } = require('./scripts/cleanSeed');
     await cleanSeed();
     
@@ -229,7 +322,8 @@ app.get('/full-reset', async (req, res) => {
       message: 'Reset completo de base de datos exitoso',
       steps: [
         'Tablas eliminadas',
-        'Seed limpio ejecutado',
+        'Tablas recreadas en orden correcto',
+        'Datos de seed insertados',
         'Base de datos lista para usar'
       ]
     });
@@ -931,10 +1025,11 @@ async function startServer() {
       console.log(`   - GET /check-db - Verificar conexión a base de datos`);
       console.log(`📋 Endpoints de reset:`);
       console.log(`   - GET /drop-all-tables - Eliminar todas las tablas`);
-      console.log(`   - GET /clean-seed - Seed limpio completo`);
-      console.log(`   - GET /full-reset - Reset completo (drop + seed)`);
-      console.log(`🎯 PRIMERO: https://aquayara.onrender.com/check-db`);
-      console.log(`🎯 DESPUÉS: https://aquayara.onrender.com/full-reset`);
+      console.log(`   - GET /create-tables - Crear tablas solamente`);
+      console.log(`   - GET /import-clients - Importar clientes desde Excel`);
+      console.log(`   - GET /clean-seed - Seed de datos solamente`);
+      console.log(`   - GET /full-reset - Reset completo (incluye clientes del Excel)`);
+      console.log(`🎯 EJECUTAR: https://aquayara.onrender.com/full-reset`);
       console.log(`💡 Productos: Bidón 20L + Paquete 650ml`);
       console.log(`👥 Usuarios: admin, repartidor, vendedor`);
       console.log(`💳 Modalidades: contraentrega, vales, suscripciones`);

@@ -23,10 +23,45 @@ async function cleanSeed() {
     await sequelize.authenticate();
     console.log('✅ Conexión establecida');
     
-    // 2. Sincronizar todos los modelos (crear tablas)
-    console.log('🔄 Creando tablas...');
-    await sequelize.sync({ force: false, alter: false });
-    console.log('✅ Tablas creadas/sincronizadas');
+    // 2. Sincronizar todos los modelos (crear tablas) en orden específico
+    console.log('🔄 Creando tablas en orden...');
+    
+    // Primero las tablas independientes
+    await District.sync({ force: false });
+    console.log('   ✅ District');
+    
+    await Product.sync({ force: false });
+    console.log('   ✅ Product');
+    
+    await User.sync({ force: false });
+    console.log('   ✅ User');
+    
+    // Luego las que dependen de otras
+    await Client.sync({ force: false });
+    console.log('   ✅ Client');
+    
+    await DeliveryPerson.sync({ force: false });
+    console.log('   ✅ DeliveryPerson');
+    
+    await Subscription.sync({ force: false });
+    console.log('   ✅ Subscription');
+    
+    await ClientPreferences.sync({ force: false });
+    console.log('   ✅ ClientPreferences');
+    
+    await GuestOrder.sync({ force: false });
+    console.log('   ✅ GuestOrder');
+    
+    await GuestOrderProduct.sync({ force: false });
+    console.log('   ✅ GuestOrderProduct');
+    
+    await Voucher.sync({ force: false });
+    console.log('   ✅ Voucher');
+    
+    await Vale.sync({ force: false });
+    console.log('   ✅ Vale');
+    
+    console.log('✅ Todas las tablas creadas correctamente');
     
     // 3. Verificar que las tablas se crearon
     console.log('📋 Verificando tablas creadas...');
@@ -145,41 +180,67 @@ async function cleanSeed() {
     }
     console.log('✅ Repartidor creado');
     
-    // 8. Seed de Clientes (algunos ejemplos)
-    console.log('👤 Seeding clientes de ejemplo...');
-    const manantayDistrict = await District.findOne({ where: { name: 'MANANTAY' } });
-    const calleriaDistrict = await District.findOne({ where: { name: 'CALLERIA' } });
+    // 8. Importar clientes desde Excel/JSON
+    console.log('👤 Importando clientes desde Excel...');
     
-    const clients = [
-      {
-        name: 'Marco Sunino',
-        document: '76543217',
-        phone: '987654321',
-        email: 'marco@gmail.com',
-        address: 'Jr. Calidas 123',
-        districtId: manantayDistrict?.id,
-        isActive: true
-      },
-      {
-        name: 'Ana García',
-        document: '12345678',
-        phone: '912345678',
-        email: 'ana@gmail.com',
-        address: 'Av. Principal 456',
-        districtId: calleriaDistrict?.id,
-        isActive: true
+    try {
+      // Primero convertir Excel a JSON si es necesario
+      const fs = require('fs');
+      const path = require('path');
+      const jsonPath = path.join(__dirname, '../../data/clientes.json');
+      
+      if (!fs.existsSync(jsonPath)) {
+        console.log('🔄 Convirtiendo Excel a JSON...');
+        const { convertExcelToJson } = require('./convertExcelToJson');
+        await convertExcelToJson();
+      } else {
+        console.log('✅ Archivo JSON de clientes ya existe');
       }
-    ];
-    
-    for (const client of clients) {
-      if (client.districtId) {
-        await Client.findOrCreate({
-          where: { document: client.document },
-          defaults: client
-        });
+      
+      // Importar clientes desde JSON
+      const { importClientsFromJson } = require('./importClientsFromJson');
+      await importClientsFromJson();
+      console.log('✅ Clientes importados desde Excel');
+      
+    } catch (error) {
+      console.log('⚠️  Error importando clientes desde Excel:', error.message);
+      console.log('🔄 Creando clientes de ejemplo...');
+      
+      // Fallback: crear clientes de ejemplo si falla la importación
+      const manantayDistrict = await District.findOne({ where: { name: 'MANANTAY' } });
+      const calleriaDistrict = await District.findOne({ where: { name: 'CALLERIA' } });
+      
+      const clients = [
+        {
+          name: 'Marco Sunino',
+          document: '76543217',
+          phone: '987654321',
+          email: 'marco@gmail.com',
+          address: 'Jr. Calidas 123',
+          districtId: manantayDistrict?.id,
+          isActive: true
+        },
+        {
+          name: 'Ana García',
+          document: '12345678',
+          phone: '912345678',
+          email: 'ana@gmail.com',
+          address: 'Av. Principal 456',
+          districtId: calleriaDistrict?.id,
+          isActive: true
+        }
+      ];
+      
+      for (const client of clients) {
+        if (client.districtId) {
+          await Client.findOrCreate({
+            where: { document: client.document },
+            defaults: client
+          });
+        }
       }
+      console.log('✅ Clientes de ejemplo creados');
     }
-    console.log('✅ Clientes de ejemplo creados');
     
     // 9. Seed de Suscripciones de ejemplo
     console.log('📋 Seeding suscripciones de ejemplo...');
