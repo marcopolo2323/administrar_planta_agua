@@ -145,6 +145,62 @@ app.get('/test-order-creation', async (req, res) => {
   }
 });
 
+// ENDPOINTS DE RESET COMPLETO
+app.get('/drop-all-tables', async (req, res) => {
+  try {
+    console.log('🗑️  Eliminando todas las tablas...');
+    const { dropAllTablesPostgreSQL } = require('./scripts/dropAllTables');
+    await dropAllTablesPostgreSQL();
+    res.json({ success: true, message: 'Todas las tablas eliminadas exitosamente' });
+  } catch (error) {
+    console.error('❌ Error eliminando tablas:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.get('/clean-seed', async (req, res) => {
+  try {
+    console.log('🌱 Ejecutando seed limpio...');
+    const { cleanSeed } = require('./scripts/cleanSeed');
+    await cleanSeed();
+    res.json({ success: true, message: 'Seed limpio completado exitosamente' });
+  } catch (error) {
+    console.error('❌ Error en seed limpio:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.get('/full-reset', async (req, res) => {
+  try {
+    console.log('🔄 RESET COMPLETO DE BASE DE DATOS');
+    console.log('==================================');
+    
+    // 1. Eliminar todas las tablas
+    console.log('🗑️  Paso 1: Eliminando tablas...');
+    const { dropAllTablesPostgreSQL } = require('./scripts/dropAllTables');
+    await dropAllTablesPostgreSQL();
+    
+    // 2. Ejecutar seed limpio
+    console.log('🌱 Paso 2: Ejecutando seed limpio...');
+    const { cleanSeed } = require('./scripts/cleanSeed');
+    await cleanSeed();
+    
+    console.log('✅ RESET COMPLETO EXITOSO');
+    res.json({ 
+      success: true, 
+      message: 'Reset completo de base de datos exitoso',
+      steps: [
+        'Tablas eliminadas',
+        'Seed limpio ejecutado',
+        'Base de datos lista para usar'
+      ]
+    });
+  } catch (error) {
+    console.error('❌ Error en reset completo:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Conectar a MongoDB para las notificaciones (opcional)
 if (process.env.MONGODB_URI) {
   mongoose.connect(process.env.MONGODB_URI, {
@@ -819,26 +875,29 @@ app.post('/api/clean-duplicates', async (req, res) => {
 // Inicializar base de datos y servidor
 async function startServer() {
   try {
-    console.log('🔄 Inicializando base de datos...');
+    console.log('🚀 Iniciando servidor...');
+    
+    // Solo conectar, NO sincronizar automáticamente
+    console.log('🔌 Conectando a PostgreSQL...');
     await sequelize.authenticate();
     console.log('✅ PostgreSQL: Conexión establecida correctamente');
     
-    // Sincronizar solo si es necesario
-    await sequelize.sync({ alter: false });
-    console.log('✅ PostgreSQL: Base de datos sincronizada correctamente');
+    // NO ejecutar sync automáticamente para evitar problemas
+    console.log('⚠️  Base de datos conectada (sin sync automático)');
     
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 Servidor ejecutándose en el puerto ${PORT}`);
-      console.log(`📋 Rutas disponibles:`);
+      console.log(`📋 Rutas principales:`);
       console.log(`   - POST /api/auth/login - Iniciar sesión`);
       console.log(`   - POST /api/auth/register - Registro de usuarios`);
       console.log(`   - GET /api/products - Obtener productos`);
-      console.log(`   - POST /api/products/:id/calculate-price - Calcular precio`);
-      console.log(`   - GET /api/districts - Obtener distritos`);
-      console.log(`   - GET /api/delivery-fees - Obtener tarifas de envío`);
       console.log(`   - POST /api/guest-orders - Crear pedido de invitado`);
+      console.log(`📋 Endpoints de reset:`);
+      console.log(`   - GET /drop-all-tables - Eliminar todas las tablas`);
+      console.log(`   - GET /clean-seed - Seed limpio completo`);
+      console.log(`   - GET /full-reset - Reset completo (drop + seed)`);
+      console.log(`🎯 Para reset completo: https://aquayara.onrender.com/full-reset`);
     });
-
 
   } catch (error) {
     console.error('❌ Error al inicializar:', error);
