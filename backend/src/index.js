@@ -145,6 +145,44 @@ app.get('/test-order-creation', async (req, res) => {
   }
 });
 
+// ENDPOINT DE DIAGNÓSTICO
+app.get('/check-db', async (req, res) => {
+  try {
+    console.log('🔍 Verificando conexión a base de datos...');
+    console.log('🔍 Variables de entorno:');
+    console.log('   - NODE_ENV:', process.env.NODE_ENV);
+    console.log('   - DATABASE_URL existe:', !!process.env.DATABASE_URL);
+    console.log('   - DATABASE_URL preview:', process.env.DATABASE_URL ? process.env.DATABASE_URL.substring(0, 50) + '...' : 'NO DEFINIDA');
+    
+    await sequelize.authenticate();
+    console.log('✅ Conexión a PostgreSQL exitosa');
+    
+    // Mostrar información de la base de datos
+    const query = await sequelize.query('SELECT version()', { type: sequelize.QueryTypes.SELECT });
+    console.log('📋 Versión de PostgreSQL:', query[0].version);
+    
+    res.json({ 
+      success: true, 
+      message: 'Conexión a base de datos exitosa',
+      database: {
+        connected: true,
+        version: query[0].version,
+        host: process.env.DATABASE_URL ? 'Configurado' : 'No configurado'
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error verificando base de datos:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message,
+      database: {
+        connected: false,
+        message: 'Error de conexión - verificar DATABASE_URL'
+      }
+    });
+  }
+});
+
 // ENDPOINTS DE RESET COMPLETO
 app.get('/drop-all-tables', async (req, res) => {
   try {
@@ -876,34 +914,44 @@ app.post('/api/clean-duplicates', async (req, res) => {
 async function startServer() {
   try {
     console.log('🚀 Iniciando servidor...');
+    console.log('🔍 Variables de entorno:');
+    console.log('   - NODE_ENV:', process.env.NODE_ENV);
+    console.log('   - DATABASE_URL existe:', !!process.env.DATABASE_URL);
+    console.log('   - DATABASE_URL preview:', process.env.DATABASE_URL ? process.env.DATABASE_URL.substring(0, 50) + '...' : 'NO DEFINIDA');
     
-    // Solo conectar, NO sincronizar automáticamente
-    console.log('🔌 Conectando a PostgreSQL...');
-    await sequelize.authenticate();
-    console.log('✅ PostgreSQL: Conexión establecida correctamente');
-    
-    // NO ejecutar sync automáticamente para evitar problemas
-    console.log('⚠️  Base de datos conectada (sin sync automático)');
-    
-    app.listen(PORT, '0.0.0.0', () => {
+    // Iniciar servidor PRIMERO, sin depender de la base de datos
+    const server = app.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 Servidor ejecutándose en el puerto ${PORT}`);
       console.log(`📋 Rutas principales:`);
       console.log(`   - POST /api/auth/login - Iniciar sesión`);
       console.log(`   - POST /api/auth/register - Registro de usuarios`);
       console.log(`   - GET /api/products - Obtener productos`);
       console.log(`   - POST /api/guest-orders - Crear pedido de invitado`);
+      console.log(`📋 Endpoints de diagnóstico:`);
+      console.log(`   - GET /check-db - Verificar conexión a base de datos`);
       console.log(`📋 Endpoints de reset:`);
       console.log(`   - GET /drop-all-tables - Eliminar todas las tablas`);
       console.log(`   - GET /clean-seed - Seed limpio completo`);
       console.log(`   - GET /full-reset - Reset completo (drop + seed)`);
-      console.log(`🎯 Para reset completo: https://aquayara.onrender.com/full-reset`);
+      console.log(`🎯 PRIMERO: https://aquayara.onrender.com/check-db`);
+      console.log(`🎯 DESPUÉS: https://aquayara.onrender.com/full-reset`);
       console.log(`💡 Productos: Bidón 20L + Paquete 650ml`);
       console.log(`👥 Usuarios: admin, repartidor, vendedor`);
       console.log(`💳 Modalidades: contraentrega, vales, suscripciones`);
     });
+    
+    // Intentar conectar a la base de datos DESPUÉS de iniciar el servidor
+    console.log('🔌 Intentando conectar a PostgreSQL...');
+    try {
+      await sequelize.authenticate();
+      console.log('✅ PostgreSQL: Conexión establecida correctamente');
+    } catch (dbError) {
+      console.error('⚠️  Error conectando a PostgreSQL:', dbError.message);
+      console.log('🔄 Servidor iniciado sin conexión a BD - usar endpoints de reset para reconectar');
+    }
 
   } catch (error) {
-    console.error('❌ Error al inicializar:', error);
+    console.error('❌ Error al inicializar servidor:', error);
     process.exit(1);
   }
 }
