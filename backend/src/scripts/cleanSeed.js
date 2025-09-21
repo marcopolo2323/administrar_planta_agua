@@ -66,21 +66,13 @@ async function cleanSeed() {
       },
       {
         name: 'Paquete de Botellas de Agua',
-        description: 'Paquete de 24 botellas de agua de 500ml',
+        description: 'Paquete de botellas de agua de 650ml',
         price: 10.00,
         category: 'Agua',
         stock: 500,
         isActive: true,
         wholesalePrice: 9.00,
         wholesaleMinQuantity: 50
-      },
-      {
-        name: 'Dispensador de Agua',
-        description: 'Dispensador eléctrico para bidones de 20L',
-        price: 150.00,
-        category: 'Equipos',
-        stock: 20,
-        isActive: true
       }
     ];
     
@@ -116,10 +108,10 @@ async function cleanSeed() {
         isActive: true
       },
       {
-        username: 'operador',
-        email: 'operador@aguapura.com',
-        password: 'operador123',
-        role: 'operador',
+        username: 'vendedor',
+        email: 'vendedor@aguapura.com',
+        password: 'vendedor123',
+        role: 'vendedor',
         firstName: 'María',
         lastName: 'García',
         phone: '987654321',
@@ -189,22 +181,75 @@ async function cleanSeed() {
     }
     console.log('✅ Clientes de ejemplo creados');
     
-    // 9. Verificar que todo está correcto
+    // 9. Seed de Suscripciones de ejemplo
+    console.log('📋 Seeding suscripciones de ejemplo...');
+    const marcoClient = await Client.findOne({ where: { document: '76543217' } });
+    
+    if (marcoClient) {
+      await Subscription.findOrCreate({
+        where: { client_dni: marcoClient.document },
+        defaults: {
+          client_id: marcoClient.id,
+          client_dni: marcoClient.document,
+          subscription_type: 'monthly',
+          total_bottles: 20,
+          remaining_bottles: 15,
+          total_amount: 140.00,
+          paid_amount: 140.00,
+          status: 'active',
+          purchase_date: new Date(),
+          expiry_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 días
+          notes: 'Suscripción mensual activa'
+        }
+      });
+      console.log('✅ Suscripción de ejemplo creada');
+    }
+    
+    // 10. Seed de Preferencias de Cliente
+    console.log('⚙️  Seeding preferencias de cliente...');
+    if (marcoClient) {
+      await ClientPreferences.findOrCreate({
+        where: { dni: marcoClient.document },
+        defaults: {
+          clientId: marcoClient.id,
+          dni: marcoClient.document,
+          preferredPaymentMethod: 'contraentrega',
+          subscriptionPlanId: null,
+          subscriptionAmount: null,
+          subscriptionQuantity: null,
+          validUntil: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 año
+          isActive: true,
+          notes: 'Cliente frecuente - Preferencia contraentrega'
+        }
+      });
+      console.log('✅ Preferencias de cliente creadas');
+    }
+    
+    // 11. Verificar que todo está correcto
     console.log('🔍 Verificación final...');
     const counts = {
       districts: await District.count(),
       products: await Product.count(),
       users: await User.count(),
       deliveryPersons: await DeliveryPerson.count(),
-      clients: await Client.count()
+      clients: await Client.count(),
+      subscriptions: await Subscription.count(),
+      preferences: await ClientPreferences.count()
     };
     
     console.log('📊 Resumen de datos creados:');
     console.log(`   - Distritos: ${counts.districts}`);
-    console.log(`   - Productos: ${counts.products}`);
-    console.log(`   - Usuarios: ${counts.users}`);
+    console.log(`   - Productos: ${counts.products} (Bidón 20L + Paquete 650ml)`);
+    console.log(`   - Usuarios: ${counts.users} (admin, repartidor, vendedor)`);
     console.log(`   - Repartidores: ${counts.deliveryPersons}`);
     console.log(`   - Clientes: ${counts.clients}`);
+    console.log(`   - Suscripciones: ${counts.subscriptions}`);
+    console.log(`   - Preferencias: ${counts.preferences}`);
+    console.log('');
+    console.log('🎯 Modalidades de pago soportadas:');
+    console.log('   - ✅ Contraentrega (efectivo/plin/yape)');
+    console.log('   - ✅ Vales/Crédito');
+    console.log('   - ✅ Suscripciones');
     
     console.log('🎉 SEED LIMPIO COMPLETADO EXITOSAMENTE');
     

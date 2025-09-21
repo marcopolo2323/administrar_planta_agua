@@ -897,6 +897,9 @@ async function startServer() {
       console.log(`   - GET /clean-seed - Seed limpio completo`);
       console.log(`   - GET /full-reset - Reset completo (drop + seed)`);
       console.log(`🎯 Para reset completo: https://aquayara.onrender.com/full-reset`);
+      console.log(`💡 Productos: Bidón 20L + Paquete 650ml`);
+      console.log(`👥 Usuarios: admin, repartidor, vendedor`);
+      console.log(`💳 Modalidades: contraentrega, vales, suscripciones`);
     });
 
   } catch (error) {
