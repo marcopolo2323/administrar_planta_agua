@@ -121,6 +121,30 @@ app.get('/test-associations', async (req, res) => {
   }
 });
 
+app.get('/fix-client-preferences', async (req, res) => {
+  try {
+    console.log('🔧 Arreglando ClientPreferences...');
+    const { fixClientPreferences } = require('./scripts/fixClientPreferences');
+    await fixClientPreferences();
+    res.json({ success: true, message: 'ClientPreferences arreglado correctamente' });
+  } catch (error) {
+    console.error('❌ Error arreglando ClientPreferences:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.get('/test-order-creation', async (req, res) => {
+  try {
+    console.log('🧪 Probando creación de pedidos...');
+    const { testOrderCreation } = require('./scripts/testOrderCreation');
+    await testOrderCreation();
+    res.json({ success: true, message: 'Creación de pedidos funciona correctamente' });
+  } catch (error) {
+    console.error('❌ Error probando creación de pedidos:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Conectar a MongoDB para las notificaciones (opcional)
 if (process.env.MONGODB_URI) {
   mongoose.connect(process.env.MONGODB_URI, {
