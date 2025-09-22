@@ -40,7 +40,7 @@ exports.getAssignedOrders = async (req, res) => {
       include: [
         {
           model: GuestOrderProduct,
-          as: 'products',
+          as: 'orderProducts',
           include: [
             {
               model: Product,
@@ -82,7 +82,7 @@ exports.getAssignedOrders = async (req, res) => {
       deliveryDistrict: order.deliveryDistrict,
       deliveryReference: order.deliveryReference,
       deliveryNotes: order.deliveryNotes,
-      products: order.products?.map(item => ({
+      products: order.orderProducts?.map(item => ({
         name: item.product?.name || 'Producto no encontrado',
         productName: item.product?.name || 'Producto no encontrado',
         quantity: item.quantity,
@@ -139,7 +139,7 @@ exports.getAssignedOrderById = async (req, res) => {
       include: [
         {
           model: GuestOrderProduct,
-          as: 'products',
+          as: 'orderProducts',
           include: [
             {
               model: Product,
