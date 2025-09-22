@@ -103,6 +103,8 @@ const UsersManagement = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
+      console.log('🔑 Token para usuarios:', token ? 'Presente' : 'Ausente');
+      
       const params = new URLSearchParams({
         page: pagination.page,
         limit: pagination.limit
@@ -112,9 +114,12 @@ const UsersManagement = () => {
         params.append('role', roleFilter);
       }
 
+      console.log('🔄 Llamando a /api/user-management con params:', params.toString());
       const response = await axios.get(`/api/user-management?${params}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      
+      console.log('📦 Respuesta usuarios:', response.data);
 
       setUsers(response.data.data || []);
       setPagination(prev => ({

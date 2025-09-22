@@ -81,9 +81,12 @@ const TermsAndConditionsManagement = () => {
         params.append('status', statusFilter);
       }
 
+      console.log('🔄 Llamando a /api/terms-and-conditions con params:', params.toString());
       const response = await axios.get(`/api/terms-and-conditions?${params}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      
+      console.log('📦 Respuesta términos:', response.data);
 
       setTerms(response.data.data || []);
       setPagination(prev => ({
