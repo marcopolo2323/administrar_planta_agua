@@ -20,7 +20,7 @@ const useAutoRefresh = () => {
       // Si el token expira en menos de 2 horas, renovarlo
       if (timeUntilExpiry < 7200) {
         console.log('🔄 Renovando token JWT...');
-        const response = await axios.post('/auth/refresh');
+        const response = await axios.post('/api/auth/refresh');
         
         if (response.data.token) {
           localStorage.setItem('token', response.data.token);

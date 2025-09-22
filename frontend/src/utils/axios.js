@@ -78,7 +78,7 @@ instance.interceptors.response.use(
         try {
           console.log('🔄 Intentando renovar token...');
           // Intentar renovar el token
-          const response = await instance.post('/auth/refresh');
+          const response = await instance.post('/api/auth/refresh');
           const { token } = response.data;
           
           localStorage.setItem('token', token);
@@ -95,10 +95,12 @@ instance.interceptors.response.use(
           console.error('❌ Error al renovar token:', refreshError);
           processQueue(refreshError, null);
           
-          // Si falla la renovación, cerrar sesión
-          console.log('🚪 Cerrando sesión por fallo en renovación');
-          localStorage.removeItem('token');
-          window.location.href = '/';
+          // Solo cerrar sesión si es un error de autenticación (401) o autorización (403)
+          if (refreshError.response && (refreshError.response.status === 401 || refreshError.response.status === 403)) {
+            console.log('🚪 Cerrando sesión por fallo en renovación');
+            localStorage.removeItem('token');
+            window.location.href = '/';
+          }
           return Promise.reject(refreshError);
         } finally {
           isRefreshing = false;
