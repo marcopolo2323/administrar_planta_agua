@@ -281,7 +281,7 @@ const CollectionReport = () => {
                       </Tr>
                     </Thead>
                     <Tbody>
-                      {reportData.clients.map((clientData) => {
+                      {(reportData.clients || []).map((clientData) => {
                         console.log('🔍 Renderizando cliente:', {
                           name: clientData.client.name,
                           remainingAmount: clientData.remainingAmount,
@@ -375,7 +375,7 @@ const CollectionReport = () => {
                   
                   <Text fontWeight="bold">Detalle de Vales:</Text>
                   
-                  {selectedClient.vales.map((vale, index) => (
+                  {(selectedClient.vales || []).map((vale, index) => (
                     <Card key={vale.id} variant="outline" size="sm">
                       <CardBody>
                         <VStack spacing={2} align="stretch">

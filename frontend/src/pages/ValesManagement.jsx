@@ -108,12 +108,12 @@ const ValesManagement = () => {
   const fetchVales = async () => {
     try {
       setLoading(true);
-      console.log('🔍 Cargando vales desde /api/vouchers...');
-      const response = await axios.get('/api/vouchers');
-      console.log('📦 Respuesta de vales:', response.data);
+      console.log('🔍 Cargando vales agrupados por pedido desde /api/vouchers/by-order...');
+      const response = await axios.get('/api/vouchers/by-order');
+      console.log('📦 Respuesta de vales agrupados:', response.data);
       if (response.data.success) {
         setVales(response.data.data || []);
-        console.log(`✅ Vales cargados: ${response.data.data?.length || 0}`);
+        console.log(`✅ Vales agrupados cargados: ${response.data.data?.length || 0} pedidos`);
       }
     } catch (error) {
       console.error('Error al cargar vales:', error);
@@ -353,9 +353,8 @@ const ValesManagement = () => {
                 <Thead>
                   <Tr>
                     <Th>Cliente</Th>
-                    <Th>Producto</Th>
-                    <Th>Cantidad</Th>
-                    <Th>Monto</Th>
+                    <Th>Productos del Pedido</Th>
+                    <Th>Total del Pedido</Th>
                     <Th>Estado</Th>
                     <Th>Fecha Creación</Th>
                     <Th>Acciones</Th>
@@ -376,21 +375,23 @@ const ValesManagement = () => {
                         </VStack>
                       </Td>
                       <Td>
-                        <Text fontSize="sm" fontWeight="medium">
-                          {vale.product?.name || 'Producto no encontrado'}
-                        </Text>
-                      </Td>
-                      <Td>
-                        <Text fontWeight="bold" color="blue.600">
-                          {vale.quantity || 0}
-                        </Text>
+                        <VStack spacing={1} align="start">
+                          {(vale.products || []).map((product, index) => (
+                            <Text key={index} fontSize="sm">
+                              {product.name} x{product.quantity}
+                            </Text>
+                          ))}
+                          {(!vale.products || vale.products.length === 0) && (
+                            <Text fontSize="sm" color="gray.500">Sin productos</Text>
+                          )}
+                        </VStack>
                       </Td>
                       <Td>
                         <Text fontWeight="bold" color="green.600">
                           S/ {parseFloat(vale.totalAmount || 0).toFixed(2)}
                         </Text>
                         <Text fontSize="xs" color="gray.500">
-                          Unit: S/ {parseFloat(vale.unitPrice || 0).toFixed(2)}
+                          Pedido #{vale.guestOrderId || 'Individual'}
                         </Text>
                       </Td>
                       <Td>

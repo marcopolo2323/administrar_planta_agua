@@ -10,6 +10,7 @@ router.use(authMiddleware);
 
 // Rutas para administradores - ver todos los vales y estadísticas
 router.get('/', requireRole(['admin', 'vendedor']), voucherController.getAllVouchers);
+router.get('/by-order', requireRole(['admin', 'vendedor']), voucherController.getVouchersByOrder);
 router.get('/stats', requireRole(['admin', 'vendedor']), voucherController.getVoucherStats);
 
 // Rutas para repartidores - crear vales

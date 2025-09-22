@@ -729,29 +729,7 @@ const GuestOrderNew = () => {
             if (subscriptionResponse.data.success) {
               const subscription = subscriptionResponse.data.data;
               
-              // Ahora crear el pedido de suscripción
-              const orderData = {
-                customerName: clientData.name,
-                customerPhone: clientData.phone,
-                customerEmail: clientData.email || '',
-                deliveryAddress: clientData.address,
-                deliveryDistrict: clientData.district,
-                deliveryReference: clientData.reference || '',
-                deliveryNotes: clientData.notes || '',
-                products: [], // No hay productos en el carrito para suscripciones
-                subtotal: selectedSubscriptionPlan.price,
-                deliveryFee: 0,
-                totalAmount: selectedSubscriptionPlan.price,
-                paymentMethod: 'suscripcion',
-                paymentType: 'cash',
-                clientId: clientId,
-                subscriptionId: subscription.id
-              };
-
-              console.log('Enviando pedido de suscripción:', orderData);
-              const response = await axios.post('/api/guest-orders', orderData);
-              
-              if (response.data.success) {
+              // NO crear pedido vacío, solo la suscripción
                 // Guardar preferencias del cliente para suscripción
                 try {
                   const validUntil = new Date();
@@ -782,10 +760,10 @@ const GuestOrderNew = () => {
                 }
 
                 toast({
-                  title: 'Suscripción creada',
-                  description: `Se creó tu suscripción ${selectedSubscriptionPlan.name} con ${subscriptionData.totalBottles} bidones (${selectedSubscriptionPlan.bottles} + ${selectedSubscriptionPlan.bonus} extra)`,
+                  title: '🎉 ¡Suscripción activada!',
+                  description: `Tu suscripción ${selectedSubscriptionPlan.name} está lista. Ahora puedes hacer pedidos usando tus ${subscriptionData.totalBottles} bidones disponibles (sin costo adicional).`,
                   status: 'success',
-                  duration: 5000,
+                  duration: 8000,
                   isClosable: true,
                 });
 

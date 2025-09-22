@@ -64,6 +64,104 @@ exports.createVoucher = async (req, res) => {
   }
 };
 
+// Obtener vales agrupados por pedido
+exports.getVouchersByOrder = async (req, res) => {
+  try {
+    const { status, page = 1, limit = 100 } = req.query;
+
+    console.log('🔍 Obteniendo vales agrupados por pedido con filtros:', { status, page, limit });
+
+    const whereClause = {};
+    if (status && status !== 'all') {
+      whereClause.status = status;
+    }
+
+    // Obtener vales con información del pedido
+    const vouchers = await Voucher.findAll({
+      where: whereClause,
+      include: [
+        { 
+          model: Client, 
+          as: 'client', 
+          attributes: ['id', 'name', 'email', 'phone', 'documentNumber'],
+          required: false
+        },
+        { 
+          model: User, 
+          as: 'deliveryPerson', 
+          attributes: ['id', 'username'],
+          required: false
+        },
+        { 
+          model: Product, 
+          as: 'product', 
+          attributes: ['id', 'name', 'description', 'unitPrice'],
+          required: false
+        }
+      ],
+      order: [['createdAt', 'DESC']]
+    });
+
+    // Agrupar por guestOrderId
+    const groupedVouchers = {};
+    vouchers.forEach(voucher => {
+      const orderId = voucher.guestOrderId || `individual-${voucher.id}`;
+      
+      if (!groupedVouchers[orderId]) {
+        groupedVouchers[orderId] = {
+          id: orderId,
+          guestOrderId: voucher.guestOrderId,
+          client: voucher.client,
+          deliveryPerson: voucher.deliveryPerson,
+          status: voucher.status,
+          createdAt: voucher.createdAt,
+          updatedAt: voucher.updatedAt,
+          totalAmount: 0,
+          products: [],
+          voucherIds: []
+        };
+      }
+      
+      groupedVouchers[orderId].products.push({
+        name: voucher.product?.name || 'Producto no encontrado',
+        quantity: voucher.quantity,
+        unitPrice: parseFloat(voucher.unitPrice || 0),
+        subtotal: parseFloat(voucher.totalAmount || 0)
+      });
+      
+      groupedVouchers[orderId].totalAmount += parseFloat(voucher.totalAmount || 0);
+      groupedVouchers[orderId].voucherIds.push(voucher.id);
+    });
+
+    const groupedArray = Object.values(groupedVouchers);
+    
+    // Aplicar paginación
+    const startIndex = (parseInt(page) - 1) * parseInt(limit);
+    const endIndex = startIndex + parseInt(limit);
+    const paginatedResults = groupedArray.slice(startIndex, endIndex);
+
+    console.log(`✅ Vales agrupados: ${groupedArray.length} pedidos total, ${paginatedResults.length} en esta página`);
+    
+    res.json({
+      success: true,
+      data: paginatedResults,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(groupedArray.length / parseInt(limit)),
+        totalItems: groupedArray.length,
+        itemsPerPage: parseInt(limit)
+      }
+    });
+  } catch (error) {
+    console.error('Error al obtener vales agrupados:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+};
+
 // Obtener todos los vales (para administradores)
 exports.getAllVouchers = async (req, res) => {
   try {

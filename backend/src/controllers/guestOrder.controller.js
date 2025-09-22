@@ -129,8 +129,8 @@ exports.createGuestOrder = async (req, res) => {
       console.log('Productos del pedido creados:', orderProducts.length);
     }
 
-    // Si es un cliente frecuente (clientId existe), crear vales automáticamente
-    if (clientId) {
+    // Si es un cliente frecuente (clientId existe) y el método de pago es VALE, crear vales automáticamente
+    if (clientId && paymentMethod === 'vale') {
       console.log('Creando vales para cliente frecuente:', clientId);
       
       if (finalProducts && finalProducts.length > 0) {
