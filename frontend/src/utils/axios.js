@@ -14,6 +14,8 @@ instance.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
     console.log('🌐 URL completa:', config.baseURL + config.url);
+    console.log('🌐 BaseURL configurado:', config.baseURL);
+    console.log('🌐 URL relativa:', config.url);
     console.log('🔑 Token presente:', token ? 'Sí' : 'No');
     console.log('🔑 Token completo:', token);
     if (token) {
@@ -59,8 +61,9 @@ instance.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
     
-    // Manejar errores 401 para renovar token (excepto en verificación inicial)
-    if (error.response && error.response.status === 401 && !originalRequest._retry && !originalRequest.url?.includes('/auth/profile')) {
+    // Solo intentar renovar token si hay un token en localStorage y es un error 401
+    const token = localStorage.getItem('token');
+    if (error.response && error.response.status === 401 && !originalRequest._retry && token && !originalRequest.url?.includes('/auth/profile')) {
       if (isRefreshing) {
         // Si ya estamos renovando, agregar a la cola
         return new Promise((resolve, reject) => {
