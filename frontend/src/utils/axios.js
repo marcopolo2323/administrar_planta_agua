@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Configuración base de axios
 const instance = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '/api',
+  baseURL: import.meta.env.VITE_API_URL || 'https://aquayara.onrender.com/api',
   headers: {
     'Content-Type': 'application/json'
   },
