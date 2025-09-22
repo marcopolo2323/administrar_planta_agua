@@ -178,10 +178,20 @@ exports.createGuestOrder = async (req, res) => {
         });
 
         if (activeSubscription) {
-          // Calcular total de bidones a descontar
-          const totalBottlesToUse = finalProducts.reduce((sum, item) => sum + item.quantity, 0);
+          // Calcular total de BIDONES a descontar (solo productos tipo 'bidon')
+          let totalBottlesToUse = 0;
           
-          console.log(`Suscripción encontrada: ${activeSubscription.id}, bidones disponibles: ${activeSubscription.remainingBottles}, a usar: ${totalBottlesToUse}`);
+          for (const item of finalProducts) {
+            const product = await Product.findByPk(item.productId);
+            if (product && product.type === 'bidon') {
+              totalBottlesToUse += item.quantity;
+              console.log(`Descontando bidón: ${product.name} x${item.quantity}`);
+            } else if (product) {
+              console.log(`Producto no es bidón, no se descuenta: ${product.name} (tipo: ${product.type})`);
+            }
+          }
+          
+          console.log(`Suscripción encontrada: ${activeSubscription.id}, bidones disponibles: ${activeSubscription.remainingBottles}, bidones a usar: ${totalBottlesToUse}`);
           
           if (activeSubscription.remainingBottles >= totalBottlesToUse) {
             const newRemainingBottles = activeSubscription.remainingBottles - totalBottlesToUse;

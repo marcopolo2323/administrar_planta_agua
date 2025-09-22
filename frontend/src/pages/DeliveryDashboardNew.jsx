@@ -88,7 +88,7 @@ const DeliveryDashboardNew = () => {
   const { isOpen: isStatusOpen, onOpen: onStatusOpen, onClose: onStatusClose } = useDisclosure();
   const { isOpen: isDetailOpen, onOpen: onDetailOpen, onClose: onDetailClose } = useDisclosure();
   const { isOpen: isVoucherOpen, onOpen: onVoucherOpen, onClose: onVoucherClose } = useDisclosure();
-
+  
   // Estados para el modal de voucher
   const [voucherForm, setVoucherForm] = useState({
     clientId: '',
@@ -280,7 +280,7 @@ const DeliveryDashboardNew = () => {
     try {
       const updateData = { status: selectedOrder.newStatus };
       await updateGuestOrder(selectedOrder.id, updateData);
-
+      
       toast({
         title: 'Estado actualizado',
         description: `El pedido ahora está ${getStatusText(selectedOrder.newStatus).toLowerCase()}`,
@@ -396,8 +396,8 @@ const DeliveryDashboardNew = () => {
               <HStack spacing={2} flex={1} minW={0}>
                 <Icon as={getPaymentIcon(order.paymentType, order.paymentMethod)} size={14} />
                 <Text fontSize={{ base: "xs", md: "sm" }} noOfLines={1}>
-                  {order.paymentMethod === 'vale' ? 'A Crédito (Vale)' :
-                   order.paymentMethod === 'suscripcion' ? 'Suscripción' :
+                {order.paymentMethod === 'vale' ? 'A Crédito (Vale)' :
+                 order.paymentMethod === 'suscripcion' ? 'Suscripción' :
                    order.paymentMethod === 'contraentrega' ? 
                      (order.paymentType === 'plin' ? 'Contraentrega - PLIN' :
                       order.paymentType === 'yape' ? 'Contraentrega - Yape' :
@@ -405,13 +405,13 @@ const DeliveryDashboardNew = () => {
                    order.paymentType === 'plin' ? 'PLIN' :
                    order.paymentType === 'yape' ? 'Yape' :
                    order.paymentType === 'cash' ? 'Efectivo' : 'Efectivo'}
-                </Text>
-              </HStack>
-              <Text fontWeight="bold" fontSize={{ base: "xs", md: "sm" }} color={order.paymentMethod === 'vale' ? 'orange.600' : 'green.600'}>
-                {order.paymentMethod === 'vale' ? 'Sin cobro' : `S/ ${parseFloat(order.total || order.totalAmount || 0).toFixed(2)}`}
               </Text>
             </HStack>
-            
+              <Text fontWeight="bold" fontSize={{ base: "xs", md: "sm" }} color={order.paymentMethod === 'vale' ? 'orange.600' : 'green.600'}>
+              {order.paymentMethod === 'vale' ? 'Sin cobro' : `S/ ${parseFloat(order.total || order.totalAmount || 0).toFixed(2)}`}
+            </Text>
+          </HStack>
+
             {/* Instrucción clara para el repartidor */}
             <Badge 
               colorScheme={
@@ -471,17 +471,17 @@ const DeliveryDashboardNew = () => {
 
           {/* Acciones optimizadas para móviles */}
           <VStack spacing={{ base: 2, md: 3 }} align="stretch">
-            <HStack spacing={2} justify="center">
-              <Tooltip label="Ver detalles">
-                <IconButton
+          <HStack spacing={2} justify="center">
+            <Tooltip label="Ver detalles">
+              <IconButton
                   size={{ base: "sm", md: "md" }}
-                  icon={<FaEye />}
-                  onClick={() => openDetailModal(order)}
-                  aria-label="Ver detalles"
+                icon={<FaEye />}
+                onClick={() => openDetailModal(order)}
+                aria-label="Ver detalles"
                   colorScheme="blue"
                   variant="outline"
-                />
-              </Tooltip>
+              />
+            </Tooltip>
             </HStack>
             
             {/* Botones de estado optimizados para móviles */}
@@ -545,7 +545,7 @@ const DeliveryDashboardNew = () => {
                   {selectedOrder.newStatus === 'preparing' && 'Iniciar Preparación'}
                   {selectedOrder.newStatus === 'ready' && 'Marcar como Listo'}
                   {selectedOrder.newStatus === 'delivered' && 'Marcar como Entregado'}
-                </Text>
+                  </Text>
               </>
             )}
           </VStack>
@@ -576,27 +576,27 @@ const DeliveryDashboardNew = () => {
               <Divider />
               
               <VStack spacing={3} align="stretch">
-                <HStack justify="space-between">
+                    <HStack justify="space-between">
                   <Text fontWeight="bold">Cliente:</Text>
                   <Text>{selectedOrder.clientName || selectedOrder.client?.name || 'Sin nombre'}</Text>
-                </HStack>
-                
-                <HStack justify="space-between">
-                  <Text fontWeight="bold">Teléfono:</Text>
+                    </HStack>
+                    
+                    <HStack justify="space-between">
+                      <Text fontWeight="bold">Teléfono:</Text>
                   <Text>{selectedOrder.clientPhone || selectedOrder.client?.phone || 'Sin teléfono'}</Text>
-                </HStack>
-                
-                <HStack justify="space-between">
-                  <Text fontWeight="bold">Dirección:</Text>
+                    </HStack>
+                    
+                    <HStack justify="space-between">
+                      <Text fontWeight="bold">Dirección:</Text>
                   <Text>{selectedOrder.clientAddress || selectedOrder.client?.address || 'Sin dirección'}</Text>
-                </HStack>
-                
-                <HStack justify="space-between">
-                  <Text fontWeight="bold">Distrito:</Text>
+                    </HStack>
+                    
+                    <HStack justify="space-between">
+                      <Text fontWeight="bold">Distrito:</Text>
                   <Text>{selectedOrder.clientDistrict || selectedOrder.client?.district || selectedOrder.deliveryDistrict || 'Sin distrito'}</Text>
-                </HStack>
+                    </HStack>
                 
-                <HStack justify="space-between">
+                    <HStack justify="space-between">
                   <Text fontWeight="bold">Estado:</Text>
                   <Badge colorScheme={getStatusColor(selectedOrder.status)}>
                     {getStatusText(selectedOrder.status)}
@@ -605,11 +605,11 @@ const DeliveryDashboardNew = () => {
                 
                 <HStack justify="space-between">
                   <Text fontWeight="bold">Método de pago:</Text>
-                  <HStack>
+                      <HStack>
                     <Icon as={getPaymentIcon(selectedOrder.paymentType, selectedOrder.paymentMethod)} size={16} />
-                    <Text>
-                      {selectedOrder.paymentMethod === 'vale' ? 'A Crédito (Vale)' :
-                       selectedOrder.paymentMethod === 'suscripcion' ? 'Suscripción' :
+                        <Text>
+                          {selectedOrder.paymentMethod === 'vale' ? 'A Crédito (Vale)' :
+                           selectedOrder.paymentMethod === 'suscripcion' ? 'Suscripción' :
                        selectedOrder.paymentMethod === 'contraentrega' ? 
                          (selectedOrder.paymentType === 'plin' ? 'Contraentrega - PLIN' :
                           selectedOrder.paymentType === 'yape' ? 'Contraentrega - Yape' :
@@ -617,17 +617,17 @@ const DeliveryDashboardNew = () => {
                        selectedOrder.paymentType === 'plin' ? 'PLIN' :
                        selectedOrder.paymentType === 'yape' ? 'Yape' :
                        selectedOrder.paymentType === 'cash' ? 'Efectivo' : 'Efectivo'}
-                    </Text>
-                  </HStack>
-                </HStack>
-                
-                <HStack justify="space-between">
-                  <Text fontWeight="bold">Total:</Text>
-                  <Text fontWeight="bold" color={selectedOrder.paymentMethod === 'vale' ? 'orange.600' : 'green.600'}>
+                        </Text>
+                      </HStack>
+                    </HStack>
+                    
+                    <HStack justify="space-between">
+                      <Text fontWeight="bold">Total:</Text>
+                      <Text fontWeight="bold" color={selectedOrder.paymentMethod === 'vale' ? 'orange.600' : 'green.600'}>
                     {selectedOrder.paymentMethod === 'vale' ? 'Sin cobro' : `S/ ${parseFloat(selectedOrder.total || selectedOrder.totalAmount || 0).toFixed(2)}`}
-                  </Text>
-                </HStack>
-                
+                      </Text>
+                    </HStack>
+
                 {/* Instrucción clara para el repartidor */}
                 <Alert 
                   status={
@@ -637,16 +637,16 @@ const DeliveryDashboardNew = () => {
                   }
                   borderRadius="md"
                 >
-                  <AlertIcon />
-                  <Text fontSize="sm" fontWeight="bold">
+                        <AlertIcon />
+                        <Text fontSize="sm" fontWeight="bold">
                     {selectedOrder.paymentMethod === 'vale' ? '💳 NO COBRAR - Este pedido es a crédito' :
                      selectedOrder.paymentMethod === 'suscripcion' ? '📅 NO COBRAR - Este pedido es por suscripción' :
                      selectedOrder.paymentType === 'plin' ? '📱 NO COBRAR - El cliente pagará por PLIN' :
                      selectedOrder.paymentType === 'yape' ? '📱 NO COBRAR - El cliente pagará por Yape' :
                      '💰 COBRAR - El cliente pagará en efectivo'}
-                  </Text>
-                </Alert>
-              </VStack>
+                        </Text>
+                      </Alert>
+                  </VStack>
               
               {/* Productos del pedido */}
               {selectedOrder.products && selectedOrder.products.length > 0 && (
@@ -742,11 +742,11 @@ const DeliveryDashboardNew = () => {
         <Box bg="white" p={{ base: 3, md: 4 }} borderRadius="lg" shadow="sm">
           <VStack spacing={2} align="start">
             <Heading size={{ base: "sm", md: "lg" }} color="gray.800">
-              Panel de Repartidor
-            </Heading>
+            Panel de Repartidor
+          </Heading>
             <Text color="gray.600" fontSize={{ base: "xs", md: "md" }}>
-              Bienvenido, {user?.username}. Gestiona tus entregas asignadas.
-            </Text>
+            Bienvenido, {user?.username}. Gestiona tus entregas asignadas.
+          </Text>
           </VStack>
         </Box>
 
@@ -796,7 +796,7 @@ const DeliveryDashboardNew = () => {
 
         {/* Tabs optimizadas para móviles */}
         <Box bg="white" borderRadius="lg" shadow="sm" overflow="hidden">
-          <Tabs index={activeTab === 'orders' ? 0 : 1} onChange={(index) => setActiveTab(index === 0 ? 'orders' : 'vouchers')}>
+        <Tabs index={activeTab === 'orders' ? 0 : 1} onChange={(index) => setActiveTab(index === 0 ? 'orders' : 'vouchers')}>
             <TabList bg="gray.50" p={1}>
               <Tab 
                 fontSize={{ base: "xs", md: "sm" }} 
@@ -812,7 +812,7 @@ const DeliveryDashboardNew = () => {
                     Pedidos ({orders.length})
                   </Text>
                 </VStack>
-              </Tab>
+            </Tab>
               <Tab 
                 fontSize={{ base: "xs", md: "sm" }} 
                 px={{ base: 2, md: 4 }}
@@ -827,10 +827,10 @@ const DeliveryDashboardNew = () => {
                     Vales ({vouchers.length})
                   </Text>
                 </VStack>
-              </Tab>
-            </TabList>
+            </Tab>
+          </TabList>
 
-            <TabPanels>
+          <TabPanels>
               <TabPanel px={{ base: 2, md: 4 }} py={{ base: 3, md: 4 }}>
                 {/* Filtros optimizados para móviles */}
                 <Card shadow="sm" mb={4}>
@@ -838,48 +838,48 @@ const DeliveryDashboardNew = () => {
                     <VStack spacing={{ base: 3, md: 4 }} align="stretch">
                       <FormControl>
                         <FormLabel fontSize={{ base: "sm", md: "md" }}>Filtrar por Estado</FormLabel>
-                        <Select
-                          value={statusFilter}
-                          onChange={(e) => setStatusFilter(e.target.value)}
+                <Select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
                           size={{ base: "sm", md: "md" }}
-                        >
+                >
                           <option value="all">Todos los pedidos</option>
-                          <option value="asignado">Asignados</option>
-                          <option value="en_camino">En Camino</option>
-                          <option value="entregado">Entregados</option>
-                        </Select>
-                      </FormControl>
-                      
+                  <option value="asignado">Asignados</option>
+                  <option value="en_camino">En Camino</option>
+                  <option value="entregado">Entregados</option>
+                </Select>
+              </FormControl>
+              
                       <Text fontSize={{ base: "xs", md: "sm" }} color="gray.600" textAlign="center">
-                        Mostrando {filteredOrders.length} de {orders.length} pedidos
-                      </Text>
+                  Mostrando {filteredOrders.length} de {orders.length} pedidos
+                </Text>
                     </VStack>
-                  </CardBody>
-                </Card>
+          </CardBody>
+        </Card>
 
                 {/* Lista de pedidos optimizada para móviles */}
-                {filteredOrders.length > 0 ? (
+        {filteredOrders.length > 0 ? (
                   <VStack spacing={{ base: 3, md: 4 }} align="stretch">
-                    {filteredOrders.map(renderOrderCard)}
+            {filteredOrders.map(renderOrderCard)}
                   </VStack>
-                ) : (
+        ) : (
                   <Center h="200px" bg="white" borderRadius="lg" shadow="sm">
-                    <VStack spacing={4}>
-                      <Icon as={FaBox} boxSize={12} color="gray.400" />
+            <VStack spacing={4}>
+              <Icon as={FaBox} boxSize={12} color="gray.400" />
                       <Text color="gray.500" fontSize={{ base: "sm", md: "lg" }} textAlign="center">
-                        No hay pedidos {statusFilter === 'all' ? '' : `con estado ${getStatusText(statusFilter).toLowerCase()}`}
-                      </Text>
-                      <Button
-                        variant="outline"
+                No hay pedidos {statusFilter === 'all' ? '' : `con estado ${getStatusText(statusFilter).toLowerCase()}`}
+              </Text>
+              <Button
+                variant="outline"
                         size={{ base: "sm", md: "md" }}
-                        onClick={() => setStatusFilter('all')}
-                      >
-                        Ver todos los pedidos
-                      </Button>
-                    </VStack>
-                  </Center>
-                )}
-              </TabPanel>
+                onClick={() => setStatusFilter('all')}
+              >
+                Ver todos los pedidos
+              </Button>
+            </VStack>
+          </Center>
+            )}
+            </TabPanel>
 
               <TabPanel px={{ base: 2, md: 4 }} py={{ base: 3, md: 4 }}>
                 <VStack spacing={{ base: 4, md: 6 }} align="stretch">
@@ -890,100 +890,100 @@ const DeliveryDashboardNew = () => {
                         Mis Vales
                       </Heading>
                       <Text color="gray.600" fontSize={{ base: "xs", md: "sm" }}>
-                        Gestiona los vales que has creado
-                      </Text>
-                    </VStack>
+                      Gestiona los vales que has creado
+                    </Text>
+                  </VStack>
                   </Box>
                   
                   {/* Botón crear vale optimizado */}
                   <Box>
-                    <Button
-                      colorScheme="blue"
-                      leftIcon={<FaPlus />}
-                      onClick={onVoucherOpen}
+                  <Button
+                    colorScheme="blue"
+                    leftIcon={<FaPlus />}
+                    onClick={onVoucherOpen}
                       size={{ base: "sm", md: "md" }}
                       w="full"
-                    >
+                  >
                       Crear Nuevo Vale
-                    </Button>
+                  </Button>
                   </Box>
 
                   {/* Lista de vales optimizada para móviles */}
-                  {vouchers.length > 0 ? (
+                {vouchers.length > 0 ? (
                     <VStack spacing={{ base: 3, md: 4 }} align="stretch">
-                      {vouchers.map((voucher) => (
+                    {vouchers.map((voucher) => (
                         <Card key={voucher.id} variant="outline" shadow="sm" borderRadius="lg">
                           <CardBody p={{ base: 3, md: 4 }}>
                             <VStack spacing={{ base: 2, md: 3 }} align="stretch">
                               <HStack justify="space-between" w="full">
                                 <Text fontWeight="bold" fontSize={{ base: "sm", md: "md" }}>
-                                  Vale #{voucher.id}
-                                </Text>
+                                Vale #{voucher.id}
+                              </Text>
                                 <Badge 
                                   colorScheme={
-                                    voucher.status === 'pending' ? 'orange' :
-                                    voucher.status === 'delivered' ? 'blue' : 'green'
+                                voucher.status === 'pending' ? 'orange' :
+                                voucher.status === 'delivered' ? 'blue' : 'green'
                                   }
                                   fontSize={{ base: "2xs", md: "xs" }}
                                 >
-                                  {voucher.status === 'pending' ? 'Pendiente' :
-                                   voucher.status === 'delivered' ? 'Entregado' : 'Pagado'}
-                                </Badge>
-                              </HStack>
+                                {voucher.status === 'pending' ? 'Pendiente' :
+                                 voucher.status === 'delivered' ? 'Entregado' : 'Pagado'}
+                              </Badge>
+                            </HStack>
 
                               <VStack spacing={{ base: 1, md: 2 }} align="stretch">
-                                <HStack spacing={2}>
-                                  <FaUser size={12} color="#718096" />
+                              <HStack spacing={2}>
+                                <FaUser size={12} color="#718096" />
                                   <Text fontSize={{ base: "xs", md: "sm" }} noOfLines={1}>
-                                    {voucher.Client?.name || 'Cliente no encontrado'}
-                                  </Text>
-                                </HStack>
-                                
-                                <HStack spacing={2}>
-                                  <FaBox size={12} color="#718096" />
+                                  {voucher.Client?.name || 'Cliente no encontrado'}
+                                </Text>
+                              </HStack>
+                              
+                              <HStack spacing={2}>
+                                <FaBox size={12} color="#718096" />
                                   <Text fontSize={{ base: "xs", md: "sm" }} noOfLines={1}>
-                                    {voucher.product?.name || 'Producto no especificado'}
-                                  </Text>
-                                </HStack>
-                                
-                                <HStack spacing={2}>
+                                  {voucher.product?.name || 'Producto no especificado'}
+                                </Text>
+                              </HStack>
+                              
+                              <HStack spacing={2}>
                                   <Text fontSize={{ base: "xs", md: "sm" }}>Cantidad:</Text>
                                   <Text fontWeight="bold" fontSize={{ base: "xs", md: "sm" }}>{voucher.quantity}</Text>
-                                </HStack>
-                                
+                              </HStack>
+                              
                                 <HStack justify="space-between" w="full">
                                   <Text fontSize={{ base: "xs", md: "sm" }}>Total:</Text>
                                   <Text fontWeight="bold" color="green.600" fontSize={{ base: "xs", md: "sm" }}>
                                     S/ {parseFloat(voucher.totalAmount || 0).toFixed(2)}
-                                  </Text>
-                                </HStack>
-                              </VStack>
+                                </Text>
+                              </HStack>
                             </VStack>
-                          </CardBody>
-                        </Card>
-                      ))}
+                          </VStack>
+                        </CardBody>
+                      </Card>
+                    ))}
                     </VStack>
-                  ) : (
-                    <Center h="200px">
-                      <VStack spacing={4}>
-                        <Icon as={FaMoneyBillWave} boxSize={12} color="gray.400" />
-                        <Text color="gray.500" fontSize="lg">
-                          No has creado ningún vale aún
-                        </Text>
-                        <Button
-                          colorScheme="blue"
-                          leftIcon={<FaPlus />}
-                          onClick={onVoucherOpen}
-                        >
-                          Crear tu primer vale
-                        </Button>
-                      </VStack>
-                    </Center>
-                  )}
-                </VStack>
-              </TabPanel>
-            </TabPanels>
-          </Tabs>
+                ) : (
+                  <Center h="200px">
+                    <VStack spacing={4}>
+                      <Icon as={FaMoneyBillWave} boxSize={12} color="gray.400" />
+                      <Text color="gray.500" fontSize="lg">
+                        No has creado ningún vale aún
+                      </Text>
+                      <Button
+                        colorScheme="blue"
+                        leftIcon={<FaPlus />}
+                        onClick={onVoucherOpen}
+                      >
+                        Crear tu primer vale
+                      </Button>
+                    </VStack>
+                  </Center>
+                )}
+              </VStack>
+            </TabPanel>
+          </TabPanels>
+        </Tabs>
         </Box>
 
         {/* Modales */}

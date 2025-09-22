@@ -629,8 +629,15 @@ const GuestOrderNew = () => {
     try {
       // Si está en modo suscripción (usando bidones existentes)
       if (isSubscriptionMode && selectedSubscription) {
-        // Verificar que hay suficientes bidones
-        const totalBottles = cart.reduce((sum, item) => sum + item.quantity, 0);
+        // Verificar que hay suficientes bidones (solo contar productos tipo 'bidon')
+        const totalBottles = cart.reduce((sum, item) => {
+          const product = products.find(p => p.id === item.productId);
+          if (product && product.type === 'bidon') {
+            return sum + item.quantity;
+          }
+          return sum;
+        }, 0);
+        
         if (selectedSubscription.remainingBottles < totalBottles) {
           toast({
             title: 'Bidones insuficientes',
@@ -683,16 +690,24 @@ const GuestOrderNew = () => {
             bottlesToUse: totalBottles
           });
 
+          console.log('🔍 Respuesta completa del pedido:', response.data);
+          const orderId = response.data.data?.id || response.data.id || 'Sin ID';
+          
           toast({
             title: '¡Pedido creado exitosamente!',
-            description: `Pedido #${response.data.data.id} registrado. Se usaron ${totalBottles} bidones de tu suscripción.`,
+            description: `Pedido #${orderId} registrado. Se usaron ${totalBottles} bidones de tu suscripción.`,
             status: 'success',
             duration: 5000,
             isClosable: true,
           });
 
           // Redirigir a la página de recibo usando el token de acceso
-          navigate(`/receipt/${response.data.data.accessToken}`);
+          const accessToken = response.data.data?.accessToken || response.data.accessToken;
+          if (accessToken) {
+            navigate(`/receipt/${accessToken}`);
+          } else {
+            console.error('❌ No se encontró accessToken en la respuesta');
+          }
         } else {
           throw new Error(response.data.message || 'Error al crear el pedido');
         }
@@ -760,7 +775,7 @@ const GuestOrderNew = () => {
 
               toast({
                 title: '🎉 ¡Suscripción activada!',
-                description: `Tu suscripción ${selectedSubscriptionPlan.name} está lista. Ahora puedes hacer pedidos usando tus ${subscriptionData.totalBottles} bidones disponibles (sin costo adicional).`,
+                description: `Tu suscripción ${selectedSubscriptionPlan.name} está lista. Ahora puedes hacer pedidos usando tus ${selectedSubscriptionPlan.bottles + selectedSubscriptionPlan.bonus} bidones disponibles (sin costo adicional).`,
                 status: 'success',
                 duration: 8000,
                 isClosable: true,
@@ -852,16 +867,24 @@ const GuestOrderNew = () => {
               }
             }
 
+            console.log('🔍 Respuesta completa del pedido normal:', response.data);
+            const orderId = response.data.data?.id || response.data.id || 'Sin ID';
+            
             toast({
               title: '¡Pedido creado exitosamente!',
-              description: `Pedido #${response.data.data.id} registrado correctamente`,
+              description: `Pedido #${orderId} registrado correctamente`,
               status: 'success',
               duration: 5000,
               isClosable: true,
             });
 
             // Redirigir a la página de recibo usando el token de acceso
-            navigate(`/receipt/${response.data.data.accessToken}`);
+            const accessToken = response.data.data?.accessToken || response.data.accessToken;
+            if (accessToken) {
+              navigate(`/receipt/${accessToken}`);
+            } else {
+              console.error('❌ No se encontró accessToken en la respuesta');
+            }
           } else {
             throw new Error(response.data.message || 'Error al crear el pedido');
           }
@@ -1806,10 +1829,16 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
                 <VStack align="start" spacing={2}>
                   <Text fontWeight="bold">Cómo funciona con suscripción:</Text>
                   <Text fontSize="sm">
-                    • Se descontarán {cart.reduce((sum, item) => sum + item.quantity, 0)} bidones de tu suscripción<br/>
+                    • Se descontarán {cart.reduce((sum, item) => {
+                      const product = products.find(p => p.id === item.productId);
+                      return product && product.type === 'bidon' ? sum + item.quantity : sum;
+                    }, 0)} bidones de tu suscripción<br/>
                     • El repartidor NO cobrará nada en la entrega<br/>
                     • Los bidones se descontarán automáticamente<br/>
-                    • Quedarán {selectedSubscription.remainingBottles - cart.reduce((sum, item) => sum + item.quantity, 0)} bidones disponibles
+                    • Quedarán {selectedSubscription.remainingBottles - cart.reduce((sum, item) => {
+                      const product = products.find(p => p.id === item.productId);
+                      return product && product.type === 'bidon' ? sum + item.quantity : sum;
+                    }, 0)} bidones disponibles
                   </Text>
                 </VStack>
               </Alert>
