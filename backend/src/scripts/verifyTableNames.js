@@ -14,16 +14,18 @@ async function verifyTableNames() {
     // Mapeo de referencias esperadas vs nombres reales
     const expectedReferences = {
       // Lo que debería ser -> lo que realmente es
-      'Client': 'Clients',
-      'User': 'Users', 
-      'Product': 'Products',
-      'District': 'Districts',
-      'Order': 'Orders', // si existe
-      'GuestOrder': 'GuestOrders',
-      'Subscription': 'subscriptions', // minúscula
-      'Voucher': 'Vouchers',
-      'Vale': 'Vales',
-      'DeliveryPerson': 'DeliveryPersons'
+      'Clients': 'Clients',
+      'Users': 'Users', 
+      'Products': 'Products',
+      'Districts': 'Districts',
+      'GuestOrder': 'GuestOrder', // singular
+      'subscriptions': 'subscriptions', // minúscula
+      'Vouchers': 'Vouchers',
+      'Vales': 'Vales',
+      'DeliveryPersons': 'DeliveryPersons',
+      'GuestOrderProducts': 'GuestOrderProducts',
+      'ClientPreferences': 'ClientPreferences',
+      'DeliveryFees': 'DeliveryFees'
     };
     
     console.log('\n🔍 Verificando referencias:');

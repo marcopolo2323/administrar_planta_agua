@@ -23,19 +23,11 @@ const Voucher = sequelize.define('Voucher', {
       key: 'id'
     }
   },
-  orderId: {
-    type: DataTypes.INTEGER,
-    allowNull: true,
-    references: {
-      model: 'Orders',
-      key: 'id'
-    }
-  },
   guestOrderId: {
     type: DataTypes.INTEGER,
     allowNull: true,
     references: {
-      model: 'GuestOrders',
+      model: 'GuestOrder',
       key: 'id'
     }
   },
