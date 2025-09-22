@@ -158,6 +158,18 @@ app.get('/verify-table-names', async (req, res) => {
   }
 });
 
+app.get('/add-client-id-to-guest-order', async (req, res) => {
+  try {
+    console.log('🔧 Agregando clientId a GuestOrder...');
+    const { addClientIdToGuestOrder } = require('./scripts/addClientIdToGuestOrder');
+    await addClientIdToGuestOrder();
+    res.json({ success: true, message: 'Columna clientId agregada exitosamente' });
+  } catch (error) {
+    console.error('❌ Error agregando clientId:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 app.get('/check-db', async (req, res) => {
   try {
     console.log('🔍 Verificando conexión a base de datos...');

@@ -61,6 +61,10 @@ Product.belongsToMany(GuestOrder, {
   as: 'guestOrders' 
 });
 
+// Relaciones de GuestOrder con Client
+Client.hasMany(GuestOrder, { foreignKey: 'clientId', as: 'guestOrders' });
+GuestOrder.belongsTo(Client, { foreignKey: 'clientId', as: 'client' });
+
 // Relaciones de vales
 Client.hasMany(Voucher, { foreignKey: 'clientId', as: 'vouchers' });
 Voucher.belongsTo(Client, { foreignKey: 'clientId', as: 'client' });

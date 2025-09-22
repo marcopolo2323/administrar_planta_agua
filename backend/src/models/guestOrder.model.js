@@ -90,6 +90,14 @@ const GuestOrder = sequelize.define('GuestOrder', {
   subscriptionId: {
     type: DataTypes.INTEGER,
     allowNull: true
+  },
+  clientId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'Clients',
+      key: 'id'
+    }
   }
 }, {
   tableName: 'GuestOrder',

@@ -542,7 +542,7 @@ exports.assignDeliveryPerson = async (req, res) => {
 
     await order.update({
       deliveryPersonId,
-      status: 'assigned'
+      status: 'confirmed'
     });
 
     res.json({
