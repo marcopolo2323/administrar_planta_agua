@@ -166,11 +166,14 @@ async function cleanSeed() {
         where: { userId: deliveryUser.id },
         defaults: {
           userId: deliveryUser.id,
-          vehicleType: 'moto',
+          name: 'Carlos Repartidor',
+          phone: '924714321',
+          email: 'repartidor@aguapura.com',
+          vehicleType: 'motorcycle',
+          vehiclePlate: 'ABC-123',
           licenseNumber: 'D123456789',
-          isActive: true,
-          currentCapacity: 0,
-          maxCapacity: 50
+          address: 'Jr. Los Repartidores 123, Pucallpa',
+          status: 'available'
         }
       });
     }
