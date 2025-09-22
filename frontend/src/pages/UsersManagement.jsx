@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Box,
   Button,
@@ -44,6 +45,7 @@ import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import axios from 'axios';
 
 const UsersManagement = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState(null);
@@ -84,6 +86,14 @@ const UsersManagement = () => {
   const toast = useToast();
   const bgColor = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.600');
+
+  // Inicializar filtro desde URL
+  useEffect(() => {
+    const roleFromUrl = searchParams.get('role');
+    if (roleFromUrl && roleFromUrl !== 'all') {
+      setRoleFilter(roleFromUrl);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     fetchUsers();

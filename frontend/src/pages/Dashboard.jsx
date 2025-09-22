@@ -176,7 +176,7 @@ const Dashboard = () => {
       title: 'Repartidores',
       icon: FaUserTie,
       color: 'indigo',
-      onClick: () => navigate('/dashboard/delivery-persons'),
+      onClick: () => navigate('/dashboard/users-management?role=repartidor'),
       count: totalDeliveryPersons,
       description: 'Equipo de entrega'
     },
