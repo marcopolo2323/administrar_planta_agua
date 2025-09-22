@@ -48,10 +48,15 @@ const TermsAndConditionsModal = ({
     try {
       setLoading(true);
       setError(null);
+      console.log('🔄 Cargando términos y condiciones activos...');
       const response = await axios.get('/api/terms-and-conditions/active');
+      console.log('📦 Respuesta términos activos:', response.data);
       setTerms(response.data.data);
+      console.log('✅ Términos cargados:', response.data.data ? 'Sí' : 'No');
     } catch (error) {
-      console.error('Error fetching terms:', error);
+      console.error('❌ Error fetching terms:', error);
+      console.error('❌ Status:', error.response?.status);
+      console.error('❌ Message:', error.response?.data?.message);
       setError('No se pudieron cargar los términos y condiciones');
     } finally {
       setLoading(false);
