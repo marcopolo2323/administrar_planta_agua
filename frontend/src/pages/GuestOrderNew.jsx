@@ -729,64 +729,62 @@ const GuestOrderNew = () => {
             if (subscriptionResponse.data.success) {
               const subscription = subscriptionResponse.data.data;
               
-              // NO crear pedido vacío, solo la suscripción
-                // Guardar preferencias del cliente para suscripción
-                try {
-                  const validUntil = new Date();
-                  validUntil.setMonth(validUntil.getMonth() + 1);
-                  
-                  const preferencesData = {
-                    dni,
-                    clientId,
-                    preferredPaymentMethod: 'suscripcion',
-                    subscriptionType: selectedSubscriptionPlan.id,
-                    subscriptionAmount: selectedSubscriptionPlan.price,
-                    subscriptionQuantity: selectedSubscriptionPlan.bottles + selectedSubscriptionPlan.bonus,
-                    validUntil: validUntil.toISOString()
-                  };
-                  
-                  await axios.post('/api/client-preferences', preferencesData);
-                  console.log('Preferencias de suscripción guardadas:', preferencesData);
-                  
-                  toast({
-                    title: 'Modalidad guardada',
-                    description: `Tu modalidad de suscripción estará activa hasta ${validUntil.toLocaleDateString()}`,
-                    status: 'success',
-                    duration: 4000,
-                    isClosable: true,
-                  });
-                } catch (preferencesError) {
-                  console.log('Error al guardar preferencias de suscripción:', preferencesError);
-                }
-
+              // Guardar preferencias del cliente para suscripción
+              try {
+                const validUntil = new Date();
+                validUntil.setMonth(validUntil.getMonth() + 1);
+                
+                const preferencesData = {
+                  dni,
+                  clientId,
+                  preferredPaymentMethod: 'suscripcion',
+                  subscriptionType: selectedSubscriptionPlan.id,
+                  subscriptionAmount: selectedSubscriptionPlan.price,
+                  subscriptionQuantity: selectedSubscriptionPlan.bottles + selectedSubscriptionPlan.bonus,
+                  validUntil: validUntil.toISOString()
+                };
+                
+                await axios.post('/api/client-preferences', preferencesData);
+                console.log('Preferencias de suscripción guardadas:', preferencesData);
+                
                 toast({
-                  title: '🎉 ¡Suscripción activada!',
-                  description: `Tu suscripción ${selectedSubscriptionPlan.name} está lista. Ahora puedes hacer pedidos usando tus ${subscriptionData.totalBottles} bidones disponibles (sin costo adicional).`,
+                  title: 'Modalidad guardada',
+                  description: `Tu modalidad de suscripción estará activa hasta ${validUntil.toLocaleDateString()}`,
                   status: 'success',
-                  duration: 8000,
+                  duration: 4000,
                   isClosable: true,
                 });
-
-                // Cambiar a modo suscripción para permitir más pedidos
-                setIsSubscriptionMode(true);
-                setSelectedSubscription({
-                  id: subscription.id,
-                  remainingBottles: selectedSubscriptionPlan.bottles + selectedSubscriptionPlan.bonus,
-                  status: 'active'
-                });
-                
-                // Limpiar el carrito y volver al paso de productos
-                setCart([]);
-                setCurrentStep(3);
-                
-                toast({
-                  title: '¡Ahora puedes hacer pedidos!',
-                  description: `Tienes ${selectedSubscriptionPlan.bottles + selectedSubscriptionPlan.bonus} bidones disponibles. Agrega productos al carrito.`,
-                  status: 'info',
-                  duration: 6000,
-                  isClosable: true,
-                });
+              } catch (preferencesError) {
+                console.log('Error al guardar preferencias de suscripción:', preferencesError);
               }
+
+              toast({
+                title: '🎉 ¡Suscripción activada!',
+                description: `Tu suscripción ${selectedSubscriptionPlan.name} está lista. Ahora puedes hacer pedidos usando tus ${subscriptionData.totalBottles} bidones disponibles (sin costo adicional).`,
+                status: 'success',
+                duration: 8000,
+                isClosable: true,
+              });
+
+              // Cambiar a modo suscripción para permitir más pedidos
+              setIsSubscriptionMode(true);
+              setSelectedSubscription({
+                id: subscription.id,
+                remainingBottles: selectedSubscriptionPlan.bottles + selectedSubscriptionPlan.bonus,
+                status: 'active'
+              });
+              
+              // Limpiar el carrito y volver al paso de productos
+              setCart([]);
+              setCurrentStep(3);
+              
+              toast({
+                title: '¡Ahora puedes hacer pedidos!',
+                description: `Tienes ${selectedSubscriptionPlan.bottles + selectedSubscriptionPlan.bonus} bidones disponibles. Agrega productos al carrito.`,
+                status: 'info',
+                duration: 6000,
+                isClosable: true,
+              });
             }
           } catch (subscriptionError) {
             console.log('Error al crear suscripción:', subscriptionError);
