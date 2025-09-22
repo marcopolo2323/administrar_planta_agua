@@ -24,6 +24,7 @@ import useClientStore from '../stores/clientStore';
 import useDeliveryStore from '../stores/deliveryStore';
 import useGuestOrderStore from '../stores/guestOrderStore';
 import AquaYaraLogo from '../components/AquaYaraLogo';
+import axios from '../utils/axios';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -38,18 +39,50 @@ const Dashboard = () => {
   const { getDeliveryStats, fetchDeliveryPersons, fetchDeliveryFees } = useDeliveryStore();
   const { orders: guestOrders, fetchOrders: fetchGuestOrders, getOrderStats } = useGuestOrderStore();
 
+  // Función para obtener estadísticas de vales
+  const fetchVoucherStats = async () => {
+    try {
+      const response = await axios.get('/api/vouchers/stats');
+      if (response.data.success) {
+        setVoucherStats(response.data.data);
+      }
+    } catch (error) {
+      console.error('Error al cargar estadísticas de vales:', error);
+    }
+  };
+
+  // Función para obtener estadísticas de suscripciones
+  const fetchSubscriptionStats = async () => {
+    try {
+      const response = await axios.get('/api/subscriptions');
+      if (response.data.success) {
+        const subscriptions = response.data.data || [];
+        setSubscriptionStats({
+          total: subscriptions.length,
+          active: subscriptions.filter(s => s.status === 'active').length
+        });
+      }
+    } catch (error) {
+      console.error('Error al cargar estadísticas de suscripciones:', error);
+    }
+  };
+
   useEffect(() => {
     fetchProducts();
     fetchClients();
     fetchDeliveryPersons();
     fetchDeliveryFees();
     fetchGuestOrders();
+    fetchVoucherStats();
+    fetchSubscriptionStats();
     
     // Actualizar cada 30 segundos para mantener sincronización
     const interval = setInterval(() => {
       fetchGuestOrders();
       fetchClients();
       fetchDeliveryPersons();
+      fetchVoucherStats();
+      fetchSubscriptionStats();
       setLastUpdate(new Date());
     }, 30000);
     
@@ -72,11 +105,13 @@ const Dashboard = () => {
   const valeOrders = guestOrders?.filter(order => order.paymentMethod === 'vale')?.length || 0;
   const suscripcionOrders = guestOrders?.filter(order => order.paymentMethod === 'suscripcion')?.length || 0;
   
+  // Estados para contadores reales
+  const [voucherStats, setVoucherStats] = useState({ total: 0, pending: 0 });
+  const [subscriptionStats, setSubscriptionStats] = useState({ total: 0, active: 0 });
+  
   // Calcular estadísticas adicionales
   const totalClients = clients?.length || 0;
   const totalDeliveryPersons = deliveryStats?.totalPersons || 0;
-  const totalVales = valeOrders;
-  const totalSubscriptions = suscripcionOrders;
   
   // Debug logs
   console.log('🔍 Dashboard Debug:', {
@@ -118,24 +153,24 @@ const Dashboard = () => {
       icon: FaCalendarAlt,
       color: 'purple',
       onClick: () => navigate('/dashboard/subscriptions'),
-      count: totalSubscriptions,
-      description: 'Planes activos'
+      count: subscriptionStats.active,
+      description: `${subscriptionStats.total} total, ${subscriptionStats.active} activas`
     },
     {
       title: 'Vales',
       icon: FaCreditCard,
       color: 'blue',
       onClick: () => navigate('/dashboard/vales'),
-      count: totalVales,
-      description: 'Vales pendientes'
+      count: voucherStats.pending,
+      description: `${voucherStats.total} total, ${voucherStats.pending} pendientes`
     },
     {
       title: 'Cobranza',
       icon: FaFileAlt,
       color: 'red',
       onClick: () => navigate('/dashboard/collection-report'),
-      count: totalVales,
-      description: 'Reportes de deuda'
+      count: voucherStats.pending,
+      description: 'Vales por cobrar'
     },
     {
       title: 'Repartidores',
@@ -188,6 +223,8 @@ const Dashboard = () => {
               fetchGuestOrders();
               fetchClients();
               fetchDeliveryPersons();
+              fetchVoucherStats();
+              fetchSubscriptionStats();
               setLastUpdate(new Date());
             }}
           >

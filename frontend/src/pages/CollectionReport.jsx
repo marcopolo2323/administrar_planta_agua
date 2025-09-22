@@ -375,7 +375,7 @@ const CollectionReport = () => {
                   
                   <Text fontWeight="bold">Detalle de Vales:</Text>
                   
-                  {(selectedClient.vales || []).map((vale, index) => (
+                  {(selectedClient.vouchers || selectedClient.vales || []).map((vale, index) => (
                     <Card key={vale.id} variant="outline" size="sm">
                       <CardBody>
                         <VStack spacing={2} align="stretch">

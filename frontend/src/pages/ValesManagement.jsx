@@ -357,6 +357,7 @@ const ValesManagement = () => {
                     <Th>Total del Pedido</Th>
                     <Th>Estado</Th>
                     <Th>Fecha Creación</Th>
+                    <Th>Fecha Vencimiento</Th>
                     <Th>Acciones</Th>
                   </Tr>
                 </Thead>
@@ -409,6 +410,16 @@ const ValesManagement = () => {
                         </Text>
                       </Td>
                       <Td>
+                        <Text fontSize="sm" color={vale.dueDate && new Date(vale.dueDate) < new Date() ? 'red.500' : 'gray.700'}>
+                          {vale.dueDate ? new Date(vale.dueDate).toLocaleDateString() : 'Sin vencimiento'}
+                        </Text>
+                        {vale.dueDate && new Date(vale.dueDate) < new Date() && (
+                          <Text fontSize="xs" color="red.500" fontWeight="bold">
+                            VENCIDO
+                          </Text>
+                        )}
+                      </Td>
+                      <Td>
                         <HStack spacing={2}>
                           <Tooltip label="Ver detalles">
                             <IconButton
@@ -418,15 +429,6 @@ const ValesManagement = () => {
                                 setSelectedVale(vale);
                                 onDetailOpen();
                               }}
-                            />
-                          </Tooltip>
-                          <Tooltip label="Marcar como entregado">
-                            <IconButton
-                              size="sm"
-                              icon={<FaCheckCircle />}
-                              colorScheme="green"
-                              isDisabled={vale.status === 'delivered'}
-                              onClick={() => handleStatusUpdate(vale.id, 'delivered')}
                             />
                           </Tooltip>
                         </HStack>
