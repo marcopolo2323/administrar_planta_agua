@@ -685,11 +685,7 @@ const GuestOrderNew = () => {
             selectedSubscription: selectedSubscription
           });
           
-          await axios.post('/api/subscriptions/use-bottles', {
-            subscriptionId: selectedSubscription.id,
-            bottlesToUse: totalBottles
-          });
-
+          // Los bidones ya se descuentan automáticamente en el backend
           console.log('🔍 Respuesta completa del pedido:', response.data);
           const orderId = response.data.data?.id || response.data.id || 'Sin ID';
           
