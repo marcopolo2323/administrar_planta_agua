@@ -5,9 +5,11 @@ const { generateUniqueAccessToken } = require('../utils/security');
 // Crear un nuevo pedido de invitado o cliente frecuente
 exports.createGuestOrder = async (req, res) => {
   const transaction = await sequelize.transaction();
+  const executionId = Math.random().toString(36).substr(2, 9);
   
   try {
-    console.log('Datos recibidos en createGuestOrder:', req.body);
+    console.log(`🆔 [${executionId}] INICIANDO createGuestOrder`);
+    console.log(`🆔 [${executionId}] Datos recibidos en createGuestOrder:`, req.body);
     
     // Manejar tanto el formato antiguo como el nuevo
     const {
@@ -163,7 +165,11 @@ exports.createGuestOrder = async (req, res) => {
 
     // Si el método de pago es suscripción, descontar bidones de la suscripción activa del cliente
     if (paymentMethod === 'suscripcion' && clientId && finalProducts && finalProducts.length > 0) {
-      console.log('Descontando bidones de suscripción para cliente:', clientId);
+      console.log(`🎯 [${executionId}] INICIANDO DESCUENTO DE SUSCRIPCIÓN`);
+      console.log(`🎯 [${executionId}] Descontando bidones de suscripción para cliente:`, clientId);
+      console.log(`🎯 [${executionId}] Método de pago:`, paymentMethod);
+      console.log(`🎯 [${executionId}] ClientId:`, clientId);
+      console.log(`🎯 [${executionId}] FinalProducts length:`, finalProducts.length);
       
       try {
         // Buscar suscripción activa del cliente
@@ -181,13 +187,24 @@ exports.createGuestOrder = async (req, res) => {
           // Calcular total de BIDONES a descontar (solo productos tipo 'bidon')
           let totalBottlesToUse = 0;
           
+          console.log(`🔍 [${executionId}] Productos a procesar para descuento:`, finalProducts);
+          
           for (const item of finalProducts) {
             const product = await Product.findByPk(item.productId);
+            console.log(`🔍 Procesando item:`, {
+              productId: item.productId,
+              quantity: item.quantity,
+              product: product ? { name: product.name, type: product.type } : 'No encontrado'
+            });
+            
             if (product && product.type === 'bidon') {
-              totalBottlesToUse += item.quantity;
-              console.log(`Descontando bidón: ${product.name} x${item.quantity}`);
+              const quantityToAdd = parseInt(item.quantity);
+              totalBottlesToUse += quantityToAdd;
+              console.log(`✅ Descontando bidón: ${product.name} x${quantityToAdd} (total acumulado: ${totalBottlesToUse})`);
             } else if (product) {
-              console.log(`Producto no es bidón, no se descuenta: ${product.name} (tipo: ${product.type})`);
+              console.log(`ℹ️  Producto no es bidón, no se descuenta: ${product.name} (tipo: ${product.type})`);
+            } else {
+              console.log(`⚠️  Producto no encontrado para ID: ${item.productId}`);
             }
           }
           
@@ -197,10 +214,18 @@ exports.createGuestOrder = async (req, res) => {
             const newRemainingBottles = activeSubscription.remainingBottles - totalBottlesToUse;
             const newStatus = newRemainingBottles === 0 ? 'completed' : 'active';
             
+            console.log(`🔄 [${executionId}] ANTES del descuento: ${activeSubscription.remainingBottles} bidones`);
+            console.log(`🔄 [${executionId}] Descontando: ${totalBottlesToUse} bidones`);
+            console.log(`🔄 [${executionId}] DESPUÉS debería quedar: ${newRemainingBottles} bidones`);
+            
             await activeSubscription.update({
               remainingBottles: newRemainingBottles,
               status: newStatus
             }, { transaction });
+            
+            // Verificar que se actualizó correctamente
+            await activeSubscription.reload({ transaction });
+            console.log(`✅ [${executionId}] CONFIRMACIÓN - Bidones después de actualización: ${activeSubscription.remainingBottles}`);
             
             // Actualizar el pedido con la referencia a la suscripción
             await guestOrder.update({
