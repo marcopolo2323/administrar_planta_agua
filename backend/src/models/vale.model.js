@@ -11,7 +11,7 @@ const Vale = sequelize.define('Vale', {
     type: DataTypes.INTEGER,
     allowNull: true,
     references: {
-      model: 'Client',
+      model: 'Clients',
       key: 'id'
     }
   },

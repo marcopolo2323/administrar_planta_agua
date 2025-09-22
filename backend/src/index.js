@@ -16,7 +16,7 @@ const allowedOrigins = [
   'http://localhost:3000'
 ];
 app.use(cors({
-  origin: allowedOrigins,
+  origin: allowedOrijkjgins,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
@@ -146,6 +146,18 @@ app.get('/test-order-creation', async (req, res) => {
 });
 
 // ENDPOINT DE DIAGNÓSTICO
+app.get('/verify-table-names', async (req, res) => {
+  try {
+    console.log('🔍 Verificando nombres de tablas...');
+    const { verifyTableNames } = require('./scripts/verifyTableNames');
+    await verifyTableNames();
+    res.json({ success: true, message: 'Verificación de nombres completada - ver logs' });
+  } catch (error) {
+    console.error('❌ Error verificando nombres:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 app.get('/check-db', async (req, res) => {
   try {
     console.log('🔍 Verificando conexión a base de datos...');
@@ -215,9 +227,9 @@ app.get('/create-tables', async (req, res) => {
     await Client.sync({ force: false });
     await DeliveryPerson.sync({ force: false });
     await Subscription.sync({ force: false });
-    await Vale.sync({ force: false });
     
     console.log('🔗 Creando tablas con foreign keys...');
+    await Vale.sync({ force: false });
     await ClientPreferences.sync({ force: false });
     await GuestOrder.sync({ force: false });
     await GuestOrderProduct.sync({ force: false });
@@ -310,10 +322,10 @@ app.get('/full-reset', async (req, res) => {
     await Client.sync({ force: false });
     await DeliveryPerson.sync({ force: false });
     await Subscription.sync({ force: false });
-    await Vale.sync({ force: false });
     
     // Luego las que tienen foreign keys
     console.log('🔗 Creando tablas con foreign keys...');
+    await Vale.sync({ force: false });
     await ClientPreferences.sync({ force: false });
     await GuestOrder.sync({ force: false });
     await GuestOrderProduct.sync({ force: false });
@@ -1031,6 +1043,7 @@ async function startServer() {
       console.log(`   - POST /api/guest-orders - Crear pedido de invitado`);
       console.log(`📋 Endpoints de diagnóstico:`);
       console.log(`   - GET /check-db - Verificar conexión a base de datos`);
+      console.log(`   - GET /verify-table-names - Verificar nombres de tablas`);
       console.log(`📋 Endpoints de reset:`);
       console.log(`   - GET /drop-all-tables - Eliminar todas las tablas`);
       console.log(`   - GET /create-tables - Crear tablas solamente`);

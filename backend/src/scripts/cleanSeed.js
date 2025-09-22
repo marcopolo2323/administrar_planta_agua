@@ -45,10 +45,10 @@ async function cleanSeed() {
     await Subscription.sync({ force: false });
     console.log('   ✅ Subscription');
     
+    // Luego las que tienen foreign keys
     await Vale.sync({ force: false });
     console.log('   ✅ Vale');
     
-    // Luego las que tienen foreign keys
     await ClientPreferences.sync({ force: false });
     console.log('   ✅ ClientPreferences');
     
