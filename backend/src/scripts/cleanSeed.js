@@ -212,53 +212,53 @@ async function cleanSeed() {
       const clients = [
         {
           name: 'Marco Sunino',
-          document: '76543217',
+          documentType: 'DNI',
+          documentNumber: '76543217',
           phone: '987654321',
           email: 'marco@gmail.com',
           address: 'Jr. Calidas 123',
-          districtId: manantayDistrict?.id,
-          isActive: true
+          district: manantayDistrict?.name || 'MANANTAY',
+          active: true
         },
         {
           name: 'Ana García',
-          document: '12345678',
+          documentType: 'DNI',
+          documentNumber: '12345678',
           phone: '912345678',
           email: 'ana@gmail.com',
           address: 'Av. Principal 456',
-          districtId: calleriaDistrict?.id,
-          isActive: true
+          district: calleriaDistrict?.name || 'CALLERIA',
+          active: true
         }
       ];
       
       for (const client of clients) {
-        if (client.districtId) {
-          await Client.findOrCreate({
-            where: { document: client.document },
-            defaults: client
-          });
-        }
+        await Client.findOrCreate({
+          where: { documentNumber: client.documentNumber },
+          defaults: client
+        });
       }
       console.log('✅ Clientes de ejemplo creados');
     }
     
     // 9. Seed de Suscripciones de ejemplo
     console.log('📋 Seeding suscripciones de ejemplo...');
-    const marcoClient = await Client.findOne({ where: { document: '76543217' } });
+    const marcoClient = await Client.findOne({ where: { documentNumber: '76543217' } });
     
     if (marcoClient) {
       await Subscription.findOrCreate({
-        where: { client_dni: marcoClient.document },
+        where: { clientDni: marcoClient.documentNumber },
         defaults: {
-          client_id: marcoClient.id,
-          client_dni: marcoClient.document,
-          subscription_type: 'monthly',
-          total_bottles: 20,
-          remaining_bottles: 15,
-          total_amount: 140.00,
-          paid_amount: 140.00,
+          clientId: marcoClient.id,
+          clientDni: marcoClient.documentNumber,
+          subscriptionType: 'monthly',
+          totalBottles: 20,
+          remainingBottles: 15,
+          totalAmount: 140.00,
+          paidAmount: 140.00,
           status: 'active',
-          purchase_date: new Date(),
-          expiry_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 días
+          purchaseDate: new Date(),
+          expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 días
           notes: 'Suscripción mensual activa'
         }
       });
@@ -269,10 +269,10 @@ async function cleanSeed() {
     console.log('⚙️  Seeding preferencias de cliente...');
     if (marcoClient) {
       await ClientPreferences.findOrCreate({
-        where: { dni: marcoClient.document },
+        where: { dni: marcoClient.documentNumber },
         defaults: {
           clientId: marcoClient.id,
-          dni: marcoClient.document,
+          dni: marcoClient.documentNumber,
           preferredPaymentMethod: 'contraentrega',
           subscriptionPlanId: null,
           subscriptionAmount: null,
