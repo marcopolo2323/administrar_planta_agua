@@ -68,13 +68,30 @@ const Dashboard = () => {
   };
 
   useEffect(() => {
-    fetchProducts();
-    fetchClients();
-    fetchDeliveryPersons();
-    fetchDeliveryFees();
-    fetchGuestOrders();
-    fetchVoucherStats();
-    fetchSubscriptionStats();
+    // Función para cargar datos con retraso para evitar problemas de token
+    const loadData = async () => {
+      try {
+        // Pequeño retraso para asegurar que el token esté listo
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        fetchProducts();
+        fetchClients();
+        fetchDeliveryFees();
+        fetchGuestOrders();
+        fetchVoucherStats();
+        fetchSubscriptionStats();
+        
+        // Cargar repartidores con un pequeño retraso adicional
+        setTimeout(() => {
+          fetchDeliveryPersons();
+        }, 200);
+        
+      } catch (error) {
+        console.error('Error cargando datos del dashboard:', error);
+      }
+    };
+    
+    loadData();
     
     // Actualizar cada 30 segundos para mantener sincronización
     const interval = setInterval(() => {

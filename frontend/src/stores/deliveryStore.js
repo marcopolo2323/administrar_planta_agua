@@ -80,15 +80,24 @@ const useDeliveryStore = create((set, get) => ({
   fetchDeliveryPersons: async () => {
     set({ loading: true, error: null });
     try {
+      console.log('🔄 fetchDeliveryPersons iniciado');
+      const token = localStorage.getItem('token');
+      console.log('🔑 Token actual:', token ? 'Presente' : 'Ausente');
+      
       const response = await axios.get('/api/user-management?role=repartidor');
+      console.log('📦 Respuesta repartidores:', response.data);
+      
       const data = response.data.success ? response.data.data : response.data;
       set({ 
         deliveryPersons: data, 
         loading: false 
       });
+      console.log('✅ Repartidores cargados:', data.length);
       return { success: true, data: data };
     } catch (error) {
-      console.error('Error al cargar repartidores:', error);
+      console.error('❌ Error al cargar repartidores:', error);
+      console.error('❌ Status:', error.response?.status);
+      console.error('❌ Message:', error.response?.data?.message);
       set({ 
         error: error.response?.data?.message || 'Error al cargar repartidores',
         loading: false 
