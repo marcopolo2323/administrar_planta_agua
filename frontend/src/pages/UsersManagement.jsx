@@ -106,11 +106,11 @@ const UsersManagement = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      setUsers(response.data.data);
+      setUsers(response.data.data || []);
       setPagination(prev => ({
         ...prev,
-        total: response.data.pagination.total,
-        pages: response.data.pagination.pages
+        total: response.data.pagination?.total || 0,
+        pages: response.data.pagination?.pages || 1
       }));
     } catch (error) {
       console.error('Error fetching users:', error);

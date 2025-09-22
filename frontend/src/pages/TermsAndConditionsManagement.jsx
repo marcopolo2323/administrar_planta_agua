@@ -85,11 +85,11 @@ const TermsAndConditionsManagement = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      setTerms(response.data.data);
+      setTerms(response.data.data || []);
       setPagination(prev => ({
         ...prev,
-        total: response.data.pagination.total,
-        pages: response.data.pagination.pages
+        total: response.data.pagination?.total || 0,
+        pages: response.data.pagination?.pages || 1
       }));
     } catch (error) {
       console.error('Error fetching terms:', error);

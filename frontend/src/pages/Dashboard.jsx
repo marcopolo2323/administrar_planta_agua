@@ -18,7 +18,7 @@ import {
   Badge
 } from '@chakra-ui/react';
 import { useNavigate } from 'react-router-dom';
-import { FaUsers, FaTruck, FaCreditCard, FaDollarSign, FaShoppingCart, FaCalendarAlt, FaFileAlt, FaUserTie } from 'react-icons/fa';
+import { FaUsers, FaTruck, FaCreditCard, FaDollarSign, FaShoppingCart, FaCalendarAlt, FaFileAlt, FaUserTie, FaFileContract, FaUserCog } from 'react-icons/fa';
 import useProductStore from '../stores/productStore';
 import useClientStore from '../stores/clientStore';
 import useDeliveryStore from '../stores/deliveryStore';
@@ -179,6 +179,22 @@ const Dashboard = () => {
       onClick: () => navigate('/dashboard/delivery-persons'),
       count: totalDeliveryPersons,
       description: 'Equipo de entrega'
+    },
+    {
+      title: 'Términos',
+      icon: FaFileContract,
+      color: 'teal',
+      onClick: () => navigate('/dashboard/terms-and-conditions'),
+      count: 0,
+      description: 'Términos y condiciones'
+    },
+    {
+      title: 'Usuarios',
+      icon: FaUserCog,
+      color: 'cyan',
+      onClick: () => navigate('/dashboard/users-management'),
+      count: 0,
+      description: 'Gestión de usuarios'
     }
   ];
 
