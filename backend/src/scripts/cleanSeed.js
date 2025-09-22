@@ -10,7 +10,8 @@ const {
   Voucher,
   Vale,
   Subscription,
-  ClientPreferences
+  ClientPreferences,
+  DeliveryFee
 } = require('../models');
 
 async function cleanSeed() {
@@ -44,6 +45,9 @@ async function cleanSeed() {
     
     await Subscription.sync({ force: false });
     console.log('   ✅ Subscription');
+    
+    await DeliveryFee.sync({ force: false });
+    console.log('   ✅ DeliveryFee');
     
     // Luego las que tienen foreign keys
     await Vale.sync({ force: false });
@@ -86,7 +90,65 @@ async function cleanSeed() {
     }
     console.log('✅ Distritos creados');
     
-    // 5. Seed de Productos
+    // 5. Seed de Tarifas de Envío
+    console.log('🚚 Seeding tarifas de envío...');
+    const deliveryFees = [
+      {
+        name: 'Manantay',
+        description: 'Flete para distrito de Manantay',
+        basePrice: 0.00,
+        pricePerKm: 0.00,
+        minOrderAmount: 0,
+        maxDistance: 999,
+        isActive: true
+      },
+      {
+        name: 'Callería',
+        description: 'Flete para distrito de Callería',
+        basePrice: 0.00,
+        pricePerKm: 0.00,
+        minOrderAmount: 0,
+        maxDistance: 999,
+        isActive: true
+      },
+      {
+        name: 'Campo Verde',
+        description: 'Flete para distrito de Campo Verde',
+        basePrice: 0.00,
+        pricePerKm: 0.00,
+        minOrderAmount: 0,
+        maxDistance: 999,
+        isActive: true
+      },
+      {
+        name: 'Yarinacocha',
+        description: 'Flete para distrito de Yarinacocha',
+        basePrice: 0.00,
+        pricePerKm: 0.00,
+        minOrderAmount: 0,
+        maxDistance: 999,
+        isActive: true
+      },
+      {
+        name: 'Nueva Requena',
+        description: 'Flete para distrito de Nueva Requena',
+        basePrice: 0.00,
+        pricePerKm: 0.00,
+        minOrderAmount: 0,
+        maxDistance: 999,
+        isActive: true
+      }
+    ];
+    
+    for (const fee of deliveryFees) {
+      await DeliveryFee.findOrCreate({
+        where: { name: fee.name },
+        defaults: fee
+      });
+    }
+    console.log('✅ Tarifas de envío creadas');
+    
+    // 6. Seed de Productos
     console.log('🥤 Seeding productos...');
     const products = [
       {
@@ -197,7 +259,7 @@ async function cleanSeed() {
       }
       
       // Importar clientes desde JSON
-      const { importClientsFromJson } = require('./importClientsFromJson');
+      const importClientsFromJson = require('./importClientsFromJson');
       await importClientsFromJson();
       console.log('✅ Clientes importados desde Excel');
       

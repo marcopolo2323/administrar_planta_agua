@@ -213,10 +213,10 @@ app.get('/create-tables', async (req, res) => {
     console.log('🔨 Creando tablas solamente...');
     
     // Importar modelos
-    const { 
+    const {
       District, Product, User, Client, DeliveryPerson, 
       Subscription, ClientPreferences, GuestOrder, 
-      GuestOrderProduct, Voucher, Vale 
+      GuestOrderProduct, Voucher, Vale, DeliveryFee
     } = require('./models');
     
     // Crear tablas en orden específico (sin foreign keys primero)
@@ -227,6 +227,7 @@ app.get('/create-tables', async (req, res) => {
     await Client.sync({ force: false });
     await DeliveryPerson.sync({ force: false });
     await Subscription.sync({ force: false });
+    await DeliveryFee.sync({ force: false });
     
     console.log('🔗 Creando tablas con foreign keys...');
     await Vale.sync({ force: false });
@@ -308,10 +309,10 @@ app.get('/full-reset', async (req, res) => {
     
     // 2. Crear tablas en orden correcto
     console.log('🔨 Paso 2: Creando tablas...');
-    const { 
+    const {
       District, Product, User, Client, DeliveryPerson, 
       Subscription, ClientPreferences, GuestOrder, 
-      GuestOrderProduct, Voucher, Vale 
+      GuestOrderProduct, Voucher, Vale, DeliveryFee
     } = require('./models');
     
     // Crear tablas independientes primero
@@ -322,6 +323,7 @@ app.get('/full-reset', async (req, res) => {
     await Client.sync({ force: false });
     await DeliveryPerson.sync({ force: false });
     await Subscription.sync({ force: false });
+    await DeliveryFee.sync({ force: false });
     
     // Luego las que tienen foreign keys
     console.log('🔗 Creando tablas con foreign keys...');
@@ -709,17 +711,6 @@ app.get('/diagnose', async (req, res) => {
     });
   }
 });
-// Rutas públicas (deben ir antes de las protegidas)
-app.get('/api/delivery-fees', async (req, res) => {
-  try {
-    const deliveryFees = await DeliveryFee.findAll();
-    res.json(deliveryFees);
-  } catch (error) {
-    console.error('Error al obtener tarifas de envío:', error);
-    res.status(500).json({ error: 'Error interno del servidor' });
-  }
-});
-
 // Usar las rutas
 app.use('/api/auth', authRoutes);
 app.use('/api/client', clientAuthRoutes);
