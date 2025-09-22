@@ -16,7 +16,7 @@ const allowedOrigins = [
   'http://localhost:3000'
 ];
 app.use(cors({
-  origin: allowedOrijkjgins,
+  origin: allowedOrigins,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
