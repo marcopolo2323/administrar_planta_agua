@@ -43,11 +43,13 @@ import {
 import { EditIcon, DeleteIcon, ViewIcon, AddIcon, ViewOffIcon } from '@chakra-ui/icons';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import axios from 'axios';
+import useAuthStore from '../stores/authStore';
 
 const UsersManagement = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { user: currentUser } = useAuthStore();
   const [selectedUser, setSelectedUser] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -104,31 +106,64 @@ const UsersManagement = () => {
       setLoading(true);
       const token = localStorage.getItem('token');
       console.log('🔑 Token para usuarios:', token ? 'Presente' : 'Ausente');
+      console.log('🔑 Token completo:', token);
       
-      const params = new URLSearchParams({
-        page: pagination.page,
-        limit: pagination.limit
-      });
-      
-      if (roleFilter !== 'all') {
-        params.append('role', roleFilter);
+      // Configurar el token en axios si no está configurado
+      if (token && !axios.defaults.headers.common['Authorization']) {
+        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        console.log('🔑 Token configurado en axios');
       }
-
-      console.log('🔄 Llamando a /api/user-management con params:', params.toString());
-      const response = await axios.get(`/api/user-management?${params}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      
+      // Verificar que el token esté en el header de axios
+      console.log('🔑 Header Authorization actual:', axios.defaults.headers.common['Authorization']);
+      
+      // Usar endpoint que sabemos que funciona - obtener usuarios por rol
+      console.log('🔄 Llamando a /api/users/role con role:', roleFilter);
+      
+      let response;
+      if (roleFilter === 'all') {
+        // Si es 'all', obtener usuarios de cada rol por separado
+        console.log('🔄 Obteniendo usuarios de todos los roles...');
+        const [adminUsers, vendedorUsers, repartidorUsers] = await Promise.all([
+          axios.get('/api/users/role?role=admin'),
+          axios.get('/api/users/role?role=vendedor'),
+          axios.get('/api/users/role?role=repartidor')
+        ]);
+        
+        console.log('📦 Admin users:', adminUsers.data);
+        console.log('📦 Vendedor users:', vendedorUsers.data);
+        console.log('📦 Repartidor users:', repartidorUsers.data);
+        
+        const allUsers = [
+          ...(adminUsers.data.success ? adminUsers.data.data : []),
+          ...(vendedorUsers.data.success ? vendedorUsers.data.data : []),
+          ...(repartidorUsers.data.success ? repartidorUsers.data.data : [])
+        ];
+        
+        response = { data: { success: true, data: allUsers } };
+      } else {
+        console.log('🔄 Obteniendo usuarios del rol:', roleFilter);
+        response = await axios.get(`/api/users/role?role=${roleFilter}`);
+      }
       
       console.log('📦 Respuesta usuarios:', response.data);
 
-      setUsers(response.data.data || []);
-      setPagination(prev => ({
-        ...prev,
-        total: response.data.pagination?.total || 0,
-        pages: response.data.pagination?.pages || 1
-      }));
+      if (response.data.success) {
+        setUsers(response.data.data || []);
+        setPagination(prev => ({
+          ...prev,
+          total: response.data.data?.length || 0,
+          pages: 1
+        }));
+      } else {
+        setUsers([]);
+        setPagination(prev => ({ ...prev, total: 0, pages: 1 }));
+      }
     } catch (error) {
       console.error('Error fetching users:', error);
+      console.error('Error details:', error.response?.data);
+      console.error('Error status:', error.response?.status);
+      console.error('Error headers:', error.response?.headers);
       toast({
         title: 'Error',
         description: 'Error al cargar usuarios',
@@ -136,6 +171,7 @@ const UsersManagement = () => {
         duration: 3000,
         isClosable: true
       });
+      setUsers([]);
     } finally {
       setLoading(false);
     }
@@ -248,9 +284,7 @@ const UsersManagement = () => {
 
       if (isCreating) {
         // Crear usuario
-        await axios.post('/api/users', submitData, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        await axios.post('/api/users', submitData);
         toast({
           title: 'Éxito',
           description: 'Usuario creado exitosamente',
@@ -260,9 +294,7 @@ const UsersManagement = () => {
         });
       } else {
         // Actualizar usuario
-        await axios.put(`/api/users/${selectedUser.id}`, submitData, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        await axios.put(`/api/users/${selectedUser.id}`, submitData);
         toast({
           title: 'Éxito',
           description: 'Usuario actualizado exitosamente',
@@ -289,9 +321,7 @@ const UsersManagement = () => {
   const handleToggleStatus = async (user) => {
     try {
       const token = localStorage.getItem('token');
-      await axios.patch(`/api/users/${user.id}/toggle-status`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await axios.patch(`/api/users/${user.id}/toggle-status`, {});
       
       toast({
         title: 'Éxito',
@@ -315,15 +345,25 @@ const UsersManagement = () => {
   };
 
   const handleDelete = async (user) => {
+    // Prevenir que el admin se elimine a sí mismo
+    if (currentUser && currentUser.id === user.id) {
+      toast({
+        title: 'Error',
+        description: 'No puedes eliminarte a ti mismo',
+        status: 'error',
+        duration: 3000,
+        isClosable: true
+      });
+      return;
+    }
+
     if (!window.confirm(`¿Estás seguro de eliminar al usuario "${user.username}"?`)) {
       return;
     }
 
     try {
       const token = localStorage.getItem('token');
-      await axios.delete(`/api/users/${user.id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await axios.delete(`/api/users/${user.id}`);
       
       toast({
         title: 'Éxito',
@@ -473,12 +513,15 @@ const UsersManagement = () => {
                           colorScheme="green"
                         />
                       </Tooltip>
-                      <Tooltip label="Eliminar">
+                      <Tooltip 
+                        label={currentUser && currentUser.id === user.id ? 'No puedes eliminarte a ti mismo' : 'Eliminar'}
+                      >
                         <IconButton
                           icon={<DeleteIcon />}
                           size="sm"
                           variant="ghost"
                           colorScheme="red"
+                          isDisabled={currentUser && currentUser.id === user.id}
                           onClick={() => handleDelete(user)}
                         />
                       </Tooltip>

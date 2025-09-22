@@ -43,8 +43,10 @@ const Dashboard = () => {
   const fetchVoucherStats = async () => {
     try {
       const response = await axios.get('/api/vouchers/stats');
+      console.log('📦 Respuesta vales:', response.data);
       if (response.data.success) {
         setVoucherStats(response.data.data);
+        console.log('✅ Estadísticas de vales actualizadas:', response.data.data);
       }
     } catch (error) {
       console.error('Error al cargar estadísticas de vales:', error);
@@ -55,9 +57,14 @@ const Dashboard = () => {
   const fetchSubscriptionStats = async () => {
     try {
       const response = await axios.get('/api/subscriptions');
+      console.log('📦 Respuesta suscripciones:', response.data);
       if (response.data.success) {
         const subscriptions = response.data.data || [];
         setSubscriptionStats({
+          total: subscriptions.length,
+          active: subscriptions.filter(s => s.status === 'active').length
+        });
+        console.log('✅ Estadísticas de suscripciones actualizadas:', {
           total: subscriptions.length,
           active: subscriptions.filter(s => s.status === 'active').length
         });
@@ -81,10 +88,6 @@ const Dashboard = () => {
         fetchVoucherStats();
         fetchSubscriptionStats();
         
-        // Cargar repartidores con un pequeño retraso adicional
-        setTimeout(() => {
-          fetchDeliveryPersons();
-        }, 200);
         
       } catch (error) {
         console.error('Error cargando datos del dashboard:', error);
@@ -97,14 +100,13 @@ const Dashboard = () => {
     const interval = setInterval(() => {
       fetchGuestOrders();
       fetchClients();
-      fetchDeliveryPersons();
       fetchVoucherStats();
       fetchSubscriptionStats();
       setLastUpdate(new Date());
     }, 30000);
     
     return () => clearInterval(interval);
-  }, [fetchProducts, fetchClients, fetchDeliveryPersons, fetchDeliveryFees, fetchGuestOrders]);
+  }, [fetchProducts, fetchClients, fetchDeliveryFees, fetchGuestOrders]);
 
   const orderStats = getOrderStats();
   const deliveryStats = getDeliveryStats();
@@ -128,14 +130,11 @@ const Dashboard = () => {
   
   // Calcular estadísticas adicionales
   const totalClients = clients?.length || 0;
-  const totalDeliveryPersons = deliveryStats?.totalPersons || 0;
   
   // Debug logs
   console.log('🔍 Dashboard Debug:', {
     clients: clients?.length || 0,
     totalClients,
-    deliveryPersons: deliveryStats?.totalPersons || 0,
-    totalDeliveryPersons,
     valeOrders,
     suscripcionOrders
   });
@@ -188,14 +187,6 @@ const Dashboard = () => {
       onClick: () => navigate('/dashboard/collection-report'),
       count: voucherStats.pending,
       description: 'Vales por cobrar'
-    },
-    {
-      title: 'Repartidores',
-      icon: FaUserTie,
-      color: 'indigo',
-      onClick: () => navigate('/dashboard/users-management?role=repartidor'),
-      count: totalDeliveryPersons,
-      description: 'Equipo de entrega'
     },
     {
       title: 'Términos',

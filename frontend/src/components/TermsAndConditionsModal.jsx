@@ -37,12 +37,8 @@ const TermsAndConditionsModal = ({
   
   const bgColor = useColorModeValue('white', 'gray.800');
   const textColor = useColorModeValue('gray.700', 'gray.200');
-
-  useEffect(() => {
-    if (isOpen) {
-      fetchActiveTerms();
-    }
-  }, [isOpen]);
+  const contentBgColor = useColorModeValue('gray.50', 'gray.700');
+  const borderColor = useColorModeValue('gray.200', 'gray.600');
 
   const fetchActiveTerms = async () => {
     try {
@@ -62,6 +58,12 @@ const TermsAndConditionsModal = ({
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchActiveTerms();
+    }
+  }, [isOpen]);
 
   const handleAccept = () => {
     if (accepted && onAccept) {
@@ -137,10 +139,10 @@ const TermsAndConditionsModal = ({
                 maxH="400px"
                 overflowY="auto"
                 p={4}
-                bg={useColorModeValue('gray.50', 'gray.700')}
+                bg={contentBgColor}
                 borderRadius="md"
                 border="1px solid"
-                borderColor={useColorModeValue('gray.200', 'gray.600')}
+                borderColor={borderColor}
               >
                 {terms.content}
               </Box>

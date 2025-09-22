@@ -145,6 +145,19 @@ app.get('/test-order-creation', async (req, res) => {
   }
 });
 
+// ENDPOINT DE PRUEBA PARA VERIFICAR DEPLOYMENT
+app.get('/test-new-routes', (req, res) => {
+  res.json({ 
+    success: true, 
+    message: 'Backend actualizado correctamente',
+    timestamp: new Date().toISOString(),
+    routes: {
+      userManagement: '/api/user-management',
+      termsAndConditions: '/api/terms-and-conditions'
+    }
+  });
+});
+
 // ENDPOINT DE DIAGNÓSTICO
 app.get('/verify-table-names', async (req, res) => {
   try {

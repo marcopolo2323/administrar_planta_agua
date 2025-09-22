@@ -1,16 +1,16 @@
 const express = require('express');
 const router = express.Router();
 const termsAndConditionsController = require('../controllers/termsAndConditions.controller');
-const { requireRole } = require('../middlewares/auth.middleware');
+const { authMiddleware, requireRole } = require('../middlewares/auth.middleware');
 
 // Rutas públicas
 router.get('/active', termsAndConditionsController.getActiveTerms);
 
-// Rutas protegidas (solo admin)
-router.get('/', requireRole(['admin']), termsAndConditionsController.getAllTerms);
-router.post('/', requireRole(['admin']), termsAndConditionsController.createTerms);
-router.put('/:id', requireRole(['admin']), termsAndConditionsController.updateTerms);
-router.patch('/:id/toggle', requireRole(['admin']), termsAndConditionsController.toggleTermsStatus);
-router.delete('/:id', requireRole(['admin']), termsAndConditionsController.deleteTerms);
+// Rutas protegidas (solo admin) - aplicar middleware individualmente
+router.get('/', authMiddleware, requireRole(['admin']), termsAndConditionsController.getAllTerms);
+router.post('/', authMiddleware, requireRole(['admin']), termsAndConditionsController.createTerms);
+router.put('/:id', authMiddleware, requireRole(['admin']), termsAndConditionsController.updateTerms);
+router.patch('/:id/toggle', authMiddleware, requireRole(['admin']), termsAndConditionsController.toggleTermsStatus);
+router.delete('/:id', authMiddleware, requireRole(['admin']), termsAndConditionsController.deleteTerms);
 
 module.exports = router;

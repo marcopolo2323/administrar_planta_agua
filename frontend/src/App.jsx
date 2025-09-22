@@ -30,8 +30,15 @@ const App = () => {
 
   useEffect(() => {
     const initAuth = async () => {
-      await checkAuth();
-      setLoading(false);
+      try {
+        console.log('🔄 Iniciando verificación de autenticación...');
+        const isAuthenticated = await checkAuth();
+        console.log('✅ Verificación completada, autenticado:', isAuthenticated);
+      } catch (error) {
+        console.error('❌ Error en verificación de autenticación:', error);
+      } finally {
+        setLoading(false);
+      }
     };
 
     initAuth();

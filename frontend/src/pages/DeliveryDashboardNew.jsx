@@ -745,10 +745,19 @@ const DeliveryDashboardNew = () => {
             Panel de Repartidor
           </Heading>
             <Text color="gray.600" fontSize={{ base: "xs", md: "md" }}>
-            Bienvenido, {user?.firstName && user?.lastName 
-              ? `${user.firstName} ${user.lastName}` 
-              : user?.username || 'Repartidor'
-            }. Gestiona tus entregas asignadas.
+            Bienvenido, {(() => {
+              console.log('🔍 Verificando nombre del usuario:', {
+                firstName: user?.firstName,
+                lastName: user?.lastName,
+                username: user?.username,
+                hasFirstName: !!user?.firstName,
+                hasLastName: !!user?.lastName,
+                bothNames: !!(user?.firstName && user?.lastName)
+              });
+              return user?.firstName && user?.lastName 
+                ? `${user.firstName} ${user.lastName}` 
+                : user?.username || 'Repartidor';
+            })()}. Gestiona tus entregas asignadas.
           </Text>
           </VStack>
         </Box>

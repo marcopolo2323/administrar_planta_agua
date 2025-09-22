@@ -15,7 +15,7 @@ exports.getUsersByRole = async (req, res) => {
 
     const users = await User.findAll({
       where: { role: role },
-      attributes: ['id', 'username', 'email', 'role'],
+      attributes: ['id', 'username', 'email', 'role', 'firstName', 'lastName', 'isActive', 'createdAt'],
       order: [['username', 'ASC']]
     });
 
@@ -36,14 +36,34 @@ exports.getUsersByRole = async (req, res) => {
 // Obtener todos los usuarios (solo para admin)
 exports.getAllUsers = async (req, res) => {
   try {
-    const users = await User.findAll({
-      attributes: ['id', 'username', 'email', 'role'],
-      order: [['username', 'ASC']]
+    const { page = 1, limit = 10, role } = req.query;
+    const offset = (page - 1) * limit;
+    
+    // Construir filtros
+    const whereClause = {};
+    if (role && role !== 'all') {
+      whereClause.role = role;
+    }
+    
+    const { count, rows: users } = await User.findAndCountAll({
+      where: whereClause,
+      attributes: ['id', 'username', 'email', 'role', 'firstName', 'lastName', 'isActive', 'createdAt'],
+      order: [['username', 'ASC']],
+      limit: parseInt(limit),
+      offset: parseInt(offset)
     });
+
+    const totalPages = Math.ceil(count / limit);
 
     res.json({
       success: true,
-      data: users
+      data: users,
+      pagination: {
+        total: count,
+        pages: totalPages,
+        currentPage: parseInt(page),
+        limit: parseInt(limit)
+      }
     });
   } catch (error) {
     console.error('Error al obtener usuarios:', error);
@@ -97,6 +117,42 @@ exports.updateUser = async (req, res) => {
     });
   } catch (error) {
     console.error('Error al actualizar usuario:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+};
+
+// Cambiar estado activo/inactivo de usuario
+exports.toggleUserStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const user = await User.findByPk(id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuario no encontrado'
+      });
+    }
+
+    // Cambiar el estado
+    user.isActive = !user.isActive;
+    await user.save();
+
+    res.json({
+      success: true,
+      message: `Usuario ${user.isActive ? 'activado' : 'desactivado'} exitosamente`,
+      data: {
+        id: user.id,
+        username: user.username,
+        isActive: user.isActive
+      }
+    });
+  } catch (error) {
+    console.error('Error al cambiar estado del usuario:', error);
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor',
