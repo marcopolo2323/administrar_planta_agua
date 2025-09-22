@@ -116,6 +116,7 @@ exports.getVouchersByOrder = async (req, res) => {
           status: voucher.status,
           createdAt: voucher.createdAt,
           updatedAt: voucher.updatedAt,
+          dueDate: voucher.dueDate,
           totalAmount: 0,
           products: [],
           voucherIds: []

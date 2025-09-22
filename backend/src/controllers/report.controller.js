@@ -647,8 +647,12 @@ exports.generateCollectionReport = async (req, res) => {
         quantity: voucher.quantity,
         unitPrice: voucher.unitPrice,
         totalAmount: voucher.totalAmount,
+        amount: voucher.totalAmount, // Para compatibilidad con frontend
+        usedAmount: 0, // Los vales pendientes no han sido usados
+        remainingAmount: voucher.totalAmount, // Pendiente = total
         product: voucher.product,
-        createdAt: voucher.createdAt
+        createdAt: voucher.createdAt,
+        status: voucher.status
       });
       
       totalDebt += amount;

@@ -141,6 +141,10 @@ exports.createGuestOrder = async (req, res) => {
           finalProducts.map(async (item) => {
             const product = await Product.findByPk(item.productId);
             if (product) {
+              // Establecer fecha de vencimiento (30 días desde hoy)
+              const dueDate = new Date();
+              dueDate.setDate(dueDate.getDate() + 30);
+              
               return await Voucher.create({
                 clientId: clientId,
                 deliveryPersonId: null, // Se asignará cuando se asigne el pedido
@@ -150,6 +154,7 @@ exports.createGuestOrder = async (req, res) => {
                 totalAmount: parseFloat(item.subtotal || (item.price || item.unitPrice) * item.quantity),
                 status: 'pending',
                 guestOrderId: guestOrder.id,
+                dueDate: dueDate,
                 notes: `Vale generado automáticamente para pedido #${guestOrder.id}`
               }, { transaction });
             }

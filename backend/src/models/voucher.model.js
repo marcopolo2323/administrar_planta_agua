@@ -67,6 +67,10 @@ const Voucher = sequelize.define('Voucher', {
   notes: {
     type: DataTypes.TEXT,
     allowNull: true
+  },
+  dueDate: {
+    type: DataTypes.DATE,
+    allowNull: true
   }
 }, {
   timestamps: true,

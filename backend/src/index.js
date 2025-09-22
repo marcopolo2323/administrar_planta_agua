@@ -170,6 +170,18 @@ app.get('/add-client-id-to-guest-order', async (req, res) => {
   }
 });
 
+app.get('/add-due-date-to-vouchers', async (req, res) => {
+  try {
+    console.log('🔧 Agregando dueDate a Vouchers...');
+    const { addDueDateToVouchers } = require('./scripts/addDueDateToVouchers');
+    await addDueDateToVouchers();
+    res.json({ success: true, message: 'Columna dueDate agregada exitosamente a Vouchers' });
+  } catch (error) {
+    console.error('❌ Error agregando dueDate:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 app.get('/check-db', async (req, res) => {
   try {
     console.log('🔍 Verificando conexión a base de datos...');
