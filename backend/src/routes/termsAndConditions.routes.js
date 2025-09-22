@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const termsAndConditionsController = require('../controllers/termsAndConditions.controller');
-const { requireRole } = require('../middleware/auth.middleware');
+const { requireRole } = require('../middlewares/auth.middleware');
 
 // Rutas públicas
 router.get('/active', termsAndConditionsController.getActiveTerms);
