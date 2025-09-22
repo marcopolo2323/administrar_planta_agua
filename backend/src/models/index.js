@@ -12,6 +12,7 @@ const District = require('./district.model');
 const Voucher = require('./voucher.model');
 const Vale = require('./vale.model');
 const Subscription = require('./subscription.model');
+const SubscriptionPlan = require('./subscriptionPlan.model');
 const ClientPreferences = require('./clientPreferences.model');
 const TermsAndConditions = require('./termsAndConditions.model');
 
@@ -131,6 +132,7 @@ module.exports = {
   Voucher,
   Vale,
   Subscription,
+  SubscriptionPlan,
   ClientPreferences,
   TermsAndConditions
 };

@@ -28,29 +28,12 @@ instance.interceptors.request.use(
     return config;
   },
   (error) => {
-    console.error('❌ Error en la solicitud:', error);
+    console.error('❌ Error en interceptor de request:', error);
     return Promise.reject(error);
   }
 );
 
-// Variable para evitar múltiples intentos de renovación
-let isRefreshing = false;
-let failedQueue = [];
-
-// Función para procesar la cola de solicitudes fallidas
-const processQueue = (error, token = null) => {
-  failedQueue.forEach(prom => {
-    if (error) {
-      prom.reject(error);
-    } else {
-      prom.resolve(token);
-    }
-  });
-  
-  failedQueue = [];
-};
-
-// Interceptor para manejar errores de respuesta
+// Interceptor para manejar respuestas
 instance.interceptors.response.use(
   (response) => {
     console.log('📦 Respuesta recibida de:', response.config.url);
@@ -60,64 +43,42 @@ instance.interceptors.response.use(
   },
   async (error) => {
     const originalRequest = error.config;
-    
-    // Solo intentar renovar token si hay un token en localStorage y es un error 401
     const token = localStorage.getItem('token');
+    
+    console.log('❌ Error en respuesta:', error.response?.status, error.config?.url);
+    
+    // Si el error es 401 y hay un token, intentar renovarlo
     if (error.response && error.response.status === 401 && !originalRequest._retry && token && !originalRequest.url?.includes('/auth/profile')) {
-      if (isRefreshing) {
-        // Si ya estamos renovando, agregar a la cola
-        return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        }).then(token => {
-          originalRequest.headers['Authorization'] = 'Bearer ' + token;
-          return instance(originalRequest);
-        }).catch(err => {
-          return Promise.reject(err);
-        });
-      }
-
+      console.log('🔄 Token expirado, se reintentará automáticamente');
       originalRequest._retry = true;
-      isRefreshing = true;
-
+      
       try {
-        console.log('🔄 Intentando renovar token...');
         // Intentar renovar el token
-        const response = await instance.post('/api/auth/refresh');
-        const { token } = response.data;
+        const refreshResponse = await axios.post(`${import.meta.env.VITE_API_URL || 'https://aquayara.onrender.com'}/api/auth/refresh`, {}, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
         
-        localStorage.setItem('token', token);
-        instance.defaults.headers.common['Authorization'] = 'Bearer ' + token;
-        
-        console.log('✅ Token renovado exitosamente');
-        processQueue(null, token);
-        
-        // Reintentar la solicitud original
-        originalRequest.headers['Authorization'] = 'Bearer ' + token;
-        return instance(originalRequest);
-        
+        if (refreshResponse.data.success) {
+          const newToken = refreshResponse.data.token;
+          localStorage.setItem('token', newToken);
+          originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
+          console.log('✅ Token renovado exitosamente');
+          return instance(originalRequest);
+        }
       } catch (refreshError) {
         console.error('❌ Error al renovar token:', refreshError);
-        processQueue(refreshError, null);
-        
-        // Solo cerrar sesión si es un error de autenticación (401) o autorización (403)
-        if (refreshError.response && (refreshError.response.status === 401 || refreshError.response.status === 403)) {
-          console.log('🚪 Cerrando sesión por fallo en renovación');
-          localStorage.removeItem('token');
-          window.location.href = '/';
-        }
+        // Si falla la renovación, redirigir al login
+        localStorage.removeItem('token');
+        window.location.href = '/login';
         return Promise.reject(refreshError);
-      } finally {
-        isRefreshing = false;
       }
     }
     
-    // Para otros errores, solo logear
-    if (error.response && error.response.status === 403) {
-      console.log('Error de autorización:', error.response.data);
-    } else if (error.response && error.response.status === 404) {
+    // Si es un error 404, mostrar mensaje más claro
+    if (error.response && error.response.status === 404) {
       console.log('Recurso no encontrado:', error.response.data);
-    } else if (error.response && error.response.status === 500) {
-      console.error('Error del servidor:', error.response.data);
     }
     
     return Promise.reject(error);

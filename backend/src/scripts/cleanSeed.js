@@ -12,7 +12,8 @@ const {
   Subscription,
   ClientPreferences,
   DeliveryFee,
-  TermsAndConditions
+  TermsAndConditions,
+  SubscriptionPlan
 } = require('../models');
 
 async function cleanSeed() {
@@ -347,7 +348,94 @@ async function cleanSeed() {
     const seedTermsAndConditions = require('./seedTermsAndConditions');
     await seedTermsAndConditions();
     
-    // 12. Verificar que todo está correcto
+    // 12. Poblar planes de suscripción
+    console.log('📋 Poblando planes de suscripción...');
+    const subscriptionPlans = [
+      {
+        name: 'Plan 15 Bidones',
+        description: 'Por cada 15 bidones: 1 recarga mensual gratis',
+        totalBottles: 15,
+        bonusBottles: 1,
+        monthlyPrice: 75.00,
+        pricePerBottle: 5.00,
+        bonusPercentage: 6.67,
+        maxDailyDelivery: 2,
+        sortOrder: 1
+      },
+      {
+        name: 'Plan 25 Bidones',
+        description: 'Por cada 25 bidones: 2 recargas mensual gratis',
+        totalBottles: 25,
+        bonusBottles: 2,
+        monthlyPrice: 125.00,
+        pricePerBottle: 5.00,
+        bonusPercentage: 8.00,
+        maxDailyDelivery: 3,
+        sortOrder: 2
+      },
+      {
+        name: 'Plan 30 Bidones',
+        description: 'Por cada 30 bidones: 5 recargas mensual gratis',
+        totalBottles: 30,
+        bonusBottles: 5,
+        monthlyPrice: 150.00,
+        pricePerBottle: 5.00,
+        bonusPercentage: 16.67,
+        maxDailyDelivery: 4,
+        sortOrder: 3
+      },
+      {
+        name: 'Plan 40 Bidones',
+        description: 'Por cada 40 bidones: 7 recargas mensual gratis',
+        totalBottles: 40,
+        bonusBottles: 7,
+        monthlyPrice: 196.00,
+        pricePerBottle: 4.90,
+        bonusPercentage: 17.50,
+        maxDailyDelivery: 5,
+        sortOrder: 4
+      },
+      {
+        name: 'Plan 50 Bidones',
+        description: 'Por cada 50 bidones: 8 recargas mensual gratis',
+        totalBottles: 50,
+        bonusBottles: 8,
+        monthlyPrice: 235.00,
+        pricePerBottle: 4.70,
+        bonusPercentage: 16.00,
+        maxDailyDelivery: 6,
+        sortOrder: 5
+      },
+      {
+        name: 'Plan 100 Bidones',
+        description: 'Por cada 100 bidones: 9 recargas mensual gratis',
+        totalBottles: 100,
+        bonusBottles: 9,
+        monthlyPrice: 460.00,
+        pricePerBottle: 4.60,
+        bonusPercentage: 9.00,
+        maxDailyDelivery: 10,
+        sortOrder: 6
+      },
+      {
+        name: 'Plan 200 Bidones',
+        description: 'Por cada 200 bidones: 25 recargas mensual gratis',
+        totalBottles: 200,
+        bonusBottles: 25,
+        monthlyPrice: 900.00,
+        pricePerBottle: 4.50,
+        bonusPercentage: 12.50,
+        maxDailyDelivery: 20,
+        sortOrder: 7
+      }
+    ];
+
+    for (const planData of subscriptionPlans) {
+      await SubscriptionPlan.create(planData);
+      console.log(`   ✅ Plan creado: ${planData.name}`);
+    }
+
+    // 13. Verificar que todo está correcto
     console.log('🔍 Verificación final...');
     const counts = {
       districts: await District.count(),
@@ -357,7 +445,8 @@ async function cleanSeed() {
       clients: await Client.count(),
       subscriptions: await Subscription.count(),
       preferences: await ClientPreferences.count(),
-      terms: await TermsAndConditions.count()
+      terms: await TermsAndConditions.count(),
+      subscriptionPlans: await SubscriptionPlan.count()
     };
     
     console.log('📊 Resumen de datos creados:');
@@ -369,6 +458,7 @@ async function cleanSeed() {
     console.log(`   - Suscripciones: ${counts.subscriptions}`);
     console.log(`   - Preferencias: ${counts.preferences}`);
     console.log(`   - Términos y Condiciones: ${counts.terms}`);
+    console.log(`   - Planes de Suscripción: ${counts.subscriptionPlans}`);
     console.log('');
     console.log('🎯 Modalidades de pago soportadas:');
     console.log('   - ✅ Contraentrega (efectivo/plin/yape)');

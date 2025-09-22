@@ -85,6 +85,18 @@ app.get('/add-payment-type', async (req, res) => {
   }
 });
 
+app.get('/seed-subscription-plans', async (req, res) => {
+  try {
+    console.log('🌱 Poblando planes de suscripción...');
+    const seedSubscriptionPlans = require('./scripts/seedSubscriptionPlans');
+    await seedSubscriptionPlans();
+    res.json({ success: true, message: 'Planes de suscripción poblados exitosamente' });
+  } catch (error) {
+    console.error('❌ Error poblando planes de suscripción:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 app.get('/fix-guest-order-products', async (req, res) => {
   try {
     console.log('🔧 Arreglando columnas de GuestOrderProducts...');
@@ -350,7 +362,7 @@ app.get('/full-reset', async (req, res) => {
       District, Product, User, Client, DeliveryPerson, 
       Subscription, ClientPreferences, GuestOrder, 
       GuestOrderProduct, Voucher, Vale, DeliveryFee,
-      TermsAndConditions
+      TermsAndConditions, SubscriptionPlan
     } = require('./models');
     
     // Crear tablas independientes primero
@@ -362,6 +374,7 @@ app.get('/full-reset', async (req, res) => {
     await DeliveryPerson.sync({ force: false });
     await Subscription.sync({ force: false });
     await DeliveryFee.sync({ force: false });
+    await SubscriptionPlan.sync({ force: false });
     
     // Luego las que tienen foreign keys
     console.log('🔗 Creando tablas con foreign keys...');
@@ -436,6 +449,7 @@ const deliveryAssignedRoutes = require('./routes/delivery.assigned.routes');
 const voucherRoutes = require('./routes/voucher.routes');
 const valeRoutes = require('./routes/vale.routes');
 const subscriptionRoutes = require('./routes/subscription.routes');
+const subscriptionPlanRoutes = require('./routes/subscriptionPlan.routes');
 const userRoutes = require('./routes/user.routes');
 const documentRoutes = require('./routes/document.routes');
 const clientPreferencesRoutes = require('./routes/clientPreferences.routes');
@@ -768,6 +782,7 @@ app.use('/api/delivery', deliveryAssignedRoutes);
 app.use('/api/vouchers', voucherRoutes);
 app.use('/api/vales', valeRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
+app.use('/api/subscription-plans', subscriptionPlanRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/documents', documentRoutes);
 app.use('/api/client-preferences', clientPreferencesRoutes);

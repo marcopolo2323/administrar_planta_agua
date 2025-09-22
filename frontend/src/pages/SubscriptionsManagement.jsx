@@ -71,11 +71,13 @@ import {
   FaCheckCircle,
   FaTimesCircle,
   FaExclamationTriangle,
-  FaEllipsisV
+  FaEllipsisV,
+  FaList
 } from 'react-icons/fa';
 import axios from '../utils/axios';
 import AquaYaraLogo from '../components/AquaYaraLogo';
 import AdminContact from '../components/AdminContact';
+import SubscriptionPlansCard from '../components/SubscriptionPlansCard';
 
 const SubscriptionsManagement = () => {
   // Estados
@@ -86,6 +88,7 @@ const SubscriptionsManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedSubscription, setSelectedSubscription] = useState(null);
+  const [currentView, setCurrentView] = useState('management'); // 'management' o 'plans'
   
   // Modales
   const { isOpen: isCreateOpen, onOpen: onCreateOpen, onClose: onCreateClose } = useDisclosure();
@@ -319,18 +322,43 @@ const SubscriptionsManagement = () => {
               Administra las suscripciones de clientes frecuentes
             </Text>
           </VStack>
-          <Button
-            leftIcon={<FaPlus />}
-            colorScheme="blue"
-            onClick={onCreateOpen}
-            size="lg"
-          >
-            Nueva Suscripción
-          </Button>
+          <HStack spacing={4}>
+            <Button
+              leftIcon={<FaList />}
+              colorScheme={currentView === 'management' ? 'blue' : 'gray'}
+              variant={currentView === 'management' ? 'solid' : 'outline'}
+              onClick={() => setCurrentView('management')}
+            >
+              Gestión
+            </Button>
+            <Button
+              leftIcon={<FaGift />}
+              colorScheme={currentView === 'plans' ? 'blue' : 'gray'}
+              variant={currentView === 'plans' ? 'solid' : 'outline'}
+              onClick={() => setCurrentView('plans')}
+            >
+              Cartilla de Planes
+            </Button>
+            {currentView === 'management' && (
+              <Button
+                leftIcon={<FaPlus />}
+                colorScheme="blue"
+                onClick={onCreateOpen}
+                size="lg"
+              >
+                Nueva Suscripción
+              </Button>
+            )}
+          </HStack>
         </Flex>
 
-        {/* Estadísticas */}
-        <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4}>
+        {/* Contenido basado en la vista actual */}
+        {currentView === 'plans' ? (
+          <SubscriptionPlansCard />
+        ) : (
+          <>
+            {/* Estadísticas */}
+            <SimpleGrid columns={{ base: 1, md: 3 }} spacing={4}>
           <Card bg={cardBg} borderColor={borderColor}>
             <CardBody>
               <Stat>
@@ -666,6 +694,8 @@ const SubscriptionsManagement = () => {
             </ModalBody>
           </ModalContent>
         </Modal>
+          </>
+        )}
 
         {/* Footer con información de contacto */}
         <AdminContact />

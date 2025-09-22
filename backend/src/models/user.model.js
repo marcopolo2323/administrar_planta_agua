@@ -43,7 +43,6 @@ const User = sequelize.define('User', {
   documentNumber: {
     type: DataTypes.STRING,
     allowNull: true,
-    unique: true,
     comment: 'DNI del usuario'
   },
   phone: {

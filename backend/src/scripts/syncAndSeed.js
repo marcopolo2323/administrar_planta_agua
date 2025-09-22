@@ -1,12 +1,15 @@
-// Usar configuración local para desarrollo
-process.env.NODE_ENV = 'development';
+const { sequelize, SubscriptionPlan } = require('../models');
 
-const { SubscriptionPlan, sequelize } = require('../models');
-
-async function seedSubscriptionPlans() {
+async function syncAndSeed() {
   try {
-    console.log('🔄 Poblando planes de suscripción basados en la cartilla...');
-
+    console.log('🔄 Sincronizando modelos con la base de datos...');
+    
+    // Sincronizar todos los modelos
+    await sequelize.sync({ alter: true });
+    console.log('✅ Modelos sincronizados exitosamente');
+    
+    console.log('🌱 Poblando planes de suscripción...');
+    
     const plans = [
       {
         name: 'Plan 15 Bidones',
@@ -133,23 +136,27 @@ async function seedSubscriptionPlans() {
       console.log('');
     });
 
+    console.log('✅ Sincronización y poblado completados exitosamente');
+    
   } catch (error) {
-    console.error('❌ Error al poblar planes de suscripción:', error);
+    console.error('❌ Error en sincronización y poblado:', error);
     throw error;
+  } finally {
+    await sequelize.close();
   }
 }
 
 // Ejecutar si se llama directamente
 if (require.main === module) {
-  seedSubscriptionPlans()
+  syncAndSeed()
     .then(() => {
-      console.log('✅ Poblado de planes de suscripción completado');
+      console.log('✅ Proceso completado');
       process.exit(0);
     })
     .catch(error => {
-      console.error('❌ Error en el poblado:', error);
+      console.error('❌ Error en el proceso:', error);
       process.exit(1);
     });
 }
 
-module.exports = seedSubscriptionPlans;
+module.exports = syncAndSeed;
