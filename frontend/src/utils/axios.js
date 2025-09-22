@@ -13,12 +13,11 @@ const instance = axios.create({
 instance.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
+    console.log('🌐 URL completa:', config.baseURL + config.url);
+    console.log('🔑 Token presente:', token ? 'Sí' : 'No');
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
-      // Solo logear en desarrollo
-      if (import.meta.env.DEV) {
-        console.log('🔑 Token enviado para:', config.url);
-      }
+      console.log('🔑 Token enviado para:', config.url);
     }
     return config;
   },
@@ -48,6 +47,9 @@ const processQueue = (error, token = null) => {
 // Interceptor para manejar errores de respuesta
 instance.interceptors.response.use(
   (response) => {
+    console.log('📦 Respuesta recibida de:', response.config.url);
+    console.log('📦 Status:', response.status);
+    console.log('📦 Content-Type:', response.headers['content-type']);
     return response;
   },
   async (error) => {
