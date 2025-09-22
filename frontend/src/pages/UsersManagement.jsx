@@ -112,7 +112,7 @@ const UsersManagement = () => {
         params.append('role', roleFilter);
       }
 
-      const response = await axios.get(`/api/users?${params}`, {
+      const response = await axios.get(`/api/user-management?${params}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 

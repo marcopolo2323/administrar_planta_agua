@@ -80,7 +80,7 @@ const useDeliveryStore = create((set, get) => ({
   fetchDeliveryPersons: async () => {
     set({ loading: true, error: null });
     try {
-      const response = await axios.get('/api/delivery-persons');
+      const response = await axios.get('/api/user-management?role=repartidor');
       const data = response.data.success ? response.data.data : response.data;
       set({ 
         deliveryPersons: data, 
@@ -99,11 +99,11 @@ const useDeliveryStore = create((set, get) => ({
 
   createDeliveryPerson: async (personData) => {
     try {
-      const response = await axios.post('/api/delivery-persons', personData);
+      const response = await axios.post('/api/user-management', personData);
       set(state => ({
-        deliveryPersons: [...(Array.isArray(state.deliveryPersons) ? state.deliveryPersons : []), response.data]
+        deliveryPersons: [...(Array.isArray(state.deliveryPersons) ? state.deliveryPersons : []), response.data.data]
       }));
-      return { success: true, data: response.data };
+      return { success: true, data: response.data.data };
     } catch (error) {
       console.error('Error al crear repartidor:', error);
       set({ error: error.response?.data?.message || 'Error al crear repartidor' });
@@ -113,13 +113,13 @@ const useDeliveryStore = create((set, get) => ({
 
   updateDeliveryPerson: async (personId, personData) => {
     try {
-      const response = await axios.put(`/api/delivery-persons/${personId}`, personData);
+      const response = await axios.put(`/api/user-management/${personId}`, personData);
       set(state => ({
         deliveryPersons: Array.isArray(state.deliveryPersons) ? state.deliveryPersons.map(person => 
-          person.id === personId ? response.data : person
+          person.id === personId ? response.data.data : person
         ) : []
       }));
-      return { success: true, data: response.data };
+      return { success: true, data: response.data.data };
     } catch (error) {
       console.error('Error al actualizar repartidor:', error);
       set({ error: error.response?.data?.message || 'Error al actualizar repartidor' });
@@ -129,10 +129,10 @@ const useDeliveryStore = create((set, get) => ({
 
   updateDeliveryPersonStatus: async (personId, status) => {
     try {
-      await axios.put(`/api/delivery-persons/${personId}/status`, { status });
+      await axios.patch(`/api/user-management/${personId}/toggle-status`, { isActive: status === 'available' });
       set(state => ({
         deliveryPersons: Array.isArray(state.deliveryPersons) ? state.deliveryPersons.map(person => 
-          person.id === personId ? { ...person, status } : person
+          person.id === personId ? { ...person, isActive: status === 'available' } : person
         ) : []
       }));
       return { success: true };
@@ -145,7 +145,7 @@ const useDeliveryStore = create((set, get) => ({
 
   deleteDeliveryPerson: async (personId) => {
     try {
-      await axios.delete(`/api/delivery-persons/${personId}`);
+      await axios.delete(`/api/user-management/${personId}`);
       set(state => ({
         deliveryPersons: Array.isArray(state.deliveryPersons) ? state.deliveryPersons.filter(person => person.id !== personId) : []
       }));
@@ -159,7 +159,7 @@ const useDeliveryStore = create((set, get) => ({
 
   getAvailableDeliveryPersons: () => {
     const { deliveryPersons } = get();
-    return Array.isArray(deliveryPersons) ? deliveryPersons.filter(person => person.status === 'available') : [];
+    return Array.isArray(deliveryPersons) ? deliveryPersons.filter(person => person.isActive === true) : [];
   },
 
   getDeliveryStats: () => {
@@ -170,9 +170,8 @@ const useDeliveryStore = create((set, get) => ({
     const fees = Array.isArray(deliveryFees) ? deliveryFees : [];
     
     const totalPersons = persons.length;
-    const availablePersons = persons.filter(person => person.status === 'available').length;
-    const busyPersons = persons.filter(person => person.status === 'busy').length;
-    const offlinePersons = persons.filter(person => person.status === 'offline').length;
+    const availablePersons = persons.filter(person => person.isActive === true).length;
+    const inactivePersons = persons.filter(person => person.isActive === false).length;
     
     const totalFees = fees.length;
     const activeFees = fees.filter(fee => fee.isActive).length;
@@ -180,8 +179,7 @@ const useDeliveryStore = create((set, get) => ({
     return {
       totalPersons,
       availablePersons,
-      busyPersons,
-      offlinePersons,
+      inactivePersons,
       totalFees,
       activeFees
     };
