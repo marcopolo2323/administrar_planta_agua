@@ -92,20 +92,16 @@ async function cleanSeed() {
       {
         name: 'Bidón de Agua 20L',
         description: 'Bidón de agua purificada de 20 litros',
-        price: 7.00,
-        category: 'Agua',
-        stock: 1000,
-        isActive: true,
+        type: 'bidon',
+        unitPrice: 7.00,
         wholesalePrice: 5.00,
-        wholesaleMinQuantity: 10
+        wholesaleMinQuantity: 2
       },
       {
         name: 'Paquete de Botellas de Agua',
         description: 'Paquete de botellas de agua de 650ml',
-        price: 10.00,
-        category: 'Agua',
-        stock: 500,
-        isActive: true,
+        type: 'botella',
+        unitPrice: 10.00,
         wholesalePrice: 9.00,
         wholesaleMinQuantity: 50
       }
