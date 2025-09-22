@@ -29,25 +29,86 @@ const User = sequelize.define('User', {
     type: DataTypes.ENUM('admin', 'vendedor', 'cliente', 'repartidor'),
     defaultValue: 'cliente'
   },
+  // Datos personales
+  firstName: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    comment: 'Nombre del usuario'
+  },
+  lastName: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    comment: 'Apellido del usuario'
+  },
+  documentNumber: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    unique: true,
+    comment: 'DNI del usuario'
+  },
   phone: {
     type: DataTypes.STRING,
-    allowNull: true
+    allowNull: true,
+    comment: 'Teléfono del usuario'
   },
   address: {
     type: DataTypes.TEXT,
-    allowNull: true
+    allowNull: true,
+    comment: 'Dirección del usuario'
   },
   district: {
     type: DataTypes.STRING,
-    allowNull: true
+    allowNull: true,
+    comment: 'Distrito del usuario'
   },
   reference: {
     type: DataTypes.TEXT,
-    allowNull: true
+    allowNull: true,
+    comment: 'Referencia de dirección'
   },
-  active: {
+  
+  // Datos específicos para repartidores
+  vehicleType: {
+    type: DataTypes.ENUM('motorcycle', 'bicycle', 'car', 'truck'),
+    allowNull: true,
+    comment: 'Tipo de vehículo del repartidor'
+  },
+  vehiclePlate: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    comment: 'Placa del vehículo'
+  },
+  licenseNumber: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    comment: 'Número de licencia de conducir'
+  },
+  insuranceNumber: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    comment: 'Número de seguro'
+  },
+  emergencyContact: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    comment: 'Contacto de emergencia'
+  },
+  emergencyPhone: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    comment: 'Teléfono de emergencia'
+  },
+  
+  // Estado del usuario
+  isActive: {
     type: DataTypes.BOOLEAN,
-    defaultValue: true
+    defaultValue: true,
+    comment: 'Si el usuario está activo'
+  },
+  lastLogin: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: 'Último inicio de sesión'
   }
 }, {
   timestamps: true,

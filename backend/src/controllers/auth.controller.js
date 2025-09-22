@@ -82,7 +82,7 @@ exports.login = async (req, res) => {
     }
 
     // Verificar si el usuario está activo
-    if (!user.active) {
+    if (!user.isActive) {
       return res.status(403).json({ message: 'Usuario desactivado' });
     }
 
@@ -113,7 +113,7 @@ exports.login = async (req, res) => {
         address: user.address,
         district: user.district,
         reference: user.reference,
-        active: user.active,
+        isActive: user.isActive,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt
       },
@@ -131,7 +131,7 @@ exports.getProfile = async (req, res) => {
     const userId = req.userId;
 
     const user = await User.findByPk(userId, {
-      attributes: ['id', 'username', 'email', 'role', 'phone', 'address', 'district', 'reference', 'active', 'createdAt', 'updatedAt']
+      attributes: { exclude: ['password'] }
     });
 
     if (!user) {
@@ -151,7 +151,7 @@ exports.refreshToken = async (req, res) => {
     const userId = req.userId;
 
     const user = await User.findByPk(userId, {
-      attributes: ['id', 'username', 'email', 'role', 'phone', 'address', 'district', 'reference', 'active', 'createdAt', 'updatedAt']
+      attributes: { exclude: ['password'] }
     });
 
     if (!user) {

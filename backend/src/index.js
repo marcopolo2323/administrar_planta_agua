@@ -336,7 +336,8 @@ app.get('/full-reset', async (req, res) => {
     const {
       District, Product, User, Client, DeliveryPerson, 
       Subscription, ClientPreferences, GuestOrder, 
-      GuestOrderProduct, Voucher, Vale, DeliveryFee
+      GuestOrderProduct, Voucher, Vale, DeliveryFee,
+      TermsAndConditions
     } = require('./models');
     
     // Crear tablas independientes primero
@@ -356,6 +357,7 @@ app.get('/full-reset', async (req, res) => {
     await GuestOrder.sync({ force: false });
     await GuestOrderProduct.sync({ force: false });
     await Voucher.sync({ force: false });
+    await TermsAndConditions.sync({ force: false });
     
     // 3. Ejecutar seed de datos
     console.log('🌱 Paso 3: Ejecutando seed de datos...');
@@ -424,6 +426,8 @@ const subscriptionRoutes = require('./routes/subscription.routes');
 const userRoutes = require('./routes/user.routes');
 const documentRoutes = require('./routes/document.routes');
 const clientPreferencesRoutes = require('./routes/clientPreferences.routes');
+const termsAndConditionsRoutes = require('./routes/termsAndConditions.routes');
+const userManagementRoutes = require('./routes/userManagement.routes');
 const resetDatabase = require('./utils/seedDb');
 const deployUpdate = require('./scripts/deployUpdate');
 
@@ -754,6 +758,8 @@ app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/documents', documentRoutes);
 app.use('/api/client-preferences', clientPreferencesRoutes);
+app.use('/api/terms-and-conditions', termsAndConditionsRoutes);
+app.use('/api/user-management', userManagementRoutes);
 
 // Endpoint alternativo para generar PDF
 app.post('/api/admin/generate-pdf', async (req, res) => {
@@ -1034,6 +1040,27 @@ app.post('/api/clean-duplicates', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error al limpiar duplicados',
+      error: error.message
+    });
+  }
+});
+
+// Ruta para crear términos y condiciones iniciales
+app.get('/create-terms-and-conditions', async (req, res) => {
+  try {
+    console.log('📄 Creando términos y condiciones iniciales...');
+    const seedTermsAndConditions = require('./scripts/seedTermsAndConditions');
+    await seedTermsAndConditions();
+    
+    res.json({
+      success: true,
+      message: 'Términos y condiciones creados exitosamente'
+    });
+  } catch (error) {
+    console.error('Error creando términos y condiciones:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error creando términos y condiciones',
       error: error.message
     });
   }

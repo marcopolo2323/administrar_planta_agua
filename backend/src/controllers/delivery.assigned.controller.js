@@ -1,4 +1,4 @@
-const { GuestOrder, GuestOrderProduct, Product, District, DeliveryFee, Client, DeliveryPerson } = require('../models');
+const { GuestOrder, GuestOrderProduct, Product, District, DeliveryFee, Client, User } = require('../models');
 const { Op } = require('sequelize');
 
 // Obtener pedidos asignados al repartidor autenticado (tanto regulares como de invitados)
@@ -9,24 +9,21 @@ exports.getAssignedOrders = async (req, res) => {
 
     console.log('🔍 Buscando pedidos para usuario ID:', userId);
 
-    // Buscar el repartidor asociado al usuario
-    const deliveryPerson = await DeliveryPerson.findOne({
-      where: { userId: userId }
-    });
-
-    if (!deliveryPerson) {
+    // Verificar que el usuario es un repartidor
+    const user = await User.findByPk(userId);
+    
+    if (!user || user.role !== 'repartidor') {
       return res.status(404).json({
         success: false,
-        message: 'Repartidor no encontrado para este usuario'
+        message: 'Usuario no es un repartidor'
       });
     }
 
-    const deliveryPersonId = deliveryPerson.id;
-    console.log('📋 Repartidor encontrado con ID:', deliveryPersonId);
+    console.log('📋 Repartidor encontrado:', user.username);
 
     // Construir filtros para pedidos de invitados
     const guestOrderWhere = {
-      deliveryPersonId: deliveryPersonId
+      deliveryPersonId: userId
     };
 
     // Filtrar por estado si se proporciona

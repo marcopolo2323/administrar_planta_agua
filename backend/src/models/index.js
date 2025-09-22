@@ -13,6 +13,7 @@ const Voucher = require('./voucher.model');
 const Vale = require('./vale.model');
 const Subscription = require('./subscription.model');
 const ClientPreferences = require('./clientPreferences.model');
+const TermsAndConditions = require('./termsAndConditions.model');
 
 // Definir relaciones después de que todos los modelos estén inicializados
 // Relaciones entre User y Client (comentadas - userId eliminado del modelo Client)
@@ -108,6 +109,13 @@ ClientPreferences.belongsTo(Client, { foreignKey: 'clientId', as: 'client' });
 ClientPreferences.belongsTo(Subscription, { foreignKey: 'subscriptionPlanId', as: 'subscription' });
 Subscription.hasMany(ClientPreferences, { foreignKey: 'subscriptionPlanId', as: 'preferences' });
 
+// Relaciones de términos y condiciones
+User.hasMany(TermsAndConditions, { foreignKey: 'createdBy', as: 'createdTerms' });
+TermsAndConditions.belongsTo(User, { foreignKey: 'createdBy', as: 'creator' });
+
+User.hasMany(TermsAndConditions, { foreignKey: 'lastModifiedBy', as: 'modifiedTerms' });
+TermsAndConditions.belongsTo(User, { foreignKey: 'lastModifiedBy', as: 'lastModifier' });
+
 
 // Exportar modelos y conexión
 module.exports = {
@@ -123,5 +131,6 @@ module.exports = {
   Voucher,
   Vale,
   Subscription,
-  ClientPreferences
+  ClientPreferences,
+  TermsAndConditions
 };

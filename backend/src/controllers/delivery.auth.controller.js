@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const { User, DeliveryPerson } = require('../models');
+const { User } = require('../models');
 const { Op } = require('sequelize');
 
 // Login para repartidores
@@ -20,7 +20,7 @@ exports.loginDeliveryPerson = async (req, res) => {
     }
 
     // Verificar si el usuario está activo
-    if (!user.active) {
+    if (!user.isActive) {
       return res.status(403).json({ message: 'Cuenta desactivada' });
     }
 
@@ -30,15 +30,12 @@ exports.loginDeliveryPerson = async (req, res) => {
       return res.status(401).json({ message: 'Contraseña incorrecta' });
     }
 
-    // Buscar información del repartidor
-    const deliveryPerson = await DeliveryPerson.findOne({ where: { userId: user.id } });
-    if (!deliveryPerson) {
-      return res.status(404).json({ message: 'Información de repartidor no encontrada' });
-    }
+    // Actualizar último login
+    await user.update({ lastLogin: new Date() });
 
     // Generar token JWT
     const token = jwt.sign(
-      { id: user.id, role: user.role, deliveryPersonId: deliveryPerson.id },
+      { id: user.id, role: user.role },
       process.env.JWT_SECRET || 'tu_clave_secreta_muy_segura_aqui_2024',
       { expiresIn: process.env.JWT_EXPIRATION || '7d' }
     );
@@ -49,15 +46,13 @@ exports.loginDeliveryPerson = async (req, res) => {
         id: user.id,
         username: user.username,
         email: user.email,
-        role: user.role
-      },
-      deliveryPerson: {
-        id: deliveryPerson.id,
-        name: deliveryPerson.name,
-        phone: deliveryPerson.phone,
-        vehicleType: deliveryPerson.vehicleType,
-        vehiclePlate: deliveryPerson.vehiclePlate,
-        status: deliveryPerson.status
+        role: user.role,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        phone: user.phone,
+        vehicleType: user.vehicleType,
+        vehiclePlate: user.vehiclePlate,
+        isActive: user.isActive
       },
       token
     });
@@ -74,7 +69,7 @@ exports.getDeliveryPersonProfile = async (req, res) => {
 
     // Verificar que el usuario sea un repartidor
     const user = await User.findByPk(userId, {
-      attributes: ['id', 'username', 'email', 'role']
+      attributes: { exclude: ['password'] }
     });
 
     if (!user) {
@@ -85,15 +80,8 @@ exports.getDeliveryPersonProfile = async (req, res) => {
       return res.status(403).json({ message: 'Acceso denegado' });
     }
 
-    // Obtener información del repartidor
-    const deliveryPerson = await DeliveryPerson.findOne({ where: { userId } });
-    if (!deliveryPerson) {
-      return res.status(404).json({ message: 'Información de repartidor no encontrada' });
-    }
-
     return res.status(200).json({
-      user,
-      deliveryPerson
+      user
     });
   } catch (error) {
     console.error('Error al obtener perfil de repartidor:', error);

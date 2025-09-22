@@ -13,7 +13,6 @@ import Dashboard from './pages/Dashboard';
 import OrdersManagement from './pages/OrdersManagement';
 import GuestOrderNew from './pages/GuestOrderNew';
 import DeliveryFeesManagement from './pages/DeliveryFeesManagement';
-import DeliveryPersonsManagement from './pages/DeliveryPersonsManagement';
 import Receipt from './pages/Receipt';
 import TrackOrder from './pages/TrackOrder';
 import DeliveryDashboardNew from './pages/DeliveryDashboardNew';
@@ -22,6 +21,8 @@ import SubscriptionsManagement from './pages/SubscriptionsManagement';
 import ValesManagement from './pages/ValesManagement';
 import CollectionReport from './pages/CollectionReport';
 import ClientsManagement from './pages/ClientsManagement';
+import TermsAndConditionsManagement from './pages/TermsAndConditionsManagement';
+import UsersManagement from './pages/UsersManagement';
 
 const App = () => {
   const { token, checkAuth } = useAuthStore();
@@ -71,11 +72,12 @@ const App = () => {
           <Route index element={<ProtectedRoute requiredRoles={['admin', 'vendedor']}><Dashboard /></ProtectedRoute>} />
           <Route path="orders-management" element={<ProtectedRoute requiredRoles={['admin']}><OrdersManagement /></ProtectedRoute>} />
           <Route path="delivery-fees" element={<ProtectedRoute requiredRoles={['admin']}><DeliveryFeesManagement /></ProtectedRoute>} />
-          <Route path="delivery-persons" element={<ProtectedRoute requiredRoles={['admin']}><DeliveryPersonsManagement /></ProtectedRoute>} />
           <Route path="subscriptions" element={<ProtectedRoute requiredRoles={['admin']}><SubscriptionsManagement /></ProtectedRoute>} />
           <Route path="vales" element={<ProtectedRoute requiredRoles={['admin']}><ValesManagement /></ProtectedRoute>} />
           <Route path="collection-report" element={<ProtectedRoute requiredRoles={['admin']}><CollectionReport /></ProtectedRoute>} />
           <Route path="clients" element={<ProtectedRoute requiredRoles={['admin']}><ClientsManagement /></ProtectedRoute>} />
+          <Route path="terms-and-conditions" element={<ProtectedRoute requiredRoles={['admin']}><TermsAndConditionsManagement /></ProtectedRoute>} />
+          <Route path="users-management" element={<ProtectedRoute requiredRoles={['admin']}><UsersManagement /></ProtectedRoute>} />
         </Route>
 
         {/* Ruta específica para repartidores */}

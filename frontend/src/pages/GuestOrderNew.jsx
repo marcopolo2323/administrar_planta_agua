@@ -38,9 +38,11 @@ import {
   ModalBody,
   ModalCloseButton,
   useDisclosure,
-  Image
+  Image,
+  Checkbox
 } from '@chakra-ui/react';
 import { useNavigate } from 'react-router-dom';
+import TermsAndConditionsModal from '../components/TermsAndConditionsModal';
 import { 
   FaShoppingCart, 
   FaTruck, 
@@ -93,6 +95,10 @@ const GuestOrderNew = () => {
   const [selectedSubscription, setSelectedSubscription] = useState(null);
   const [selectedSubscriptionPlan, setSelectedSubscriptionPlan] = useState(null);
   const [showSubscriptionPlans, setShowSubscriptionPlans] = useState(false);
+  
+  // Estados para términos y condiciones
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
 
   // Planes de suscripción disponibles
   const subscriptionPlans = [
@@ -623,7 +629,45 @@ const GuestOrderNew = () => {
     await createOrder();
   };
 
+  // Funciones para manejar términos y condiciones
+  const handleTermsAccept = (terms) => {
+    setTermsAccepted(true);
+    setShowTermsModal(false);
+    toast({
+      title: 'Términos aceptados',
+      description: 'Has aceptado los términos y condiciones',
+      status: 'success',
+      duration: 2000,
+      isClosable: true,
+    });
+  };
+
+  const handleTermsReject = () => {
+    setTermsAccepted(false);
+    setShowTermsModal(false);
+    toast({
+      title: 'Términos rechazados',
+      description: 'Debes aceptar los términos y condiciones para continuar',
+      status: 'error',
+      duration: 3000,
+      isClosable: true,
+    });
+  };
+
   const createOrder = async () => {
+    // Verificar que se han aceptado los términos y condiciones
+    if (!termsAccepted) {
+      toast({
+        title: 'Términos y Condiciones',
+        description: 'Debes aceptar los términos y condiciones para continuar',
+        status: 'warning',
+        duration: 3000,
+        isClosable: true,
+      });
+      setShowTermsModal(true);
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -2222,6 +2266,36 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
             </CardBody>
           </Card>
 
+          {/* Términos y Condiciones */}
+          <Card variant="outline" w="full">
+            <CardBody>
+              <VStack spacing={4}>
+                <HStack w="full" justify="space-between">
+                  <Text fontWeight="bold">Términos y Condiciones</Text>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    colorScheme="blue"
+                    onClick={() => setShowTermsModal(true)}
+                  >
+                    Ver Términos
+                  </Button>
+                </HStack>
+                <HStack w="full" spacing={3}>
+                  <Checkbox
+                    isChecked={termsAccepted}
+                    onChange={(e) => setTermsAccepted(e.target.checked)}
+                    colorScheme="blue"
+                    size="lg"
+                  />
+                  <Text fontSize="sm" color="gray.600">
+                    He leído y acepto los términos y condiciones del servicio
+                  </Text>
+                </HStack>
+              </VStack>
+            </CardBody>
+          </Card>
+
             <Button
               colorScheme="green"
               size="lg"
@@ -2230,6 +2304,7 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
               leftIcon={<FaCheckCircle />}
               isLoading={loading}
               loadingText="Creando pedido..."
+              isDisabled={!termsAccepted}
             >
               {paymentType === 'efectivo' ? 'Confirmar Pedido' : 'Pagar con PLIN'}
             </Button>
@@ -2418,6 +2493,16 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
 
       {/* Modal PLIN */}
       {renderPlinModal()}
+
+      {/* Modal de Términos y Condiciones */}
+      <TermsAndConditionsModal
+        isOpen={showTermsModal}
+        onClose={() => setShowTermsModal(false)}
+        onAccept={handleTermsAccept}
+        onReject={handleTermsReject}
+        title="Términos y Condiciones - Planta de Agua Aquayara"
+        showAcceptance={true}
+      />
     </Box>
   );
 };

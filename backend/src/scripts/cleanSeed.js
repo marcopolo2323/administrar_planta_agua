@@ -11,7 +11,8 @@ const {
   Vale,
   Subscription,
   ClientPreferences,
-  DeliveryFee
+  DeliveryFee,
+  TermsAndConditions
 } = require('../models');
 
 async function cleanSeed() {
@@ -64,6 +65,9 @@ async function cleanSeed() {
     
     await Voucher.sync({ force: false });
     console.log('   ✅ Voucher');
+    
+    await TermsAndConditions.sync({ force: false });
+    console.log('   ✅ TermsAndConditions');
     
     console.log('✅ Todas las tablas creadas correctamente');
     
@@ -198,6 +202,15 @@ async function cleanSeed() {
         firstName: 'Juan',
         lastName: 'Pérez',
         phone: '924714321',
+        address: 'Jr. Los Repartidores 123',
+        district: 'Callería',
+        reference: 'Frente al parque',
+        vehicleType: 'motorcycle',
+        vehiclePlate: 'ABC-123',
+        licenseNumber: 'D123456789',
+        insuranceNumber: 'S987654321',
+        emergencyContact: 'María Pérez',
+        emergencyPhone: '987654321',
         isActive: true
       },
       {
@@ -220,26 +233,8 @@ async function cleanSeed() {
     }
     console.log('✅ Usuarios creados');
     
-    // 7. Crear repartidor
-    console.log('🚚 Creando repartidor...');
-    const deliveryUser = await User.findOne({ where: { role: 'repartidor' } });
-    if (deliveryUser) {
-      await DeliveryPerson.findOrCreate({
-        where: { userId: deliveryUser.id },
-        defaults: {
-          userId: deliveryUser.id,
-          name: 'Carlos Repartidor',
-          phone: '924714321',
-          email: 'repartidor@aguapura.com',
-          vehicleType: 'motorcycle',
-          vehiclePlate: 'ABC-123',
-          licenseNumber: 'D123456789',
-          address: 'Jr. Los Repartidores 123, Pucallpa',
-          status: 'available'
-        }
-      });
-    }
-    console.log('✅ Repartidor creado');
+    // 7. Repartidor ya creado con datos completos en usuarios
+    console.log('✅ Repartidor creado con datos completos');
     
     // 8. Importar clientes desde Excel/JSON
     console.log('👤 Importando clientes desde Excel...');
@@ -347,7 +342,12 @@ async function cleanSeed() {
       console.log('✅ Preferencias de cliente creadas');
     }
     
-    // 11. Verificar que todo está correcto
+    // 11. Crear términos y condiciones iniciales
+    console.log('📄 Creando términos y condiciones...');
+    const seedTermsAndConditions = require('./seedTermsAndConditions');
+    await seedTermsAndConditions();
+    
+    // 12. Verificar que todo está correcto
     console.log('🔍 Verificación final...');
     const counts = {
       districts: await District.count(),
@@ -356,7 +356,8 @@ async function cleanSeed() {
       deliveryPersons: await DeliveryPerson.count(),
       clients: await Client.count(),
       subscriptions: await Subscription.count(),
-      preferences: await ClientPreferences.count()
+      preferences: await ClientPreferences.count(),
+      terms: await TermsAndConditions.count()
     };
     
     console.log('📊 Resumen de datos creados:');
@@ -367,6 +368,7 @@ async function cleanSeed() {
     console.log(`   - Clientes: ${counts.clients}`);
     console.log(`   - Suscripciones: ${counts.subscriptions}`);
     console.log(`   - Preferencias: ${counts.preferences}`);
+    console.log(`   - Términos y Condiciones: ${counts.terms}`);
     console.log('');
     console.log('🎯 Modalidades de pago soportadas:');
     console.log('   - ✅ Contraentrega (efectivo/plin/yape)');

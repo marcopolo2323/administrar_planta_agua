@@ -82,7 +82,8 @@ const DashboardLayout = () => {
     
     // Configuración del sistema
     { to: '/dashboard/delivery-fees', label: 'Tarifas de Envío', icon: '🚚', adminOnly: true },
-    { to: '/dashboard/delivery-persons', label: 'Repartidores', icon: '👨‍💼', adminOnly: true }
+    { to: '/dashboard/terms-and-conditions', label: 'Términos y Condiciones', icon: '📄', adminOnly: true },
+    { to: '/dashboard/users-management', label: 'Gestión de Usuarios', icon: '👥', adminOnly: true }
   ];
 
   // Menú para repartidores

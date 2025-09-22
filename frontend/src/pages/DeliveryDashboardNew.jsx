@@ -745,7 +745,10 @@ const DeliveryDashboardNew = () => {
             Panel de Repartidor
           </Heading>
             <Text color="gray.600" fontSize={{ base: "xs", md: "md" }}>
-            Bienvenido, {user?.username}. Gestiona tus entregas asignadas.
+            Bienvenido, {user?.firstName && user?.lastName 
+              ? `${user.firstName} ${user.lastName}` 
+              : user?.username || 'Repartidor'
+            }. Gestiona tus entregas asignadas.
           </Text>
           </VStack>
         </Box>
