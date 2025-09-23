@@ -100,39 +100,9 @@ const GuestOrderNew = () => {
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
 
-  // Planes de suscripción disponibles
-  const subscriptionPlans = [
-    {
-      id: 'basic',
-      name: 'Plan Básico',
-      bottles: 30,
-      price: 150,
-      bonus: 1,
-      description: '30 bidones + 1 bidón extra',
-      color: 'blue',
-      popular: false
-    },
-    {
-      id: 'standard',
-      name: 'Plan Estándar',
-      bottles: 50,
-      price: 250,
-      bonus: 2,
-      description: '50 bidones + 2 bidones extra',
-      color: 'green',
-      popular: true
-    },
-    {
-      id: 'premium',
-      name: 'Plan Premium',
-      bottles: 100,
-      price: 500,
-      bonus: 5,
-      description: '100 bidones + 5 bidones extra',
-      color: 'purple',
-      popular: false
-    }
-  ];
+  // Planes de suscripción disponibles (se cargan dinámicamente)
+  const [subscriptionPlans, setSubscriptionPlans] = useState([]);
+  const [loadingPlans, setLoadingPlans] = useState(false);
 
   // Datos del cliente
   const [dni, setDni] = useState('');
@@ -174,9 +144,45 @@ const GuestOrderNew = () => {
     fetchProducts();
     fetchDeliveryFees();
     fetchDistricts();
+    fetchSubscriptionPlans();
   }, [fetchProducts, fetchDeliveryFees, fetchDistricts]);
 
   // Función para buscar cliente por DNI
+  // Función para cargar planes de suscripción
+  const fetchSubscriptionPlans = async () => {
+    try {
+      setLoadingPlans(true);
+      const response = await axios.get('/api/subscription-plans');
+      if (response.data.success) {
+        // Transformar los datos del API al formato esperado
+        const transformedPlans = response.data.data.map(plan => ({
+          id: plan.id,
+          name: plan.name,
+          bottles: plan.totalBottles,
+          price: parseFloat(plan.monthlyPrice),
+          bonus: plan.bonusBottles,
+          description: plan.description,
+          color: ['blue', 'green', 'purple', 'orange', 'pink', 'teal', 'red'][plan.sortOrder % 7],
+          popular: plan.sortOrder === 2, // Marcar el plan 25 como popular
+          pricePerBottle: parseFloat(plan.pricePerBottle),
+          maxDailyDelivery: plan.maxDailyDelivery
+        }));
+        setSubscriptionPlans(transformedPlans);
+      }
+    } catch (error) {
+      console.error('Error al cargar planes de suscripción:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudieron cargar los planes de suscripción',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    } finally {
+      setLoadingPlans(false);
+    }
+  };
+
   // Función para buscar suscripciones del cliente
   const fetchClientSubscriptions = async (clientDni) => {
     try {
@@ -1631,8 +1637,16 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
             </VStack>
           </CardHeader>
           <CardBody>
-            <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6}>
-              {subscriptionPlans.map((plan) => (
+            {loadingPlans ? (
+              <Center py={8}>
+                <VStack spacing={4}>
+                  <Spinner size="xl" color="blue.500" />
+                  <Text color="gray.500">Cargando planes de suscripción...</Text>
+                </VStack>
+              </Center>
+            ) : (
+              <SimpleGrid columns={{ base: 1, md: 3 }} spacing={6}>
+                {subscriptionPlans.map((plan) => (
                 <Card
                   key={plan.id}
                   variant={selectedSubscriptionPlan?.id === plan.id ? 'filled' : 'outline'}
@@ -1706,7 +1720,8 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
                   </CardBody>
                 </Card>
               ))}
-            </SimpleGrid>
+              </SimpleGrid>
+            )}
             
             <VStack spacing={4} mt={6}>
               <Button
