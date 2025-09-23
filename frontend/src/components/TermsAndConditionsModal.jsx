@@ -33,6 +33,7 @@ const TermsAndConditionsModal = ({
   const [terms, setTerms] = useState(null);
   const [loading, setLoading] = useState(false);
   const [accepted, setAccepted] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState(null);
   
   const bgColor = useColorModeValue('white', 'gray.800');
@@ -63,16 +64,22 @@ const TermsAndConditionsModal = ({
     if (isOpen) {
       console.log('🔍 Modal abierto, reseteando estado');
       setAccepted(false);
+      setIsProcessing(false);
       fetchActiveTerms();
     }
   }, [isOpen]);
 
   const handleAccept = () => {
-    console.log('🔍 handleAccept llamado, accepted:', accepted, 'onAccept:', !!onAccept);
+    console.log('🔍 handleAccept llamado, accepted:', accepted, 'onAccept:', !!onAccept, 'isProcessing:', isProcessing);
+    
+    if (isProcessing) {
+      console.log('❌ Ya se está procesando, ignorando clic');
+      return;
+    }
+    
     if (accepted && onAccept) {
       console.log('✅ Ejecutando onAccept');
-      // Deshabilitar el botón temporalmente para evitar doble clic
-      setAccepted(false);
+      setIsProcessing(true);
       onAccept(terms);
     } else {
       console.log('❌ No se puede aceptar - accepted:', accepted, 'onAccept:', !!onAccept);
@@ -186,7 +193,9 @@ const TermsAndConditionsModal = ({
                 <Button
                   colorScheme="blue"
                   onClick={handleAccept}
-                  isDisabled={!accepted}
+                  isDisabled={!accepted || isProcessing}
+                  isLoading={isProcessing}
+                  loadingText="Procesando..."
                 >
                   Aceptar
                 </Button>

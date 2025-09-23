@@ -457,6 +457,9 @@ const OrdersManagement = () => {
   };
 
   const openDetailModal = (order) => {
+    console.log('🔍 Pedido seleccionado:', order);
+    console.log('🔍 DeliveryPerson en el pedido:', order.deliveryPerson);
+    console.log('🔍 DeliveryPersonId en el pedido:', order.deliveryPersonId);
     setSelectedOrder(order);
     onDetailOpen();
   };
@@ -917,15 +920,15 @@ const OrdersManagement = () => {
                   <VStack spacing={2} align="stretch">
                     <HStack justify="space-between">
                       <Text fontWeight="bold">Nombre:</Text>
-                      <Text>{selectedOrder.deliveryPersonId ? 
-                        (deliveryPersons.find(dp => dp.id === selectedOrder.deliveryPersonId)?.name || 'No encontrado') : 
+                      <Text>{selectedOrder.deliveryPerson ? 
+                        selectedOrder.deliveryPerson.username : 
                         'No asignado'}</Text>
                     </HStack>
                     
                     <HStack justify="space-between">
                       <Text fontWeight="bold">Teléfono:</Text>
-                      <Text>{selectedOrder.deliveryPersonId ? 
-                        (deliveryPersons.find(dp => dp.id === selectedOrder.deliveryPersonId)?.phone || 'N/A') : 
+                      <Text>{selectedOrder.deliveryPerson ? 
+                        selectedOrder.deliveryPerson.phone : 
                         'N/A'}</Text>
                     </HStack>
                   </VStack>
