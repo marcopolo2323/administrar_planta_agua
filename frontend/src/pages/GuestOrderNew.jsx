@@ -152,7 +152,9 @@ const GuestOrderNew = () => {
   const fetchSubscriptionPlans = async () => {
     try {
       setLoadingPlans(true);
+      console.log('🔄 Cargando planes de suscripción...');
       const response = await axios.get('/api/subscription-plans');
+      console.log('📦 Respuesta planes:', response.data);
       if (response.data.success) {
         // Transformar los datos del API al formato esperado
         const transformedPlans = response.data.data.map(plan => ({
@@ -167,10 +169,11 @@ const GuestOrderNew = () => {
           pricePerBottle: parseFloat(plan.pricePerBottle),
           maxDailyDelivery: plan.maxDailyDelivery
         }));
+        console.log('✅ Planes transformados:', transformedPlans);
         setSubscriptionPlans(transformedPlans);
       }
     } catch (error) {
-      console.error('Error al cargar planes de suscripción:', error);
+      console.error('❌ Error al cargar planes de suscripción:', error);
       toast({
         title: 'Error',
         description: 'No se pudieron cargar los planes de suscripción',

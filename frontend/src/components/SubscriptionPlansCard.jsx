@@ -41,10 +41,13 @@ const SubscriptionPlansCard = () => {
   const fetchPlans = async () => {
     try {
       setLoading(true);
+      console.log('🔄 SubscriptionPlansCard: Cargando planes...');
       const response = await axios.get('/api/subscription-plans');
+      console.log('📦 SubscriptionPlansCard: Respuesta:', response.data);
       setPlans(response.data.data || []);
+      console.log('✅ SubscriptionPlansCard: Planes cargados:', response.data.data?.length || 0);
     } catch (error) {
-      console.error('Error al cargar planes de suscripción:', error);
+      console.error('❌ SubscriptionPlansCard: Error al cargar planes:', error);
       toast({
         title: 'Error',
         description: 'No se pudieron cargar los planes de suscripción',
@@ -139,7 +142,7 @@ const SubscriptionPlansCard = () => {
                   transform="rotate(15deg)"
                 >
                   <Icon as={FaGift} mr={1} />
-                  {plan.bonusPercentage.toFixed(1)}% BONUS
+                  {parseFloat(plan.bonusPercentage).toFixed(1)}% BONUS
                 </Badge>
               </Box>
             )}
@@ -176,13 +179,13 @@ const SubscriptionPlansCard = () => {
                   <HStack justify="space-between" w="full">
                     <Text fontSize="sm" color="gray.600">Pago mensual:</Text>
                     <Text fontSize="lg" fontWeight="bold" color={priceColor}>
-                      S/ {plan.monthlyPrice.toFixed(2)}
+                      S/ {parseFloat(plan.monthlyPrice).toFixed(2)}
                     </Text>
                   </HStack>
                   <HStack justify="space-between" w="full">
                     <Text fontSize="sm" color="gray.600">Precio por bidón:</Text>
                     <Text fontSize="md" fontWeight="semibold" color={textColor}>
-                      S/ {plan.pricePerBottle.toFixed(2)}
+                      S/ {parseFloat(plan.pricePerBottle).toFixed(2)}
                     </Text>
                   </HStack>
                 </VStack>
