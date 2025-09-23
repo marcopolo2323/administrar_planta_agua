@@ -376,8 +376,8 @@ const Dashboard = () => {
         <CardBody p={{ base: 3, md: 4 }}>
           <Heading size={{ base: 'sm', md: 'md' }} mb={{ base: 3, md: 4 }} color="gray.700">🚀 Acciones Rápidas</Heading>
           <SimpleGrid 
-            columns={{ base: 2, sm: 2, md: 3, lg: 6 }} 
-            spacing={{ base: 3, md: 4 }}
+            columns={{ base: 2, sm: 3, md: 4, lg: 7 }} 
+            spacing={{ base: 2, md: 3 }}
             maxW="100%"
           >
             {quickActions.map((action, index) => (
@@ -396,23 +396,23 @@ const Dashboard = () => {
                 transition="all 0.2s"
                 borderRadius="lg"
                 bg="white"
-                h={{ base: "130px", md: "140px" }}
+                h={{ base: "100px", md: "110px" }}
               >
-                <CardBody p={{ base: 3, md: 4 }} h="100%">
-                  <VStack spacing={{ base: 2, md: 3 }} h="100%" justify="space-between" align="center">
+                <CardBody p={{ base: 2, md: 3 }} h="100%">
+                  <VStack spacing={{ base: 1, md: 2 }} h="100%" justify="space-between" align="center">
                     {/* Icono */}
                     <Box 
                       display="flex" 
                       alignItems="center" 
                       justifyContent="center" 
-                      h={{ base: "32px", md: "40px" }}
-                      w={{ base: "32px", md: "40px" }}
+                      h={{ base: "24px", md: "28px" }}
+                      w={{ base: "24px", md: "28px" }}
                       borderRadius="full"
                       bg={`${action.color}.100`}
                       flexShrink={0}
                     >
                       <action.icon 
-                        size={{ base: 18, md: 22 }} 
+                        size={{ base: 14, md: 16 }} 
                         color={`${action.color}.600`}
                       />
                     </Box>
@@ -420,12 +420,12 @@ const Dashboard = () => {
                     {/* Contenido */}
                     <VStack spacing={1} flex={1} w="100%" textAlign="center">
                       <Text 
-                        fontSize={{ base: "xs", md: "sm" }} 
+                        fontSize={{ base: "2xs", md: "xs" }} 
                         fontWeight="bold" 
                         color="gray.700"
                         noOfLines={2}
-                        lineHeight="1.2"
-                        minH={{ base: "28px", md: "32px" }}
+                        lineHeight="1.1"
+                        minH={{ base: "20px", md: "24px" }}
                         display="flex"
                         alignItems="center"
                         justifyContent="center"
@@ -433,11 +433,11 @@ const Dashboard = () => {
                         {action.title}
                       </Text>
                       <Text 
-                        fontSize={{ base: "2xs", md: "xs" }} 
+                        fontSize={{ base: "3xs", md: "2xs" }} 
                         color="gray.500" 
                         noOfLines={2}
-                        lineHeight="1.1"
-                        minH={{ base: "20px", md: "24px" }}
+                        lineHeight="1.0"
+                        minH={{ base: "16px", md: "18px" }}
                       >
                         {action.description}
                       </Text>
@@ -452,12 +452,12 @@ const Dashboard = () => {
                         bg={`${action.color}.500`}
                         color="white"
                         borderRadius="full"
-                        px={{ base: 3, md: 4 }}
-                        py={{ base: 2, md: 2.5 }}
-                        fontSize={{ base: "lg", md: "xl" }}
+                        px={{ base: 2, md: 3 }}
+                        py={{ base: 1, md: 1.5 }}
+                        fontSize={{ base: "sm", md: "md" }}
                         fontWeight="900"
-                        minW={{ base: "40px", md: "44px" }}
-                        h={{ base: "40px", md: "44px" }}
+                        minW={{ base: "28px", md: "32px" }}
+                        h={{ base: "28px", md: "32px" }}
                         display="flex"
                         alignItems="center"
                         justifyContent="center"
@@ -478,8 +478,8 @@ const Dashboard = () => {
                         position="absolute"
                         top="-2px"
                         right="-2px"
-                        w="12px"
-                        h="12px"
+                        w="8px"
+                        h="8px"
                         bg="white"
                         borderRadius="full"
                         opacity={0.8}

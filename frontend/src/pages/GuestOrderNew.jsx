@@ -2434,7 +2434,7 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
                   <Text fontWeight="bold">Cómo funciona el pago a crédito:</Text>
                   <Text fontSize="sm">
                     • Tu pedido se anotará automáticamente en tu vale<br/>
-                    • El reya tiene su cpartidor NO cobrará nada en la entrega<br/>
+                    • El repartidor NO cobrará nada en la entrega<br/>
                     • Debes pagar todos tus vales al final del mes<br/>
                     • Puedes pagar en efectivo o PLIN cuando sea el momento
                   </Text>
