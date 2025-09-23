@@ -204,6 +204,52 @@ const GuestOrderNew = () => {
     }
   };
 
+  // Función para cargar preferencias del cliente
+  const fetchClientPreferences = async (clientDni) => {
+    try {
+      console.log('🔍 Cargando preferencias para DNI:', clientDni);
+      const response = await axios.get(`/api/client-preferences/dni/${clientDni}`);
+      
+      if (response.data.success && response.data.data) {
+        const preferences = response.data.data;
+        console.log('✅ Preferencias encontradas:', preferences);
+        
+        // Aplicar preferencias si están activas
+        if (preferences.isActive && new Date(preferences.validUntil) > new Date()) {
+          setPaymentMethod(preferences.preferredPaymentMethod);
+          setPreferencesApplied(true);
+          setCanChangePreference(false);
+          
+          // Si es suscripción, cargar el plan
+          if (preferences.preferredPaymentMethod === 'suscripcion' && preferences.subscriptionPlanId) {
+            const plan = subscriptionPlans.find(p => p.id === preferences.subscriptionPlanId);
+            if (plan) {
+              setSelectedSubscriptionPlan(plan);
+              setIsSubscriptionMode(true);
+            }
+          }
+          
+          return true;
+        } else {
+          console.log('⚠️ Preferencias expiradas o inactivas');
+          setPreferencesApplied(true);
+          setCanChangePreference(true);
+          return false;
+        }
+      } else {
+        console.log('❌ No se encontraron preferencias');
+        setPreferencesApplied(false);
+        setCanChangePreference(false);
+        return false;
+      }
+    } catch (error) {
+      console.error('❌ Error al cargar preferencias:', error);
+      setPreferencesApplied(false);
+      setCanChangePreference(false);
+      return false;
+    }
+  };
+
   const searchClientByDni = async (dniValue) => {
     setSearchingDni(true);
     
@@ -868,7 +914,7 @@ const GuestOrderNew = () => {
                   dni,
                   clientId,
                   preferredPaymentMethod: 'suscripcion',
-                  subscriptionType: selectedSubscriptionPlan.id,
+                  subscriptionPlanId: selectedSubscriptionPlan.id,
                   subscriptionAmount: selectedSubscriptionPlan.price,
                   subscriptionQuantity: selectedSubscriptionPlan.bottles + selectedSubscriptionPlan.bonus,
                   validUntil: validUntil.toISOString()
@@ -973,7 +1019,7 @@ const GuestOrderNew = () => {
                     dni,
                     clientId,
                     preferredPaymentMethod: paymentMethod,
-                    subscriptionType: paymentMethod === 'suscripcion' ? 'basic' : null,
+                    subscriptionPlanId: paymentMethod === 'suscripcion' ? selectedSubscriptionPlan?.id : null,
                     subscriptionAmount: paymentMethod === 'suscripcion' ? getTotal() : null,
                     subscriptionQuantity: paymentMethod === 'suscripcion' ? cart.reduce((sum, item) => sum + item.quantity, 0) : null,
                     validUntil: validUntil.toISOString()
