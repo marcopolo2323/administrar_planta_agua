@@ -982,16 +982,18 @@ const GuestOrderNew = () => {
 
   const handleCreateSubscription = async (paymentType) => {
     try {
-      if (!selectedSubscriptionPlan || !clientId) {
-        throw new Error('Plan de suscripción o cliente no seleccionado');
+      if (!selectedSubscriptionPlan || !clientId || !dni) {
+        throw new Error('Plan de suscripción, cliente o DNI no seleccionado');
       }
 
       // Crear la suscripción
       const subscriptionData = {
-        clientId: clientId,
-        planId: selectedSubscriptionPlan.id,
-        paymentMethod: paymentType,
-        status: 'active'
+        clientDni: dni,
+        subscriptionType: selectedSubscriptionPlan.name,
+        totalBottles: selectedSubscriptionPlan.bottles + selectedSubscriptionPlan.bonus,
+        totalAmount: selectedSubscriptionPlan.price,
+        paidAmount: selectedSubscriptionPlan.price,
+        notes: `Plan ${selectedSubscriptionPlan.name} - ${selectedSubscriptionPlan.bottles + selectedSubscriptionPlan.bonus} bidones`
       };
 
       const response = await axios.post('/api/subscriptions', subscriptionData);
@@ -1716,8 +1718,14 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
         clientId: clientId,
         dni: dni,
         paymentMethod: paymentMethod,
-        selectedSubscriptionPlan: selectedSubscriptionPlan
+        selectedSubscriptionPlan: selectedSubscriptionPlan,
+        isSubscriptionMode: isSubscriptionMode
       });
+      
+      // Activar modo suscripción cuando se está seleccionando un plan
+      if (!isSubscriptionMode) {
+        setIsSubscriptionMode(true);
+      }
       
       // Si no hay clientId, mostrar error
       if (!clientId) {
