@@ -1778,7 +1778,26 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
                 colorScheme="purple"
                 size="lg"
                 w="full"
-                onClick={() => setCurrentStep(5)}
+                onClick={async () => {
+                  // Si se selecciona un plan de suscripción, crear la suscripción primero
+                  if (selectedSubscriptionPlan) {
+                    try {
+                      // Crear la suscripción y luego ir a pago
+                      await handleCreateSubscription('efectivo'); // Pago en efectivo por defecto
+                    } catch (error) {
+                      console.error('Error al crear suscripción:', error);
+                      toast({
+                        title: 'Error',
+                        description: 'No se pudo crear la suscripción. Inténtalo de nuevo.',
+                        status: 'error',
+                        duration: 5000,
+                        isClosable: true,
+                      });
+                    }
+                  } else {
+                    setCurrentStep(5);
+                  }
+                }}
                 leftIcon={<FaCreditCard />}
                 isDisabled={!selectedSubscriptionPlan}
               >
