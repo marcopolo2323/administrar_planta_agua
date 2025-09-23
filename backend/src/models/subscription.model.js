@@ -9,7 +9,7 @@ const Subscription = sequelize.define('Subscription', {
   },
   clientId: {
     type: DataTypes.INTEGER,
-    allowNull: false,
+    allowNull: true,
     field: 'client_id'
   },
   clientDni: {

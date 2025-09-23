@@ -51,7 +51,7 @@ const createSubscription = async (req, res) => {
 
     // Crear la suscripción
     const subscription = await Subscription.create({
-      clientId: clientId || null,
+      clientId: clientId || 0, // Usar 0 si no hay clientId
       clientDni,
       subscriptionType,
       totalBottles: parseInt(totalBottles),

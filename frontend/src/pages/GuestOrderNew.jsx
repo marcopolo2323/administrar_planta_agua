@@ -986,6 +986,13 @@ const GuestOrderNew = () => {
         throw new Error('Plan de suscripción, cliente o DNI no seleccionado');
       }
 
+      console.log('🔄 Creando suscripción con datos:', {
+        clientDni: dni,
+        subscriptionType: selectedSubscriptionPlan.name,
+        totalBottles: selectedSubscriptionPlan.bottles + selectedSubscriptionPlan.bonus,
+        totalAmount: selectedSubscriptionPlan.price
+      });
+
       // Crear la suscripción
       const subscriptionData = {
         clientDni: dni,
@@ -1000,6 +1007,7 @@ const GuestOrderNew = () => {
       
       if (response.data.success) {
         const subscription = response.data.data;
+        console.log('✅ Suscripción creada:', subscription);
         
         // Actualizar el estado local con la suscripción creada
         setSelectedSubscription({
@@ -1039,7 +1047,14 @@ const GuestOrderNew = () => {
         });
       }
     } catch (subscriptionError) {
-      console.log('Error al crear suscripción:', subscriptionError);
+      console.error('❌ Error al crear suscripción:', subscriptionError);
+      toast({
+        title: 'Error al crear suscripción',
+        description: subscriptionError.response?.data?.message || 'No se pudo crear la suscripción. Inténtalo de nuevo.',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
       throw subscriptionError;
     }
   };
@@ -2606,18 +2621,25 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
                 size={{ base: "md", md: "lg" }}
                 w="full"
                 leftIcon={<FaCheckCircle />}
-                onClick={() => {
+                onClick={async () => {
                   if (paymentMethod === 'suscripcion' && selectedSubscriptionPlan) {
                     // Para suscripciones, crear la suscripción directamente
-                    handleCreateSubscription('plin');
+                    try {
+                      setLoading(true);
+                      await handleCreateSubscription('plin');
+                    } catch (error) {
+                      console.error('Error en suscripción:', error);
+                    } finally {
+                      setLoading(false);
+                    }
                   } else {
                     // Para pedidos normales, confirmar directamente
-                    handleConfirmPLINPayment();
+                    await handleConfirmPLINPayment();
                   }
                 }}
                 isLoading={loading}
-                loadingText="Creando pedido..."
-                isDisabled={!whatsappSent}
+                loadingText={paymentMethod === 'suscripcion' ? 'Creando suscripción...' : 'Creando pedido...'}
+                isDisabled={!whatsappSent || loading}
                 opacity={whatsappSent ? 1 : 0.5}
                 fontSize={{ base: "sm", md: "md" }}
               >

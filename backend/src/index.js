@@ -346,6 +346,18 @@ app.get('/clean-seed', async (req, res) => {
   }
 });
 
+// Endpoint para probar el estado de la base de datos
+app.get('/test-db', async (req, res) => {
+  try {
+    const { testFullReset } = require('./scripts/testFullReset');
+    await testFullReset();
+    res.json({ success: true, message: 'Verificación completada' });
+  } catch (error) {
+    console.error('❌ Error en verificación:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 app.get('/full-reset', async (req, res) => {
   try {
     console.log('🔄 RESET COMPLETO DE BASE DE DATOS');
@@ -372,9 +384,9 @@ app.get('/full-reset', async (req, res) => {
     await User.sync({ force: false });
     await Client.sync({ force: false });
     await DeliveryPerson.sync({ force: false });
-    await Subscription.sync({ force: false });
     await DeliveryFee.sync({ force: false });
     await SubscriptionPlan.sync({ force: false });
+    await Subscription.sync({ force: false });
     
     // Luego las que tienen foreign keys
     console.log('🔗 Creando tablas con foreign keys...');
