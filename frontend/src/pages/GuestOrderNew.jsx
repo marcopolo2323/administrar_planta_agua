@@ -104,6 +104,8 @@ const GuestOrderNew = () => {
   // Planes de suscripción disponibles (se cargan dinámicamente)
   const [subscriptionPlans, setSubscriptionPlans] = useState([]);
   const [loadingPlans, setLoadingPlans] = useState(false);
+  // ID de plan preferido pendiente de aplicar (cuando las preferencias cargan antes que los planes)
+  const [pendingPreferredPlanId, setPendingPreferredPlanId] = useState(null);
 
   // Datos del cliente
   const [dni, setDni] = useState('');
@@ -187,6 +189,19 @@ const GuestOrderNew = () => {
     }
   };
 
+  // Aplicar plan preferido de suscripción cuando los planes ya estén disponibles
+  useEffect(() => {
+    if (pendingPreferredPlanId && subscriptionPlans.length > 0) {
+      const plan = subscriptionPlans.find(p => p.id === pendingPreferredPlanId);
+      if (plan) {
+        setSelectedSubscriptionPlan(plan);
+        setIsSubscriptionMode(true);
+        setPaymentMethod('suscripcion');
+        setPendingPreferredPlanId(null);
+      }
+    }
+  }, [pendingPreferredPlanId, subscriptionPlans]);
+
   // Función para buscar suscripciones del cliente
   const fetchClientSubscriptions = async (clientDni) => {
     try {
@@ -220,12 +235,14 @@ const GuestOrderNew = () => {
           setPreferencesApplied(true);
           setCanChangePreference(false);
           
-          // Si es suscripción, cargar el plan
+          // Si es suscripción, cargar el plan (o dejarlo pendiente si aún no cargan los planes)
           if (preferences.preferredPaymentMethod === 'suscripcion' && preferences.subscriptionPlanId) {
             const plan = subscriptionPlans.find(p => p.id === preferences.subscriptionPlanId);
             if (plan) {
               setSelectedSubscriptionPlan(plan);
               setIsSubscriptionMode(true);
+            } else {
+              setPendingPreferredPlanId(preferences.subscriptionPlanId);
             }
           }
           
@@ -310,6 +327,16 @@ const GuestOrderNew = () => {
                     isClosable: true,
                   });
                 } else {
+                  // Si no tiene suscripción activa pero tiene un plan preferido guardado, preseleccionarlo
+                  if (preferences.subscriptionPlanId) {
+                    const plan = subscriptionPlans.find(p => p.id === preferences.subscriptionPlanId);
+                    if (plan) {
+                      setSelectedSubscriptionPlan(plan);
+                      setIsSubscriptionMode(true);
+                    } else {
+                      setPendingPreferredPlanId(preferences.subscriptionPlanId);
+                    }
+                  }
                   toast({
                     title: 'Preferencia de suscripción activa',
                     description: 'Puedes comprar una nueva suscripción',
