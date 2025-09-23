@@ -128,6 +128,7 @@ const GuestOrderNew = () => {
   const [whatsappSent, setWhatsappSent] = useState(false);
   const [preferencesApplied, setPreferencesApplied] = useState(false); // Para saber si se aplicaron preferencias
   const [canChangePreference, setCanChangePreference] = useState(false); // Para permitir cambio de modalidad
+  const [subscriptionPaid, setSubscriptionPaid] = useState(false); // Para confirmar que se pagó la suscripción
 
   // Función para obtener la imagen del producto
   const getProductImage = (productName) => {
@@ -641,9 +642,13 @@ const GuestOrderNew = () => {
   };
 
   // Funciones para manejar términos y condiciones
-  const handleTermsAccept = (terms) => {
+  const handleTermsAccept = async (terms) => {
     setTermsAccepted(true);
     setShowTermsModal(false);
+    
+    // Para pedidos normales, crear el pedido
+    await handleConfirmPLINPayment();
+    
     toast({
       title: 'Términos aceptados',
       description: 'Has aceptado los términos y condiciones',
@@ -1010,27 +1015,26 @@ const GuestOrderNew = () => {
         // Resetear el método de pago para evitar confusiones
         setPaymentMethod('suscripcion');
         
-        // Si es pago con Plin, continuar con el flujo de pago
-        if (paymentType === 'plin') {
-          // Mostrar QR y continuar con el flujo de pago
-          setCurrentStep(5);
-          setShowQR(true);
-          setWhatsappSent(false);
-          onPlinModalOpen();
-        } else {
-          // Para pago en efectivo, ir directamente a productos en modo suscripción
-          setCart([]);
-          setCurrentStep(3); // Ir a productos
-          // El modo suscripción ya está activado arriba
-          
-          toast({
-            title: '¡Ahora puedes hacer pedidos!',
-            description: `Tienes ${selectedSubscriptionPlan.bottles + selectedSubscriptionPlan.bonus} bidones disponibles. Agrega productos al carrito.`,
-            status: 'info',
-            duration: 6000,
-            isClosable: true,
-          });
-        }
+        // Resetear términos aceptados para el siguiente pedido
+        setTermsAccepted(false);
+        
+        // Para suscripciones, ir directamente a productos en modo suscripción
+        setCart([]);
+        setCurrentStep(3); // Ir a productos
+        // El modo suscripción ya está activado arriba
+        
+        // Cerrar el modal de Plin
+        onPlinModalClose();
+        setShowQR(false);
+        setWhatsappSent(false);
+        
+        toast({
+          title: '¡Suscripción creada exitosamente!',
+          description: `Tienes ${selectedSubscriptionPlan.bottles + selectedSubscriptionPlan.bonus} bidones disponibles. Agrega productos al carrito.`,
+          status: 'success',
+          duration: 6000,
+          isClosable: true,
+        });
       }
     } catch (subscriptionError) {
       console.log('Error al crear suscripción:', subscriptionError);
@@ -2139,7 +2143,7 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
                   <Text fontWeight="bold">Cómo funciona el pago a crédito:</Text>
                   <Text fontSize="sm">
                     • Tu pedido se anotará automáticamente en tu vale<br/>
-                    • El repartidor NO cobrará nada en la entrega<br/>
+                    • El reya tiene su cpartidor NO cobrará nada en la entrega<br/>
                     • Debes pagar todos tus vales al final del mes<br/>
                     • Puedes pagar en efectivo o PLIN cuando sea el momento
                   </Text>
@@ -2554,6 +2558,29 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
               </Text>
             </Alert>
 
+            {/* Checkbox para suscripciones */}
+            {paymentMethod === 'suscripcion' && selectedSubscriptionPlan && (
+              <Alert status="info" fontSize={{ base: "xs", md: "sm" }}>
+                <AlertIcon />
+                <VStack align="start" spacing={2} w="full">
+                  <Text>
+                    <strong>Importante:</strong> Una vez pagada la suscripción, podrás hacer pedidos usando tus bidones sin costo adicional.
+                  </Text>
+                  <HStack>
+                    <Checkbox
+                      isChecked={subscriptionPaid}
+                      onChange={(e) => setSubscriptionPaid(e.target.checked)}
+                      colorScheme="green"
+                    >
+                      <Text fontSize="sm">
+                        Confirmo que ya pagué la suscripción y quiero proceder a hacer pedidos
+                      </Text>
+                    </Checkbox>
+                  </HStack>
+                </VStack>
+              </Alert>
+            )}
+
             <VStack spacing={{ base: 2, md: 3 }} w="full">
               <Button
                 colorScheme="green"
@@ -2571,7 +2598,15 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
                 size={{ base: "md", md: "lg" }}
                 w="full"
                 leftIcon={<FaCheckCircle />}
-                onClick={handleConfirmPLINPayment}
+                onClick={() => {
+                  if (paymentMethod === 'suscripcion' && selectedSubscriptionPlan) {
+                    // Para suscripciones, crear la suscripción directamente
+                    handleCreateSubscription('plin');
+                  } else {
+                    // Para pedidos normales, confirmar directamente
+                    handleConfirmPLINPayment();
+                  }
+                }}
                 isLoading={loading}
                 loadingText="Creando pedido..."
                 isDisabled={!whatsappSent}
