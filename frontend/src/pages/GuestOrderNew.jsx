@@ -1786,7 +1786,10 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setPaymentMethod('contraentrega')}
+                onClick={() => {
+                  setPaymentMethod('contraentrega');
+                  setIsSubscriptionMode(false);
+                }}
               >
                 Cambiar a Contraentrega
               </Button>
@@ -1826,13 +1829,24 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
           </CardHeader>
           <CardBody p={{ base: 4, md: 6 }}>
             <VStack spacing={{ base: 4, md: 6 }} w="100%">
-              <RadioGroup value={paymentMethod} onChange={setPaymentMethod} w="100%">
+              <RadioGroup value={paymentMethod} onChange={(value) => {
+                setPaymentMethod(value);
+                // Si se selecciona suscripción, activar modo suscripción
+                if (value === 'suscripcion') {
+                  setIsSubscriptionMode(true);
+                } else {
+                  setIsSubscriptionMode(false);
+                }
+              }} w="100%">
                 <Stack spacing={{ base: 3, md: 4 }} w="100%">
                 <Card 
                   variant={paymentMethod === 'contraentrega' ? 'filled' : 'outline'}
                   borderColor={paymentMethod === 'contraentrega' ? 'blue.500' : 'gray.200'}
                   cursor="pointer"
-                  onClick={() => setPaymentMethod('contraentrega')}
+                  onClick={() => {
+                    setPaymentMethod('contraentrega');
+                    setIsSubscriptionMode(false);
+                  }}
                   w="100%"
                 >
                   <CardBody p={{ base: 3, md: 4 }}>
@@ -1852,7 +1866,10 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
                   variant={paymentMethod === 'vale' ? 'filled' : 'outline'}
                   borderColor={paymentMethod === 'vale' ? 'blue.500' : 'gray.200'}
                   cursor="pointer"
-                  onClick={() => setPaymentMethod('vale')}
+                  onClick={() => {
+                    setPaymentMethod('vale');
+                    setIsSubscriptionMode(false);
+                  }}
                   w="100%"
                 >
                   <CardBody p={{ base: 3, md: 4 }}>
@@ -1872,7 +1889,10 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
                   variant={paymentMethod === 'suscripcion' ? 'filled' : 'outline'}
                   borderColor={paymentMethod === 'suscripcion' ? 'blue.500' : 'gray.200'}
                   cursor="pointer"
-                  onClick={() => setPaymentMethod('suscripcion')}
+                  onClick={() => {
+                    setPaymentMethod('suscripcion');
+                    setIsSubscriptionMode(true);
+                  }}
                   w="100%"
                 >
                   <CardBody p={{ base: 3, md: 4 }}>
