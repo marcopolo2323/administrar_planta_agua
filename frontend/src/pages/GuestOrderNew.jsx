@@ -2114,6 +2114,118 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
 
   // Renderizar paso 5: Forma de pago
   const renderStep5 = () => {
+    // Si está confirmando una nueva suscripción
+    if (paymentMethod === 'suscripcion' && selectedSubscriptionPlan && !selectedSubscription) {
+      return (
+        <Card maxW="lg" mx="auto">
+          <CardHeader textAlign="center">
+            <VStack spacing={4}>
+              <Icon as={FaGift} boxSize={12} color="purple.500" />
+              <Heading size="lg">Confirmar Suscripción</Heading>
+              <Text color="gray.600">
+                Revisa los detalles de tu plan de suscripción
+              </Text>
+            </VStack>
+          </CardHeader>
+          <CardBody>
+            <VStack spacing={6}>
+              {/* Información del plan seleccionado */}
+              <Card variant="outline" w="full" borderColor="purple.200">
+                <CardBody>
+                  <VStack spacing={4}>
+                    <Text fontWeight="bold" fontSize="lg" color="purple.600">
+                      {selectedSubscriptionPlan.name}
+                    </Text>
+                    <Text fontSize="sm" color="gray.600" textAlign="center">
+                      {selectedSubscriptionPlan.description}
+                    </Text>
+                    <VStack spacing={2} w="full">
+                      <HStack justify="space-between" w="full">
+                        <Text>Bidones incluidos:</Text>
+                        <Text fontWeight="bold">{selectedSubscriptionPlan.totalBottles}</Text>
+                      </HStack>
+                      <HStack justify="space-between" w="full">
+                        <Text>Bidones extra:</Text>
+                        <Text fontWeight="bold" color="green.600">+{selectedSubscriptionPlan.bonusBottles}</Text>
+                      </HStack>
+                      <HStack justify="space-between" w="full">
+                        <Text>Total bidones:</Text>
+                        <Text fontWeight="bold" fontSize="lg" color="purple.600">
+                          {selectedSubscriptionPlan.totalBottles + selectedSubscriptionPlan.bonusBottles}
+                        </Text>
+                      </HStack>
+                      <HStack justify="space-between" w="full">
+                        <Text>Precio por bidón:</Text>
+                        <Text fontWeight="bold">S/ {parseFloat(selectedSubscriptionPlan.pricePerBottle).toFixed(2)}</Text>
+                      </HStack>
+                      <Divider />
+                      <HStack justify="space-between" w="full">
+                        <Text fontSize="lg" fontWeight="bold">Total a pagar:</Text>
+                        <Text fontSize="xl" fontWeight="bold" color="purple.600">
+                          S/ {parseFloat(selectedSubscriptionPlan.monthlyPrice).toFixed(2)}
+                        </Text>
+                      </HStack>
+                    </VStack>
+                  </VStack>
+                </CardBody>
+              </Card>
+
+              {/* Información del cliente */}
+              <Card variant="outline" w="full">
+                <CardBody>
+                  <VStack spacing={3}>
+                    <Text fontWeight="bold" fontSize="lg">Datos del Cliente</Text>
+                    <VStack spacing={2} w="full">
+                      <HStack justify="space-between" w="full">
+                        <Text>Nombre:</Text>
+                        <Text fontWeight="bold">{clientData.name}</Text>
+                      </HStack>
+                      <HStack justify="space-between" w="full">
+                        <Text>DNI:</Text>
+                        <Text fontWeight="bold">{dni}</Text>
+                      </HStack>
+                      <HStack justify="space-between" w="full">
+                        <Text>Teléfono:</Text>
+                        <Text fontWeight="bold">{clientData.phone}</Text>
+                      </HStack>
+                      <HStack justify="space-between" w="full">
+                        <Text>Email:</Text>
+                        <Text fontWeight="bold">{clientData.email}</Text>
+                      </HStack>
+                    </VStack>
+                  </VStack>
+                </CardBody>
+              </Card>
+
+              {/* Información de cómo funciona */}
+              <Alert status="info" borderRadius="md">
+                <AlertIcon />
+                <VStack align="start" spacing={2}>
+                  <Text fontWeight="bold">Cómo funciona la suscripción:</Text>
+                  <Text fontSize="sm">
+                    • Pagas una vez al mes por adelantado<br/>
+                    • Recibes {selectedSubscriptionPlan.totalBottles + selectedSubscriptionPlan.bonusBottles} bidones inmediatamente<br/>
+                    • Después solo pides la cantidad que necesites sin pagar<br/>
+                    • Los bidones se descuentan de tu suscripción
+                  </Text>
+                </VStack>
+              </Alert>
+
+              <Button
+                colorScheme="purple"
+                size="lg"
+                w="full"
+                onClick={() => setCurrentStep(6)} // Ir al paso de pago
+                leftIcon={<FaCreditCard />}
+              >
+                Proceder al Pago
+              </Button>
+            </VStack>
+          </CardBody>
+        </Card>
+      );
+    }
+
     // Si está en modo suscripción (usando bidones existentes)
     if (isSubscriptionMode && selectedSubscription) {
       return (
@@ -2579,6 +2691,130 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
     );
   };
 
+  // Renderizar paso 6: Pago de suscripción
+  const renderStep6 = () => {
+    return (
+      <Card maxW="lg" mx="auto">
+        <CardHeader textAlign="center">
+          <VStack spacing={4}>
+            <Icon as={FaCreditCard} boxSize={12} color="purple.500" />
+            <Heading size="lg">Pago de Suscripción</Heading>
+            <Text color="gray.600">
+              Selecciona tu método de pago para la suscripción
+            </Text>
+          </VStack>
+        </CardHeader>
+        <CardBody>
+          <VStack spacing={6}>
+            {/* Resumen de la suscripción */}
+            <Card variant="outline" w="full" borderColor="purple.200">
+              <CardBody>
+                <VStack spacing={3}>
+                  <Text fontWeight="bold" fontSize="lg" color="purple.600">
+                    {selectedSubscriptionPlan.name}
+                  </Text>
+                  <HStack justify="space-between" w="full">
+                    <Text>Total bidones:</Text>
+                    <Text fontWeight="bold">{selectedSubscriptionPlan.totalBottles + selectedSubscriptionPlan.bonusBottles}</Text>
+                  </HStack>
+                  <HStack justify="space-between" w="full">
+                    <Text>Precio por bidón:</Text>
+                    <Text fontWeight="bold">S/ {parseFloat(selectedSubscriptionPlan.pricePerBottle).toFixed(2)}</Text>
+                  </HStack>
+                  <Divider />
+                  <HStack justify="space-between" w="full">
+                    <Text fontSize="lg" fontWeight="bold">Total a pagar:</Text>
+                    <Text fontSize="xl" fontWeight="bold" color="purple.600">
+                      S/ {parseFloat(selectedSubscriptionPlan.monthlyPrice).toFixed(2)}
+                    </Text>
+                  </HStack>
+                </VStack>
+              </CardBody>
+            </Card>
+
+            {/* Opciones de pago */}
+            <VStack spacing={4} w="full">
+              <Text fontWeight="bold" fontSize="lg">Método de Pago</Text>
+              
+              {/* Pago en Efectivo */}
+              <Card
+                variant={paymentType === 'efectivo' ? 'filled' : 'outline'}
+                borderColor={paymentType === 'efectivo' ? 'green.500' : 'gray.200'}
+                cursor="pointer"
+                onClick={() => setPaymentType('efectivo')}
+                _hover={{ transform: 'translateY(-2px)', shadow: 'lg' }}
+                transition="all 0.2s"
+              >
+                <CardBody>
+                  <HStack spacing={4}>
+                    <Icon as={FaMoneyBillWave} boxSize={8} color="green.500" />
+                    <VStack align="start" spacing={1}>
+                      <Text fontWeight="bold">Pago en Efectivo</Text>
+                      <Text fontSize="sm" color="gray.600">
+                        Paga cuando recibas tu suscripción
+                      </Text>
+                    </VStack>
+                  </HStack>
+                </CardBody>
+              </Card>
+
+              {/* Pago con Plin */}
+              <Card
+                variant={paymentType === 'plin' ? 'filled' : 'outline'}
+                borderColor={paymentType === 'plin' ? 'purple.500' : 'gray.200'}
+                cursor="pointer"
+                onClick={() => setPaymentType('plin')}
+                _hover={{ transform: 'translateY(-2px)', shadow: 'lg' }}
+                transition="all 0.2s"
+              >
+                <CardBody>
+                  <HStack spacing={4}>
+                    <Icon as={FaQrcode} boxSize={8} color="purple.500" />
+                    <VStack align="start" spacing={1}>
+                      <Text fontWeight="bold">Pago con Plin</Text>
+                      <Text fontSize="sm" color="gray.600">
+                        Paga con QR de Plin
+                      </Text>
+                    </VStack>
+                  </HStack>
+                </CardBody>
+              </Card>
+            </VStack>
+
+            {/* Botones */}
+            <HStack spacing={4} w="full">
+              <Button
+                variant="outline"
+                flex={1}
+                onClick={() => setCurrentStep(5)}
+              >
+                ← Anterior
+              </Button>
+              <Button
+                colorScheme="purple"
+                flex={1}
+                onClick={() => {
+                  if (paymentType === 'efectivo') {
+                    // Crear suscripción directamente
+                    handleCreateSubscription('efectivo');
+                  } else if (paymentType === 'plin') {
+                    // Mostrar modal de Plin
+                    onPlinModalOpen();
+                  }
+                }}
+                leftIcon={paymentType === 'efectivo' ? <FaCheckCircle /> : <FaQrcode />}
+                isLoading={loading}
+                loadingText={paymentType === 'efectivo' ? 'Creando suscripción...' : 'Preparando pago...'}
+              >
+                {paymentType === 'efectivo' ? 'Confirmar Suscripción' : 'Pagar con Plin'}
+              </Button>
+            </HStack>
+          </VStack>
+        </CardBody>
+      </Card>
+    );
+  };
+
   // Modal para pago PLIN
   const renderPlinModal = () => (
     <Modal isOpen={isPlinModalOpen} onClose={handlePlinModalClose} size={{ base: "full", sm: "md" }} isCentered>
@@ -2719,7 +2955,7 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
               minW="max-content"
               px={{ base: 2, md: 0 }}
             >
-              {[1, 2, 3, 4, 5].map((step) => (
+              {[1, 2, 3, 4, 5, 6].map((step) => (
                 <VStack key={step} spacing={1} minW={{ base: "60px", sm: "70px" }}>
                   <Box
                     w={{ base: 8, sm: 10, md: 12 }}
@@ -2745,7 +2981,9 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
                     {step === 1 ? 'DNI' : 
                      step === 2 ? 'Datos' : 
                      step === 3 ? 'Productos' : 
-                     step === 4 ? 'Modalidad' : 'Pago'}
+                     step === 4 ? 'Modalidad' : 
+                     step === 5 ? 'Confirmar' :
+                     step === 6 ? 'Pago' : step}
                   </Text>
                 </VStack>
               ))}
@@ -2758,6 +2996,7 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
           {currentStep === 3 && renderStep3()}
           {currentStep === 4 && renderStep4()}
           {currentStep === 5 && renderStep5()}
+          {currentStep === 6 && renderStep6()}
 
           {/* Botones de navegación */}
           {currentStep > 1 && (
@@ -2768,7 +3007,7 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
               >
                 ← Anterior
               </Button>
-              {currentStep < 5 && (
+              {currentStep < 6 && (
                 <Button
                   colorScheme="blue"
                   onClick={() => {
