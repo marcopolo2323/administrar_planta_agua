@@ -189,14 +189,16 @@ const GuestOrderNew = () => {
   // Función para buscar suscripciones del cliente
   const fetchClientSubscriptions = async (clientDni) => {
     try {
+      console.log('🔄 Buscando suscripciones para DNI:', clientDni);
       const response = await axios.get(`/api/subscriptions/client/${clientDni}`);
+      console.log('📦 Respuesta suscripciones:', response.data);
       if (response.data.success) {
         setClientSubscriptions(response.data.data);
         return response.data.data;
       }
       return [];
     } catch (error) {
-      console.error('Error al buscar suscripciones:', error);
+      console.error('❌ Error al buscar suscripciones:', error);
       return [];
     }
   };
@@ -1459,21 +1461,25 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
               >
                 <CardBody>
                   <VStack spacing={3}>
+                    {/* Debug info */}
+                    <Text fontSize="xs" color="gray.500">
+                      Debug: {JSON.stringify(selectedSubscription, null, 2)}
+                    </Text>
                     <HStack justify="space-between" w="full">
                       <Text fontWeight="bold">Tipo de Suscripción:</Text>
-                      <Text>{selectedSubscription.subscriptionType}</Text>
+                      <Text>{selectedSubscription.subscriptionType || 'N/A'}</Text>
                     </HStack>
                     <HStack justify="space-between" w="full">
                       <Text fontWeight="bold">Bidones Totales:</Text>
-                      <Text>{selectedSubscription.totalBottles}</Text>
+                      <Text>{selectedSubscription.totalBottles || 0}</Text>
                     </HStack>
                     <HStack justify="space-between" w="full">
                       <Text fontWeight="bold">Bidones Restantes:</Text>
-                      <Text color="green.600" fontWeight="bold">{selectedSubscription.remainingBottles}</Text>
+                      <Text color="green.600" fontWeight="bold">{selectedSubscription.remainingBottles || 0}</Text>
                     </HStack>
                     <HStack justify="space-between" w="full">
                       <Text fontWeight="bold">Total Pagado:</Text>
-                      <Text>S/ {selectedSubscription.totalAmount}</Text>
+                      <Text>S/ {selectedSubscription.totalAmount ? parseFloat(selectedSubscription.totalAmount).toFixed(2) : '0.00'}</Text>
                     </HStack>
                   </VStack>
                 </CardBody>
@@ -1835,14 +1841,6 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
                       <Radio value="suscripcion" flexShrink={0} mt={1} />
                       <VStack align="start" spacing={1} flex={1} minW={0}>
                         <Text fontWeight="bold" fontSize={{ base: "sm", md: "md" }}>Suscripción con Beneficios</Text>
-                        <Text fontSize={{ base: "xs", md: "sm" }} color="gray.600" noOfLines={2}>
-                          Pedido recurrente mensual con bidones extra
-                        </Text>
-                        <VStack spacing={1} align="start" fontSize={{ base: "2xs", md: "xs" }} color="green.600">
-                          <Text>• 150 por 30 bidones = +1 bidón extra</Text>
-                          <Text>• 250 por 50 bidones = +2 bidones extra</Text>
-                          <Text>• 500 por 100 bidones = +5 bidones extra</Text>
-                        </VStack>
                       </VStack>
                     </HStack>
                   </CardBody>
