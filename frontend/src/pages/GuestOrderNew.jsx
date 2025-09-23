@@ -1832,7 +1832,15 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
                 colorScheme="blue"
                 size="lg"
                 w="full"
-                onClick={() => setCurrentStep(5)}
+                onClick={() => {
+                  // Si es suscripción, activar modo suscripción
+                  if (paymentMethod === 'suscripcion') {
+                    setIsSubscriptionMode(true);
+                    setCurrentStep(3); // Ir a productos
+                  } else {
+                    setCurrentStep(5); // Ir a confirmación
+                  }
+                }}
                 leftIcon={<FaCreditCard />}
               >
                 {paymentMethod === 'vale' ? 'Continuar (Sin Pago Inmediato)' : 'Continuar con Forma de Pago'}
