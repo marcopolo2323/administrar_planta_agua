@@ -975,6 +975,69 @@ const GuestOrderNew = () => {
     onPlinModalOpen();
   };
 
+  const handleCreateSubscription = async (paymentType) => {
+    try {
+      if (!selectedSubscriptionPlan || !clientId) {
+        throw new Error('Plan de suscripción o cliente no seleccionado');
+      }
+
+      // Crear la suscripción
+      const subscriptionData = {
+        clientId: clientId,
+        planId: selectedSubscriptionPlan.id,
+        paymentMethod: paymentType,
+        status: 'active'
+      };
+
+      const response = await axios.post('/api/subscriptions', subscriptionData);
+      
+      if (response.data.success) {
+        const subscription = response.data.data;
+        
+        // Actualizar el estado local con la suscripción creada
+        setSelectedSubscription({
+          id: subscription.id,
+          subscriptionType: selectedSubscriptionPlan.name,
+          totalBottles: selectedSubscriptionPlan.bottles + selectedSubscriptionPlan.bonus,
+          remainingBottles: selectedSubscriptionPlan.bottles + selectedSubscriptionPlan.bonus,
+          totalAmount: selectedSubscriptionPlan.price,
+          status: 'active'
+        });
+        
+        // Activar modo suscripción
+        setIsSubscriptionMode(true);
+        
+        // Resetear el método de pago para evitar confusiones
+        setPaymentMethod('suscripcion');
+        
+        // Si es pago con Plin, continuar con el flujo de pago
+        if (paymentType === 'plin') {
+          // Mostrar QR y continuar con el flujo de pago
+          setCurrentStep(5);
+          setShowQR(true);
+          setWhatsappSent(false);
+          onPlinModalOpen();
+        } else {
+          // Para pago en efectivo, ir directamente a productos en modo suscripción
+          setCart([]);
+          setCurrentStep(3); // Ir a productos
+          // El modo suscripción ya está activado arriba
+          
+          toast({
+            title: '¡Ahora puedes hacer pedidos!',
+            description: `Tienes ${selectedSubscriptionPlan.bottles + selectedSubscriptionPlan.bonus} bidones disponibles. Agrega productos al carrito.`,
+            status: 'info',
+            duration: 6000,
+            isClosable: true,
+          });
+        }
+      }
+    } catch (subscriptionError) {
+      console.log('Error al crear suscripción:', subscriptionError);
+      throw subscriptionError;
+    }
+  };
+
   const handleConfirmPLINPayment = async () => {
     try {
       // Si es compra de suscripción, la suscripción ya se creó, solo necesitamos limpiar y continuar
@@ -1463,10 +1526,17 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
                 colorScheme="green"
                 size="lg"
                 w="full"
-                onClick={() => setCurrentStep(4)}
+                onClick={() => {
+                  // Si está en modo suscripción, ir directamente a confirmación
+                  if (isSubscriptionMode && selectedSubscription) {
+                    setCurrentStep(5); // Ir directamente a confirmación
+                  } else {
+                    setCurrentStep(4); // Ir a modalidad de pago
+                  }
+                }}
                 leftIcon={<FaTruck />}
               >
-                Continuar con Modalidad
+                {isSubscriptionMode && selectedSubscription ? 'Continuar con Confirmación' : 'Continuar con Modalidad'}
               </Button>
             </VStack>
           </CardBody>
@@ -2591,7 +2661,14 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
               {currentStep < 5 && (
                 <Button
                   colorScheme="blue"
-                  onClick={() => setCurrentStep(currentStep + 1)}
+                  onClick={() => {
+                    // Si está en modo suscripción y es el paso 3, ir directamente a confirmación
+                    if (isSubscriptionMode && selectedSubscription && currentStep === 3) {
+                      setCurrentStep(5); // Ir directamente a confirmación
+                    } else {
+                      setCurrentStep(currentStep + 1);
+                    }
+                  }}
                 >
                   Siguiente →
                 </Button>

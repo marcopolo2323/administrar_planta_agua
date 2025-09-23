@@ -41,6 +41,7 @@ import {
 } from '@chakra-ui/react';
 import { FaPlus, FaEdit, FaTrash, FaEye, FaSync, FaUser, FaPhone, FaMapMarkerAlt, FaIdCard } from 'react-icons/fa';
 import axios from '../utils/axios';
+import useDistrictStore from '../stores/districtStore';
 
 const ClientsManagement = () => {
   const toast = useToast();
@@ -48,6 +49,9 @@ const ClientsManagement = () => {
   const { isOpen: isCreateOpen, onOpen: onCreateOpen, onClose: onCreateClose } = useDisclosure();
   const { isOpen: isEditOpen, onOpen: onEditOpen, onClose: onEditClose } = useDisclosure();
   const { isOpen: isViewOpen, onOpen: onViewOpen, onClose: onViewClose } = useDisclosure();
+  
+  // Store de distritos
+  const { districts, fetchDistricts } = useDistrictStore();
 
   // Estados
   const [clients, setClients] = useState([]);
@@ -56,6 +60,7 @@ const ClientsManagement = () => {
   const [selectedClient, setSelectedClient] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [filterDistrict, setFilterDistrict] = useState('all');
 
   // Estados del formulario
   const [formData, setFormData] = useState({
@@ -94,6 +99,7 @@ const ClientsManagement = () => {
 
   useEffect(() => {
     fetchClients();
+    fetchDistricts(); // Cargar distritos
     
     // Auto-refresh cada 30 segundos
     const interval = setInterval(fetchClients, 30000);
@@ -226,7 +232,12 @@ const ClientsManagement = () => {
     const matchesSearch = client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          client.documentNumber.includes(searchTerm) ||
                          client.phone.includes(searchTerm);
-    return matchesSearch;
+    
+    const matchesStatus = filterStatus === 'all' || client.status === filterStatus;
+    
+    const matchesDistrict = filterDistrict === 'all' || client.district === filterDistrict;
+    
+    return matchesSearch && matchesStatus && matchesDistrict;
   });
 
   // Estadísticas
@@ -330,10 +341,34 @@ const ClientsManagement = () => {
                 onChange={(e) => setFilterStatus(e.target.value)}
                 maxW="200px"
               >
-                <option value="all">Todos</option>
+                <option value="all">Todos los estados</option>
                 <option value="active">Activos</option>
                 <option value="inactive">Inactivos</option>
               </Select>
+              <Select
+                value={filterDistrict}
+                onChange={(e) => setFilterDistrict(e.target.value)}
+                maxW="200px"
+                placeholder="Seleccionar distrito"
+              >
+                <option value="all">Todos los distritos</option>
+                {districts.map((district) => (
+                  <option key={district.id} value={district.name}>
+                    {district.name}
+                  </option>
+                ))}
+              </Select>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setSearchTerm('');
+                  setFilterStatus('all');
+                  setFilterDistrict('all');
+                }}
+              >
+                Limpiar Filtros
+              </Button>
             </HStack>
           </CardBody>
         </Card>
@@ -341,7 +376,14 @@ const ClientsManagement = () => {
         {/* Tabla de clientes */}
         <Card>
           <CardHeader>
-            <Heading size="md">Lista de Clientes</Heading>
+            <HStack justify="space-between">
+              <Heading size="md">Lista de Clientes</Heading>
+              <Text fontSize="sm" color="gray.600">
+                Mostrando {filteredClients.length} de {totalClients} clientes
+                {filterDistrict !== 'all' && ` en ${filterDistrict}`}
+                {filterStatus !== 'all' && ` (${filterStatus === 'active' ? 'Activos' : 'Inactivos'})`}
+              </Text>
+            </HStack>
           </CardHeader>
           <CardBody>
             {isMobile ? (
