@@ -71,6 +71,8 @@ const TermsAndConditionsModal = ({
     console.log('🔍 handleAccept llamado, accepted:', accepted, 'onAccept:', !!onAccept);
     if (accepted && onAccept) {
       console.log('✅ Ejecutando onAccept');
+      // Deshabilitar el botón temporalmente para evitar doble clic
+      setAccepted(false);
       onAccept(terms);
     } else {
       console.log('❌ No se puede aceptar - accepted:', accepted, 'onAccept:', !!onAccept);
