@@ -843,17 +843,26 @@ const GuestOrderNew = () => {
                 status: 'active'
               });
               
-              // Limpiar el carrito y volver al paso de productos
-              setCart([]);
-              setCurrentStep(3);
-              
-              toast({
-                title: '¡Ahora puedes hacer pedidos!',
-                description: `Tienes ${selectedSubscriptionPlan.bottles + selectedSubscriptionPlan.bonus} bidones disponibles. Agrega productos al carrito.`,
-                status: 'info',
-                duration: 6000,
-                isClosable: true,
-              });
+              // Si es pago con Plin, continuar con el flujo de pago
+              if (paymentType === 'plin') {
+                // Mostrar QR y continuar con el flujo de pago
+                setCurrentStep(5);
+                setShowQR(true);
+                setWhatsappSent(false);
+                onPlinModalOpen();
+              } else {
+                // Para pago en efectivo, limpiar carrito y volver al paso de productos
+                setCart([]);
+                setCurrentStep(3);
+                
+                toast({
+                  title: '¡Ahora puedes hacer pedidos!',
+                  description: `Tienes ${selectedSubscriptionPlan.bottles + selectedSubscriptionPlan.bonus} bidones disponibles. Agrega productos al carrito.`,
+                  status: 'info',
+                  duration: 6000,
+                  isClosable: true,
+                });
+              }
             }
           } catch (subscriptionError) {
             console.log('Error al crear suscripción:', subscriptionError);
@@ -966,12 +975,43 @@ const GuestOrderNew = () => {
   };
 
   const handleConfirmPLINPayment = async () => {
-    // Crear el pedido después de confirmar el pago PLIN
-    await createOrder();
-    // Cerrar el modal después de crear el pedido
-    onPlinModalClose();
-    setShowQR(false);
-    setWhatsappSent(false); // Resetear estado de WhatsApp
+    try {
+      // Si es compra de suscripción, la suscripción ya se creó, solo necesitamos limpiar y continuar
+      if (paymentMethod === 'suscripcion' && selectedSubscriptionPlan) {
+        // Limpiar el carrito y volver al paso de productos
+        setCart([]);
+        setCurrentStep(3);
+        
+        // Cerrar el modal
+        onPlinModalClose();
+        setShowQR(false);
+        setWhatsappSent(false);
+        
+        toast({
+          title: '¡Pago confirmado!',
+          description: `Tu suscripción ${selectedSubscriptionPlan.name} está activa. Ahora puedes hacer pedidos usando tus ${selectedSubscriptionPlan.bottles + selectedSubscriptionPlan.bonus} bidones disponibles.`,
+          status: 'success',
+          duration: 8000,
+          isClosable: true,
+        });
+      } else {
+        // Para pedidos normales, crear el pedido
+        await createOrder();
+        // Cerrar el modal después de crear el pedido
+        onPlinModalClose();
+        setShowQR(false);
+        setWhatsappSent(false);
+      }
+    } catch (error) {
+      console.error('Error al confirmar pago PLIN:', error);
+      toast({
+        title: 'Error',
+        description: 'Hubo un problema al confirmar el pago',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    }
   };
 
   // Función auxiliar para buscar cliente por DNI
