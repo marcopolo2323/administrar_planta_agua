@@ -751,16 +751,27 @@ const GuestOrderNew = () => {
     setTermsAccepted(true);
     setShowTermsModal(false);
     
-    // Para pedidos normales, crear el pedido
-    await handleConfirmPLINPayment();
-    
-    toast({
-      title: 'Términos aceptados',
-      description: 'Has aceptado los términos y condiciones',
-      status: 'success',
-      duration: 2000,
-      isClosable: true,
-    });
+    try {
+      // Para pedidos normales, crear el pedido
+      await handleConfirmPLINPayment();
+      
+      toast({
+        title: 'Términos aceptados',
+        description: 'Has aceptado los términos y condiciones',
+        status: 'success',
+        duration: 2000,
+        isClosable: true,
+      });
+    } catch (error) {
+      console.error('Error al crear pedido después de aceptar términos:', error);
+      toast({
+        title: 'Error',
+        description: 'Hubo un problema al crear el pedido',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    }
   };
 
   const handleTermsReject = () => {
@@ -776,8 +787,8 @@ const GuestOrderNew = () => {
   };
 
   const createOrder = async () => {
-    // Verificar que se han aceptado los términos y condiciones
-    if (!termsAccepted) {
+    // Verificar que se han aceptado los términos y condiciones (solo para pedidos normales)
+    if (!termsAccepted && paymentMethod !== 'suscripcion') {
       toast({
         title: 'Términos y Condiciones',
         description: 'Debes aceptar los términos y condiciones para continuar',
