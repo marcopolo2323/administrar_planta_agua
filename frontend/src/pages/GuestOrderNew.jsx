@@ -128,7 +128,6 @@ const GuestOrderNew = () => {
   const [whatsappSent, setWhatsappSent] = useState(false);
   const [preferencesApplied, setPreferencesApplied] = useState(false); // Para saber si se aplicaron preferencias
   const [canChangePreference, setCanChangePreference] = useState(false); // Para permitir cambio de modalidad
-  const [subscriptionPaid, setSubscriptionPaid] = useState(false); // Para confirmar que se pagó la suscripción
 
   // Función para obtener la imagen del producto
   const getProductImage = (productName) => {
@@ -454,9 +453,30 @@ const GuestOrderNew = () => {
     
     setLoadingProducts(prev => new Set(prev).add(product.id));
     try {
-      const result = await calculatePrice(product.id, 1);
-      if (result.success) {
-        const pricing = result.data;
+      let pricing;
+      
+      // Si está en modo suscripción, usar precio fijo del plan
+      if (isSubscriptionMode && selectedSubscription) {
+        // Obtener el precio por bidón del plan de suscripción
+        const subscriptionPlan = subscriptionPlans.find(plan => plan.name === selectedSubscription.subscriptionType);
+        const pricePerBottle = subscriptionPlan ? parseFloat(subscriptionPlan.pricePerBottle) : 5.00;
+        
+        pricing = {
+          unitPrice: pricePerBottle,
+          totalPrice: pricePerBottle,
+          originalPrice: pricePerBottle,
+          discountApplied: 0,
+          priceLevel: 'subscription'
+        };
+      } else {
+        // Para pedidos normales, usar cálculo dinámico
+        const result = await calculatePrice(product.id, 1);
+        if (result.success) {
+          pricing = result.data;
+        } else {
+          throw new Error('Error al calcular precio');
+        }
+      }
         
         const existingItemIndex = cart.findIndex(item => item.productId === product.id);
         
@@ -464,14 +484,33 @@ const GuestOrderNew = () => {
           const updatedCart = [...cart];
           const newQuantity = updatedCart[existingItemIndex].quantity + 1;
           
-          const newResult = await calculatePrice(product.id, newQuantity);
-          if (newResult.success) {
-            const newPricing = newResult.data;
+          // Si está en modo suscripción, usar precio fijo
+          if (isSubscriptionMode && selectedSubscription) {
+            const subscriptionPlan = subscriptionPlans.find(plan => plan.name === selectedSubscription.subscriptionType);
+            const pricePerBottle = subscriptionPlan ? parseFloat(subscriptionPlan.pricePerBottle) : 5.00;
+            
             updatedCart[existingItemIndex].quantity = newQuantity;
-            updatedCart[existingItemIndex].unitPrice = parseFloat(newPricing.unitPrice);
-            updatedCart[existingItemIndex].subtotal = parseFloat(newPricing.unitPrice) * newQuantity;
-            updatedCart[existingItemIndex].pricing = newPricing;
+            updatedCart[existingItemIndex].unitPrice = pricePerBottle;
+            updatedCart[existingItemIndex].subtotal = pricePerBottle * newQuantity;
+            updatedCart[existingItemIndex].pricing = {
+              unitPrice: pricePerBottle,
+              totalPrice: pricePerBottle * newQuantity,
+              originalPrice: pricePerBottle,
+              discountApplied: 0,
+              priceLevel: 'subscription'
+            };
             setCart(updatedCart);
+          } else {
+            // Para pedidos normales, usar cálculo dinámico
+            const newResult = await calculatePrice(product.id, newQuantity);
+            if (newResult.success) {
+              const newPricing = newResult.data;
+              updatedCart[existingItemIndex].quantity = newQuantity;
+              updatedCart[existingItemIndex].unitPrice = parseFloat(newPricing.unitPrice);
+              updatedCart[existingItemIndex].subtotal = parseFloat(newPricing.unitPrice) * newQuantity;
+              updatedCart[existingItemIndex].pricing = newPricing;
+              setCart(updatedCart);
+            }
           }
         } else {
           const cartItem = {
@@ -494,7 +533,6 @@ const GuestOrderNew = () => {
           duration: 2000,
           isClosable: true,
         });
-      }
     } catch (error) {
       console.error('Error al calcular precio:', error);
     } finally {
@@ -516,21 +554,41 @@ const GuestOrderNew = () => {
       const cartItem = cart.find(item => item.id === itemId);
       if (!cartItem) return;
       
-      const result = await calculatePrice(cartItem.productId, newQuantity);
-      if (result.success) {
-        const pricing = result.data;
-        setCart(cart.map(item => 
-          item.id === itemId 
-            ? { 
-                ...item, 
-                quantity: newQuantity, 
-                unitPrice: parseFloat(pricing.unitPrice),
-                subtotal: parseFloat(pricing.unitPrice) * newQuantity,
-                pricing: pricing
-              }
-            : item
-        ));
+      let pricing;
+      
+      // Si está en modo suscripción, usar precio fijo del plan
+      if (isSubscriptionMode && selectedSubscription) {
+        const subscriptionPlan = subscriptionPlans.find(plan => plan.name === selectedSubscription.subscriptionType);
+        const pricePerBottle = subscriptionPlan ? parseFloat(subscriptionPlan.pricePerBottle) : 5.00;
+        
+        pricing = {
+          unitPrice: pricePerBottle,
+          totalPrice: pricePerBottle * newQuantity,
+          originalPrice: pricePerBottle,
+          discountApplied: 0,
+          priceLevel: 'subscription'
+        };
+      } else {
+        // Para pedidos normales, usar cálculo dinámico
+        const result = await calculatePrice(cartItem.productId, newQuantity);
+        if (result.success) {
+          pricing = result.data;
+        } else {
+          throw new Error('Error al calcular precio');
+        }
       }
+      
+      setCart(cart.map(item => 
+        item.id === itemId 
+          ? { 
+              ...item, 
+              quantity: newQuantity, 
+              unitPrice: parseFloat(pricing.unitPrice),
+              subtotal: parseFloat(pricing.unitPrice) * newQuantity,
+              pricing: pricing
+            }
+          : item
+      ));
     } catch (error) {
       console.error('Error al actualizar cantidad:', error);
     }
@@ -787,9 +845,9 @@ const GuestOrderNew = () => {
               clientId: clientId,
               clientDni: dni,
               subscriptionType: selectedSubscriptionPlan.id,
-              totalBottles: selectedSubscriptionPlan.bottles + selectedSubscriptionPlan.bonus,
-              totalAmount: selectedSubscriptionPlan.price,
-              paidAmount: selectedSubscriptionPlan.price,
+              totalBottles: selectedSubscriptionPlan.totalBottles + selectedSubscriptionPlan.bonusBottles,
+              totalAmount: selectedSubscriptionPlan.monthlyPrice,
+              paidAmount: selectedSubscriptionPlan.monthlyPrice,
               expiryDate: null, // Las suscripciones duran hasta que se acaben los bidones
               notes: `Suscripción ${selectedSubscriptionPlan.name} comprada`
             };
@@ -810,8 +868,8 @@ const GuestOrderNew = () => {
                   clientId,
                   preferredPaymentMethod: 'suscripcion',
                   subscriptionType: selectedSubscriptionPlan.id,
-                  subscriptionAmount: selectedSubscriptionPlan.price,
-                  subscriptionQuantity: selectedSubscriptionPlan.bottles + selectedSubscriptionPlan.bonus,
+                  subscriptionAmount: selectedSubscriptionPlan.monthlyPrice,
+                  subscriptionQuantity: selectedSubscriptionPlan.totalBottles + selectedSubscriptionPlan.bonusBottles,
                   validUntil: validUntil.toISOString()
                 };
                 
@@ -831,7 +889,7 @@ const GuestOrderNew = () => {
 
               toast({
                 title: '🎉 ¡Suscripción activada!',
-                description: `Tu suscripción ${selectedSubscriptionPlan.name} está lista. Ahora puedes hacer pedidos usando tus ${selectedSubscriptionPlan.bottles + selectedSubscriptionPlan.bonus} bidones disponibles (sin costo adicional).`,
+                description: `Tu suscripción ${selectedSubscriptionPlan.name} está lista. Ahora puedes hacer pedidos usando tus ${selectedSubscriptionPlan.totalBottles + selectedSubscriptionPlan.bonusBottles} bidones disponibles (sin costo adicional).`,
                 status: 'success',
                 duration: 8000,
                 isClosable: true,
@@ -842,9 +900,9 @@ const GuestOrderNew = () => {
               setSelectedSubscription({
                 id: subscription.id,
                 subscriptionType: selectedSubscriptionPlan.name,
-                totalBottles: selectedSubscriptionPlan.bottles + selectedSubscriptionPlan.bonus,
-                remainingBottles: selectedSubscriptionPlan.bottles + selectedSubscriptionPlan.bonus,
-                totalAmount: selectedSubscriptionPlan.price,
+                totalBottles: selectedSubscriptionPlan.totalBottles + selectedSubscriptionPlan.bonusBottles,
+                remainingBottles: selectedSubscriptionPlan.totalBottles + selectedSubscriptionPlan.bonusBottles,
+                totalAmount: selectedSubscriptionPlan.monthlyPrice,
                 status: 'active'
               });
               
@@ -863,7 +921,7 @@ const GuestOrderNew = () => {
                 
                 toast({
                   title: '¡Ahora puedes hacer pedidos!',
-                  description: `Tienes ${selectedSubscriptionPlan.bottles + selectedSubscriptionPlan.bonus} bidones disponibles. Agrega productos al carrito.`,
+                  description: `Tienes ${selectedSubscriptionPlan.totalBottles + selectedSubscriptionPlan.bonusBottles} bidones disponibles. Agrega productos al carrito.`,
                   status: 'info',
                   duration: 6000,
                   isClosable: true,
@@ -989,18 +1047,18 @@ const GuestOrderNew = () => {
       console.log('🔄 Creando suscripción con datos:', {
         clientDni: dni,
         subscriptionType: selectedSubscriptionPlan.name,
-        totalBottles: selectedSubscriptionPlan.bottles + selectedSubscriptionPlan.bonus,
-        totalAmount: selectedSubscriptionPlan.price
+        totalBottles: selectedSubscriptionPlan.totalBottles + selectedSubscriptionPlan.bonusBottles,
+        totalAmount: selectedSubscriptionPlan.monthlyPrice
       });
 
       // Crear la suscripción
       const subscriptionData = {
         clientDni: dni,
         subscriptionType: selectedSubscriptionPlan.name,
-        totalBottles: selectedSubscriptionPlan.bottles + selectedSubscriptionPlan.bonus,
-        totalAmount: selectedSubscriptionPlan.price,
-        paidAmount: selectedSubscriptionPlan.price,
-        notes: `Plan ${selectedSubscriptionPlan.name} - ${selectedSubscriptionPlan.bottles + selectedSubscriptionPlan.bonus} bidones`
+        totalBottles: selectedSubscriptionPlan.totalBottles + selectedSubscriptionPlan.bonusBottles,
+        totalAmount: selectedSubscriptionPlan.monthlyPrice,
+        paidAmount: selectedSubscriptionPlan.monthlyPrice,
+        notes: `Plan ${selectedSubscriptionPlan.name} - ${selectedSubscriptionPlan.totalBottles + selectedSubscriptionPlan.bonusBottles} bidones`
       };
 
       const response = await axios.post('/api/subscriptions', subscriptionData);
@@ -1013,9 +1071,9 @@ const GuestOrderNew = () => {
         setSelectedSubscription({
           id: subscription.id,
           subscriptionType: selectedSubscriptionPlan.name,
-          totalBottles: selectedSubscriptionPlan.bottles + selectedSubscriptionPlan.bonus,
-          remainingBottles: selectedSubscriptionPlan.bottles + selectedSubscriptionPlan.bonus,
-          totalAmount: selectedSubscriptionPlan.price,
+          totalBottles: selectedSubscriptionPlan.totalBottles + selectedSubscriptionPlan.bonusBottles,
+          remainingBottles: selectedSubscriptionPlan.totalBottles + selectedSubscriptionPlan.bonusBottles,
+          totalAmount: selectedSubscriptionPlan.monthlyPrice,
           status: 'active'
         });
         
@@ -1040,7 +1098,7 @@ const GuestOrderNew = () => {
         
         toast({
           title: '¡Suscripción creada exitosamente!',
-          description: `Tienes ${selectedSubscriptionPlan.bottles + selectedSubscriptionPlan.bonus} bidones disponibles. Agrega productos al carrito.`,
+          description: `Tienes ${selectedSubscriptionPlan.totalBottles + selectedSubscriptionPlan.bonusBottles} bidones disponibles. Agrega productos al carrito.`,
           status: 'success',
           duration: 6000,
           isClosable: true,
@@ -1075,7 +1133,7 @@ const GuestOrderNew = () => {
         
         toast({
           title: '¡Pago confirmado!',
-          description: `Tu suscripción ${selectedSubscriptionPlan.name} está activa. Ahora puedes hacer pedidos usando tus ${selectedSubscriptionPlan.bottles + selectedSubscriptionPlan.bonus} bidones disponibles.`,
+          description: `Tu suscripción ${selectedSubscriptionPlan.name} está activa. Ahora puedes hacer pedidos usando tus ${selectedSubscriptionPlan.totalBottles + selectedSubscriptionPlan.bonusBottles} bidones disponibles.`,
           status: 'success',
           duration: 8000,
           isClosable: true,
@@ -1125,9 +1183,9 @@ const GuestOrderNew = () => {
     if (paymentMethod === 'suscripcion' && selectedSubscriptionPlan) {
       message += `🎯 *SUSCRIPCIÓN:*
 📦 Plan: ${selectedSubscriptionPlan.name}
-💰 Precio: S/ ${selectedSubscriptionPlan.price}
-🔢 Bidones: ${selectedSubscriptionPlan.bottles} + ${selectedSubscriptionPlan.bonus} extra
-📊 Total bidones: ${selectedSubscriptionPlan.bottles + selectedSubscriptionPlan.bonus}
+💰 Precio: S/ ${selectedSubscriptionPlan.monthlyPrice}
+🔢 Bidones: ${selectedSubscriptionPlan.totalBottles} + ${selectedSubscriptionPlan.bonusBottles} extra
+📊 Total bidones: ${selectedSubscriptionPlan.totalBottles + selectedSubscriptionPlan.bonusBottles}
 
 ✅ *PAGO REALIZADO VÍA PLIN*`;
     } else {
@@ -2249,7 +2307,7 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
                   <Text fontWeight="bold">Cómo funciona la suscripción:</Text>
                   <Text fontSize="sm">
                     • Pagas una vez al mes por adelantado<br/>
-                    • Recibes {selectedSubscriptionPlan.bottles + selectedSubscriptionPlan.bonus} bidones inmediatamente<br/>
+                    • Recibes {selectedSubscriptionPlan.totalBottles + selectedSubscriptionPlan.bonusBottles} bidones inmediatamente<br/>
                     • Después solo pides la cantidad que necesites sin pagar<br/>
                     • Los bidones se descuentan de tu suscripción
                   </Text>
@@ -2267,21 +2325,21 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
                       <HStack justify="space-between" w="full">
                         <Text>Precio del plan:</Text>
                         <Text fontWeight="bold" color="purple.600">
-                          S/ {selectedSubscriptionPlan.price}
+                          S/ {selectedSubscriptionPlan.monthlyPrice}
                         </Text>
                       </HStack>
                       <HStack justify="space-between" w="full">
                         <Text>Bidones incluidos:</Text>
-                        <Text fontWeight="bold">{selectedSubscriptionPlan.bottles}</Text>
+                        <Text fontWeight="bold">{selectedSubscriptionPlan.totalBottles}</Text>
                       </HStack>
                       <HStack justify="space-between" w="full">
                         <Text>Bidones extra:</Text>
-                        <Text fontWeight="bold" color="green.600">+{selectedSubscriptionPlan.bonus}</Text>
+                        <Text fontWeight="bold" color="green.600">+{selectedSubscriptionPlan.bonusBottles}</Text>
                       </HStack>
                       <HStack justify="space-between" w="full">
                         <Text>Total bidones:</Text>
                         <Text fontWeight="bold" fontSize="lg" color="purple.600">
-                          {selectedSubscriptionPlan.bottles + selectedSubscriptionPlan.bonus}
+                          {selectedSubscriptionPlan.totalBottles + selectedSubscriptionPlan.bonusBottles}
                         </Text>
                       </HStack>
                     </VStack>
@@ -2306,7 +2364,7 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
                       <HStack justify="space-between" w="full">
                         <Text>Total a pagar:</Text>
                         <Text fontWeight="bold" fontSize="lg" color="purple.600">
-                          S/ {selectedSubscriptionPlan.price}
+                          S/ {selectedSubscriptionPlan.monthlyPrice}
                         </Text>
                       </HStack>
                     </VStack>
@@ -2559,13 +2617,13 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
             <VStack spacing={2} w="100%">
               <Text fontWeight="bold" fontSize={{ base: "md", md: "lg" }} textAlign="center">
                 Total a pagar: S/ {paymentMethod === 'suscripcion' && selectedSubscriptionPlan 
-                  ? parseFloat(selectedSubscriptionPlan.price).toFixed(2)
+                  ? parseFloat(selectedSubscriptionPlan.monthlyPrice).toFixed(2)
                   : parseFloat(getTotal()).toFixed(2)
                 }
               </Text>
               <Text fontSize={{ base: "xs", md: "sm" }} color="gray.600" textAlign="center">
                 {paymentMethod === 'suscripcion' && selectedSubscriptionPlan 
-                  ? `Plan ${selectedSubscriptionPlan.name} - ${selectedSubscriptionPlan.bottles + selectedSubscriptionPlan.bonus} bidones`
+                  ? `Plan ${selectedSubscriptionPlan.name} - ${selectedSubscriptionPlan.totalBottles + selectedSubscriptionPlan.bonusBottles} bidones`
                   : "Incluye productos + flete de envío"
                 }
               </Text>
@@ -2582,27 +2640,14 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
             </Alert>
 
             {/* Checkbox para suscripciones */}
-            {paymentMethod === 'suscripcion' && selectedSubscriptionPlan && (
-              <Alert status="info" fontSize={{ base: "xs", md: "sm" }}>
-                <AlertIcon />
-                <VStack align="start" spacing={2} w="full">
-                  <Text>
-                    <strong>Importante:</strong> Una vez pagada la suscripción, podrás hacer pedidos usando tus bidones sin costo adicional.
-                  </Text>
-                  <HStack>
-                    <Checkbox
-                      isChecked={subscriptionPaid}
-                      onChange={(e) => setSubscriptionPaid(e.target.checked)}
-                      colorScheme="green"
-                    >
-                      <Text fontSize="sm">
-                        Confirmo que ya pagué la suscripción y quiero proceder a hacer pedidos
-                      </Text>
-                    </Checkbox>
-                  </HStack>
-                </VStack>
-              </Alert>
-            )}
+        {paymentMethod === 'suscripcion' && selectedSubscriptionPlan && (
+          <Alert status="info" fontSize={{ base: "xs", md: "sm" }}>
+            <AlertIcon />
+            <Text>
+              <strong>Importante:</strong> Una vez pagada la suscripción, podrás hacer pedidos usando tus bidones sin costo adicional.
+            </Text>
+          </Alert>
+        )}
 
             <VStack spacing={{ base: 2, md: 3 }} w="full">
               <Button
