@@ -14,6 +14,19 @@ export default defineConfig({
       }
     }
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          chakra: ['@chakra-ui/react', '@chakra-ui/icons'],
+          router: ['react-router-dom'],
+          utils: ['axios', 'zustand']
+        }
+      }
+    },
+    chunkSizeWarningLimit: 1000
+  },
   optimizeDeps: {
     esbuildOptions: {
       loader: {
