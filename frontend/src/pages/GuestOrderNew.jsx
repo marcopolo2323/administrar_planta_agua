@@ -2143,16 +2143,16 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
                     <VStack spacing={2} w="full">
                       <HStack justify="space-between" w="full">
                         <Text>Bidones incluidos:</Text>
-                        <Text fontWeight="bold">{selectedSubscriptionPlan.totalBottles}</Text>
+                        <Text fontWeight="bold">{selectedSubscriptionPlan.bottles}</Text>
                       </HStack>
                       <HStack justify="space-between" w="full">
                         <Text>Bidones extra:</Text>
-                        <Text fontWeight="bold" color="green.600">+{selectedSubscriptionPlan.bonusBottles}</Text>
+                        <Text fontWeight="bold" color="green.600">+{selectedSubscriptionPlan.bonus}</Text>
                       </HStack>
                       <HStack justify="space-between" w="full">
                         <Text>Total bidones:</Text>
                         <Text fontWeight="bold" fontSize="lg" color="purple.600">
-                          {selectedSubscriptionPlan.totalBottles + selectedSubscriptionPlan.bonusBottles}
+                          {selectedSubscriptionPlan.bottles + selectedSubscriptionPlan.bonus}
                         </Text>
                       </HStack>
                       <HStack justify="space-between" w="full">
@@ -2163,7 +2163,7 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
                       <HStack justify="space-between" w="full">
                         <Text fontSize="lg" fontWeight="bold">Total a pagar:</Text>
                         <Text fontSize="xl" fontWeight="bold" color="purple.600">
-                          S/ {parseFloat(selectedSubscriptionPlan.monthlyPrice).toFixed(2)}
+                          S/ {parseFloat(selectedSubscriptionPlan.price).toFixed(2)}
                         </Text>
                       </HStack>
                     </VStack>
@@ -2205,7 +2205,7 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
                   <Text fontWeight="bold">Cómo funciona la suscripción:</Text>
                   <Text fontSize="sm">
                     • Pagas una vez al mes por adelantado<br/>
-                    • Recibes {selectedSubscriptionPlan.totalBottles + selectedSubscriptionPlan.bonusBottles} bidones inmediatamente<br/>
+                    • Recibes {selectedSubscriptionPlan.bottles + selectedSubscriptionPlan.bonus} bidones inmediatamente<br/>
                     • Después solo pides la cantidad que necesites sin pagar<br/>
                     • Los bidones se descuentan de tu suscripción
                   </Text>
@@ -2420,7 +2420,7 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
                   <Text fontWeight="bold">Cómo funciona la suscripción:</Text>
                   <Text fontSize="sm">
                     • Pagas una vez al mes por adelantado<br/>
-                    • Recibes {selectedSubscriptionPlan.totalBottles + selectedSubscriptionPlan.bonusBottles} bidones inmediatamente<br/>
+                    • Recibes {selectedSubscriptionPlan.bottles + selectedSubscriptionPlan.bonus} bidones inmediatamente<br/>
                     • Después solo pides la cantidad que necesites sin pagar<br/>
                     • Los bidones se descuentan de tu suscripción
                   </Text>
@@ -2716,7 +2716,7 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
                   </Text>
                   <HStack justify="space-between" w="full">
                     <Text>Total bidones:</Text>
-                    <Text fontWeight="bold">{selectedSubscriptionPlan.totalBottles + selectedSubscriptionPlan.bonusBottles}</Text>
+                    <Text fontWeight="bold">{selectedSubscriptionPlan.bottles + selectedSubscriptionPlan.bonus}</Text>
                   </HStack>
                   <HStack justify="space-between" w="full">
                     <Text>Precio por bidón:</Text>
@@ -2726,7 +2726,7 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
                   <HStack justify="space-between" w="full">
                     <Text fontSize="lg" fontWeight="bold">Total a pagar:</Text>
                     <Text fontSize="xl" fontWeight="bold" color="purple.600">
-                      S/ {parseFloat(selectedSubscriptionPlan.monthlyPrice).toFixed(2)}
+                      S/ {parseFloat(selectedSubscriptionPlan.price).toFixed(2)}
                     </Text>
                   </HStack>
                 </VStack>
