@@ -61,13 +61,19 @@ const TermsAndConditionsModal = ({
 
   useEffect(() => {
     if (isOpen) {
+      console.log('🔍 Modal abierto, reseteando estado');
+      setAccepted(false);
       fetchActiveTerms();
     }
   }, [isOpen]);
 
   const handleAccept = () => {
+    console.log('🔍 handleAccept llamado, accepted:', accepted, 'onAccept:', !!onAccept);
     if (accepted && onAccept) {
+      console.log('✅ Ejecutando onAccept');
       onAccept(terms);
+    } else {
+      console.log('❌ No se puede aceptar - accepted:', accepted, 'onAccept:', !!onAccept);
     }
   };
 
@@ -155,7 +161,10 @@ const TermsAndConditionsModal = ({
             <VStack w="full" spacing={4}>
               <Checkbox
                 isChecked={accepted}
-                onChange={(e) => setAccepted(e.target.checked)}
+                onChange={(e) => {
+                  console.log('🔍 Checkbox cambiado a:', e.target.checked);
+                  setAccepted(e.target.checked);
+                }}
                 colorScheme="blue"
                 size="lg"
               >

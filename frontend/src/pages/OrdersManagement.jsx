@@ -918,12 +918,12 @@ const OrdersManagement = () => {
                     <VStack spacing={2} align="stretch">
                       <HStack justify="space-between">
                         <Text fontWeight="bold">Nombre:</Text>
-                        <Text>{deliveryPersons.find(dp => dp.id === selectedOrder.deliveryPersonId)?.name}</Text>
+                        <Text>{deliveryPersons.find(dp => dp.id === selectedOrder.deliveryPersonId)?.name || 'No asignado'}</Text>
                       </HStack>
                       
                       <HStack justify="space-between">
                         <Text fontWeight="bold">Teléfono:</Text>
-                        <Text>{deliveryPersons.find(dp => dp.id === selectedOrder.deliveryPersonId)?.phone}</Text>
+                        <Text>{deliveryPersons.find(dp => dp.id === selectedOrder.deliveryPersonId)?.phone || 'N/A'}</Text>
                       </HStack>
                     </VStack>
                   </CardBody>
