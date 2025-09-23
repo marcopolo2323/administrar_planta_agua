@@ -294,40 +294,45 @@ const GuestOrderNew = () => {
         // Buscar suscripciones del cliente
         const subscriptions = await fetchClientSubscriptions(dniValue);
         
-        // Buscar preferencias del cliente
-        try {
-          const preferencesResponse = await axios.get(`/api/client-preferences/dni/${dniValue}`);
-          if (preferencesResponse.data.success && preferencesResponse.data.data) {
-            const preferences = preferencesResponse.data.data;
-            
-            // Aplicar preferencias automáticamente
-            setPaymentMethod(preferences.preferredPaymentMethod);
-            setPreferencesApplied(true);
-            
-            // Verificar si la preferencia sigue activa (no ha expirado)
-            const now = new Date();
-            const validUntil = new Date(preferences.validUntil);
-            const isPreferenceActive = validUntil > now;
-            
-            if (isPreferenceActive) {
-              // La preferencia sigue activa - mostrar solo esa modalidad
-              setCanChangePreference(false);
+        // Verificar si tiene suscripciones activas (prioridad sobre preferencias)
+        const activeSubscriptions = subscriptions.filter(sub => sub.status === 'active' && sub.remainingBottles > 0);
+        if (activeSubscriptions.length > 0) {
+          // Si tiene suscripciones activas, activar modo suscripción automáticamente
+          setPaymentMethod('suscripcion');
+          setIsSubscriptionMode(true);
+          setSelectedSubscription(activeSubscriptions[0]);
+          setPreferencesApplied(true);
+          setCanChangePreference(false);
+          
+          toast({
+            title: 'Suscripción activa encontrada',
+            description: `Tienes ${activeSubscriptions[0].remainingBottles} bidones disponibles de tu suscripción`,
+            status: 'success',
+            duration: 5000,
+            isClosable: true,
+          });
+        } else {
+          // Si no tiene suscripciones activas, buscar preferencias
+          try {
+            const preferencesResponse = await axios.get(`/api/client-preferences/dni/${dniValue}`);
+            if (preferencesResponse.data.success && preferencesResponse.data.data) {
+              const preferences = preferencesResponse.data.data;
               
-              // Si es suscripción, verificar si tiene suscripciones activas
-              if (preferences.preferredPaymentMethod === 'suscripcion') {
-                const activeSubscriptions = subscriptions.filter(sub => sub.status === 'active' && sub.remainingBottles > 0);
-                if (activeSubscriptions.length > 0) {
-                  setIsSubscriptionMode(true);
-                  setSelectedSubscription(activeSubscriptions[0]);
-                  toast({
-                    title: 'Suscripción activa encontrada',
-                    description: `Tienes ${activeSubscriptions[0].remainingBottles} bidones disponibles de tu suscripción`,
-                    status: 'success',
-                    duration: 5000,
-                    isClosable: true,
-                  });
-                } else {
-                  // Si no tiene suscripción activa pero tiene un plan preferido guardado, preseleccionarlo
+              // Aplicar preferencias automáticamente
+              setPaymentMethod(preferences.preferredPaymentMethod);
+              setPreferencesApplied(true);
+              
+              // Verificar si la preferencia sigue activa (no ha expirado)
+              const now = new Date();
+              const validUntil = new Date(preferences.validUntil);
+              const isPreferenceActive = validUntil > now;
+              
+              if (isPreferenceActive) {
+                // La preferencia sigue activa - mostrar solo esa modalidad
+                setCanChangePreference(false);
+                
+                // Si es suscripción, preseleccionar el plan preferido
+                if (preferences.preferredPaymentMethod === 'suscripcion') {
                   if (preferences.subscriptionPlanId) {
                     const plan = subscriptionPlans.find(p => p.id === preferences.subscriptionPlanId);
                     if (plan) {
@@ -344,32 +349,32 @@ const GuestOrderNew = () => {
                     duration: 5000,
                     isClosable: true,
                   });
+                } else {
+                  toast({
+                    title: 'Modalidad activa encontrada',
+                    description: `Tu modalidad de ${preferences.preferredPaymentMethod === 'vale' ? 'vale' : 'suscripción'} está activa hasta ${validUntil.toLocaleDateString()}`,
+                    status: 'info',
+                    duration: 5000,
+                    isClosable: true,
+                  });
                 }
               } else {
+                // La preferencia expiró - mostrar todas las opciones
+                setPreferencesApplied(false);
+                setCanChangePreference(false);
+                
                 toast({
-                  title: 'Modalidad activa encontrada',
-                  description: `Tu modalidad de ${preferences.preferredPaymentMethod === 'vale' ? 'vale' : 'suscripción'} está activa hasta ${validUntil.toLocaleDateString()}`,
-                  status: 'info',
+                  title: 'Modalidad expirada',
+                  description: 'Tu modalidad anterior expiró. Elige una nueva modalidad de pago.',
+                  status: 'warning',
                   duration: 5000,
                   isClosable: true,
                 });
               }
-            } else {
-              // La preferencia expiró - mostrar todas las opciones
-              setPreferencesApplied(false);
-              setCanChangePreference(false);
-              
-              toast({
-                title: 'Modalidad expirada',
-                description: 'Tu modalidad anterior expiró. Elige una nueva modalidad de pago.',
-                status: 'warning',
-                duration: 5000,
-                isClosable: true,
-              });
             }
+          } catch (preferencesError) {
+            console.log('No se encontraron preferencias para este cliente');
           }
-        } catch (preferencesError) {
-          console.log('No se encontraron preferencias para este cliente');
         }
         
         toast({
