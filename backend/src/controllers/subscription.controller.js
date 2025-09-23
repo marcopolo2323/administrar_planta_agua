@@ -49,9 +49,22 @@ const createSubscription = async (req, res) => {
       });
     }
 
+    // Buscar el cliente por DNI si no se proporciona clientId
+    let finalClientId = clientId;
+    if (!finalClientId) {
+      const client = await Client.findOne({ where: { documentNumber: clientDni } });
+      if (!client) {
+        return res.status(400).json({
+          success: false,
+          message: 'Cliente no encontrado con el DNI proporcionado'
+        });
+      }
+      finalClientId = client.id;
+    }
+
     // Crear la suscripción
     const subscription = await Subscription.create({
-      clientId: clientId || 0, // Usar 0 si no hay clientId
+      clientId: finalClientId,
       clientDni,
       subscriptionType,
       totalBottles: parseInt(totalBottles),
