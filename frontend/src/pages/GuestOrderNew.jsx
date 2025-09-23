@@ -851,9 +851,10 @@ const GuestOrderNew = () => {
                 setWhatsappSent(false);
                 onPlinModalOpen();
               } else {
-                // Para pago en efectivo, limpiar carrito y volver al paso de productos
+                // Para pago en efectivo, ir directamente a productos en modo suscripción
                 setCart([]);
-                setCurrentStep(3);
+                setCurrentStep(3); // Ir a productos
+                // El modo suscripción ya está activado arriba
                 
                 toast({
                   title: '¡Ahora puedes hacer pedidos!',
@@ -978,9 +979,10 @@ const GuestOrderNew = () => {
     try {
       // Si es compra de suscripción, la suscripción ya se creó, solo necesitamos limpiar y continuar
       if (paymentMethod === 'suscripcion' && selectedSubscriptionPlan) {
-        // Limpiar el carrito y volver al paso de productos
+        // Limpiar el carrito y volver al paso de productos en modo suscripción
         setCart([]);
-        setCurrentStep(3);
+        setCurrentStep(3); // Ir a productos
+        // El modo suscripción ya está activado
         
         // Cerrar el modal
         onPlinModalClose();
@@ -1831,9 +1833,16 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
             <VStack spacing={{ base: 4, md: 6 }} w="100%">
               <RadioGroup value={paymentMethod} onChange={(value) => {
                 setPaymentMethod(value);
-                // Si se selecciona suscripción, activar modo suscripción
+                // Si se selecciona suscripción, verificar si ya tiene una suscripción activa
                 if (value === 'suscripcion') {
-                  setIsSubscriptionMode(true);
+                  // Si ya tiene una suscripción activa, activar modo suscripción
+                  if (selectedSubscription) {
+                    setIsSubscriptionMode(true);
+                  } else {
+                    // Si no tiene suscripción, ir a seleccionar plan
+                    setIsSubscriptionMode(false);
+                    setCurrentStep(4); // Ir directamente a seleccionar plan
+                  }
                 } else {
                   setIsSubscriptionMode(false);
                 }
@@ -1891,7 +1900,14 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
                   cursor="pointer"
                   onClick={() => {
                     setPaymentMethod('suscripcion');
-                    setIsSubscriptionMode(true);
+                    // Si ya tiene una suscripción activa, activar modo suscripción
+                    if (selectedSubscription) {
+                      setIsSubscriptionMode(true);
+                    } else {
+                      // Si no tiene suscripción, ir a seleccionar plan
+                      setIsSubscriptionMode(false);
+                      setCurrentStep(4); // Ir directamente a seleccionar plan
+                    }
                   }}
                   w="100%"
                 >
