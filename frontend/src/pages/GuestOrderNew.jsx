@@ -56,7 +56,8 @@ import {
   FaCreditCard,
   FaCheckCircle,
   FaCalendarAlt,
-  FaExclamationTriangle
+  FaExclamationTriangle,
+  FaGift
 } from 'react-icons/fa';
 import useProductStore from '../stores/productStore';
 import useDeliveryStore from '../stores/deliveryStore';
