@@ -836,7 +836,10 @@ const GuestOrderNew = () => {
               setIsSubscriptionMode(true);
               setSelectedSubscription({
                 id: subscription.id,
+                subscriptionType: selectedSubscriptionPlan.name,
+                totalBottles: selectedSubscriptionPlan.bottles + selectedSubscriptionPlan.bonus,
                 remainingBottles: selectedSubscriptionPlan.bottles + selectedSubscriptionPlan.bonus,
+                totalAmount: selectedSubscriptionPlan.price,
                 status: 'active'
               });
               
@@ -1461,10 +1464,6 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
               >
                 <CardBody>
                   <VStack spacing={3}>
-                    {/* Debug info */}
-                    <Text fontSize="xs" color="gray.500">
-                      Debug: {JSON.stringify(selectedSubscription, null, 2)}
-                    </Text>
                     <HStack justify="space-between" w="full">
                       <Text fontWeight="bold">Tipo de Suscripción:</Text>
                       <Text>{selectedSubscription.subscriptionType || 'N/A'}</Text>
