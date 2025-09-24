@@ -82,7 +82,11 @@ const TermsAndConditionsManagement = () => {
       }
 
       console.log('🔄 Llamando a /api/terms-and-conditions con params:', params.toString());
-      const response = await axios.get(`/api/terms-and-conditions?${params}`);
+      const response = await axios.get(`/api/terms-and-conditions?${params}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       
       console.log('📦 Respuesta términos:', response.data);
 
@@ -149,7 +153,12 @@ const TermsAndConditionsManagement = () => {
       
       if (selectedTerm) {
         // Actualizar
-        await axios.put(`/api/terms-and-conditions/${selectedTerm.id}`, formData);
+        const token = localStorage.getItem('token');
+        await axios.put(`/api/terms-and-conditions/${selectedTerm.id}`, formData, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
         toast({
           title: 'Éxito',
           description: 'Términos y condiciones actualizados',
@@ -159,7 +168,11 @@ const TermsAndConditionsManagement = () => {
         });
       } else {
         // Crear
-        await axios.post('/api/terms-and-conditions', formData);
+        await axios.post('/api/terms-and-conditions', formData, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
         toast({
           title: 'Éxito',
           description: 'Términos y condiciones creados',
@@ -186,7 +199,11 @@ const TermsAndConditionsManagement = () => {
   const handleToggleStatus = async (term) => {
     try {
       const token = localStorage.getItem('token');
-      await axios.patch(`/api/terms-and-conditions/${term.id}/toggle`, {});
+      await axios.patch(`/api/terms-and-conditions/${term.id}/toggle`, {}, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       
       toast({
         title: 'Éxito',
@@ -216,7 +233,11 @@ const TermsAndConditionsManagement = () => {
 
     try {
       const token = localStorage.getItem('token');
-      await axios.delete(`/api/terms-and-conditions/${term.id}`);
+      await axios.delete(`/api/terms-and-conditions/${term.id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       
       toast({
         title: 'Éxito',
