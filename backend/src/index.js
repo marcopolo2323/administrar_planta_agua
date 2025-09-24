@@ -34,6 +34,36 @@ app.options('*', cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Endpoint de diagnóstico de base de datos
+app.get('/check-db-connection', async (req, res) => {
+  try {
+    console.log('🔍 Verificando conexión a base de datos...');
+    
+    // Intentar conectar a la base de datos
+    await sequelize.authenticate();
+    console.log('✅ Conexión a base de datos exitosa');
+    
+    // Verificar si las tablas existen
+    const tables = await sequelize.getQueryInterface().showAllTables();
+    console.log('📋 Tablas encontradas:', tables);
+    
+    res.json({ 
+      success: true, 
+      message: 'Conexión a base de datos exitosa',
+      tables: tables,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ Error de conexión a base de datos:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message,
+      code: error.code,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // Endpoints de sincronización manual (GET para acceso directo)
 app.get('/fix-foreign-keys', async (req, res) => {
   try {
