@@ -2,6 +2,8 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import useAuthStore from './stores/authStore';
 import ProtectedRoute from './components/ProtectedRoute';
+import SystemExpiryGuard from './components/SystemExpiryGuard';
+import ErrorPage from './pages/ErrorPage';
 
 // Layouts
 import AuthLayout from './layouts/AuthLayout';
@@ -55,7 +57,7 @@ const App = () => {
   }
 
   return (
-          <Routes>
+    <Routes>
         {/* Rutas públicas */}
         <Route path="/" element={<AuthLayout />}>
           <Route index element={<Login />} />
@@ -73,7 +75,11 @@ const App = () => {
         <Route
           path="/dashboard"
           element={
-            token ? <DashboardLayout /> : <Navigate to="/" replace />
+            token ? (
+              <SystemExpiryGuard>
+                <DashboardLayout />
+              </SystemExpiryGuard>
+            ) : <Navigate to="/" replace />
           }
         >
           <Route index element={<ProtectedRoute requiredRoles={['admin', 'vendedor']}><Dashboard /></ProtectedRoute>} />
@@ -99,7 +105,7 @@ const App = () => {
 
 
         {/* Ruta para cualquier otra dirección */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<ErrorPage type="404" />} />
       </Routes>
   );
 };

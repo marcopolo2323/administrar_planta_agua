@@ -1,5 +1,77 @@
 const { User } = require('../models');
+const { Op } = require('sequelize');
 const bcrypt = require('bcryptjs');
+
+// Crear usuario
+exports.createUser = async (req, res) => {
+  try {
+    const { username, email, password, role, firstName, lastName, phone, address, district, reference } = req.body;
+
+    // Verificar si el usuario ya existe
+    const existingUser = await User.findOne({ 
+      where: { 
+        [Op.or]: [
+          { email: email },
+          { username: username }
+        ]
+      } 
+    });
+    
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: 'El usuario o email ya existe'
+      });
+    }
+
+    // Hash de la contraseña
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Crear usuario
+    const user = await User.create({
+      username,
+      email,
+      password: hashedPassword,
+      role: role || 'cliente',
+      firstName: firstName || '',
+      lastName: lastName || '',
+      phone: phone || '',
+      address: address || '',
+      district: district || '',
+      reference: reference || '',
+      isActive: true
+    });
+
+    // No devolver la contraseña
+    const userResponse = {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      role: user.role,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      phone: user.phone,
+      address: user.address,
+      district: user.district,
+      reference: user.reference,
+      isActive: user.isActive,
+      createdAt: user.createdAt
+    };
+
+    res.status(201).json({
+      success: true,
+      message: 'Usuario creado exitosamente',
+      data: userResponse
+    });
+  } catch (error) {
+    console.error('Error al crear usuario:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error interno del servidor',
+      error: error.message
+    });
+  }
+};
 
 // Obtener usuarios por rol
 exports.getUsersByRole = async (req, res) => {

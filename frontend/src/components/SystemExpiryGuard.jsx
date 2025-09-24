@@ -2,7 +2,7 @@ import React from 'react';
 import { useSystemExpiry } from '../hooks/useSystemExpiry';
 import SystemExpired from './SystemExpired';
 
-const ProtectedRoute = ({ children }) => {
+const SystemExpiryGuard = ({ children }) => {
   const { isExpired, isLoading } = useSystemExpiry();
 
   // Mostrar loading mientras se verifica
@@ -19,4 +19,4 @@ const ProtectedRoute = ({ children }) => {
   return children;
 };
 
-export default ProtectedRoute;
+export default SystemExpiryGuard;

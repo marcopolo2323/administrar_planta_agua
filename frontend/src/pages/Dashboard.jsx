@@ -24,6 +24,8 @@ import useClientStore from '../stores/clientStore';
 import useDeliveryStore from '../stores/deliveryStore';
 import useGuestOrderStore from '../stores/guestOrderStore';
 import AquaYaraLogo from '../components/AquaYaraLogo';
+import SystemExpired from '../components/SystemExpired';
+import { useSystemExpiry } from '../hooks/useSystemExpiry';
 import axios from '../utils/axios';
 
 const Dashboard = () => {
@@ -32,6 +34,14 @@ const Dashboard = () => {
   const borderColor = useColorModeValue('gray.200', 'gray.600');
   const isMobile = useBreakpointValue({ base: true, md: false });
   const [lastUpdate, setLastUpdate] = useState(new Date());
+
+  // Verificar expiración del sistema
+  const { isExpired, daysRemaining, isLoading: expiryLoading } = useSystemExpiry();
+
+  // Si el sistema está expirado, mostrar pantalla de expiración
+  if (!expiryLoading && isExpired) {
+    return <SystemExpired />;
+  }
 
   // Stores
   const { products, fetchProducts } = useProductStore();
@@ -123,6 +133,16 @@ const Dashboard = () => {
   const contraentregaOrders = guestOrders?.filter(order => order.paymentMethod === 'contraentrega')?.length || 0;
   const valeOrders = guestOrders?.filter(order => order.paymentMethod === 'vale')?.length || 0;
   const suscripcionOrders = guestOrders?.filter(order => order.paymentMethod === 'suscripcion')?.length || 0;
+  
+  // Calcular estadísticas por tipo de pago (PLIN vs Efectivo)
+  const plinOrders = guestOrders?.filter(order => order.paymentType === 'plin')?.length || 0;
+  const efectivoOrders = guestOrders?.filter(order => order.paymentType === 'efectivo' || order.paymentType === 'cash')?.length || 0;
+  
+  // Calcular montos por tipo de pago
+  const plinAmount = guestOrders?.filter(order => order.paymentType === 'plin')
+    ?.reduce((sum, order) => sum + (order.totalAmount || 0), 0) || 0;
+  const efectivoAmount = guestOrders?.filter(order => order.paymentType === 'efectivo' || order.paymentType === 'cash')
+    ?.reduce((sum, order) => sum + (order.totalAmount || 0), 0) || 0;
   
   // Estados para contadores reales
   const [voucherStats, setVoucherStats] = useState({ total: 0, pending: 0 });
@@ -228,17 +248,14 @@ const Dashboard = () => {
           <Heading size={{ base: 'md', md: 'lg' }} color="gray.700" textAlign={{ base: 'center', sm: 'left' }}>
             Dashboard Administrativo
           </Heading>
-          <Text color="gray.500" fontSize={{ base: 'xs', md: 'sm' }} textAlign={{ base: 'center', sm: 'left' }}>
-            Gestión completa del negocio
-          </Text>
           <Text color="gray.400" fontSize="xs" textAlign={{ base: 'center', sm: 'left' }}>
             Última actualización: {lastUpdate.toLocaleTimeString()}
           </Text>
         </VStack>
         <VStack spacing={1} align={{ base: 'center', sm: 'flex-end' }}>
           <Badge colorScheme="green" variant="subtle" fontSize="xs">
-            Sistema Activo
-          </Badge>
+              Sistema Activo
+            </Badge>
           <Button
             size="xs"
             colorScheme="blue"
@@ -365,6 +382,33 @@ const Dashboard = () => {
               <StatNumber color="green.500" fontSize={{ base: 'lg', md: 'xl' }}>{products.length}</StatNumber>
               <StatHelpText fontSize={{ base: 'xs', md: 'sm' }}>
                 En inventario
+              </StatHelpText>
+            </Stat>
+          </CardBody>
+        </Card>
+      </SimpleGrid>
+
+      {/* Estadísticas por método de pago (PLIN vs Efectivo) */}
+      <SimpleGrid columns={{ base: 1, sm: 2, lg: 2 }} spacing={{ base: 2, md: 4 }} mb={{ base: 4, md: 8 }} maxW="100%">
+        <Card bg={cardBg} borderColor={borderColor} boxShadow="sm">
+          <CardBody p={{ base: 3, md: 4 }}>
+            <Stat>
+              <StatLabel color="blue.600" fontSize={{ base: 'sm', md: 'md' }}>📱 PLIN</StatLabel>
+              <StatNumber color="blue.500" fontSize={{ base: 'xl', md: '2xl' }}>{plinOrders}</StatNumber>
+              <StatHelpText fontSize={{ base: 'xs', md: 'sm' }}>
+                S/ {plinAmount.toFixed(2)} en total
+              </StatHelpText>
+            </Stat>
+          </CardBody>
+        </Card>
+
+        <Card bg={cardBg} borderColor={borderColor} boxShadow="sm">
+          <CardBody p={{ base: 3, md: 4 }}>
+            <Stat>
+              <StatLabel color="green.600" fontSize={{ base: 'sm', md: 'md' }}>💵 Efectivo</StatLabel>
+              <StatNumber color="green.500" fontSize={{ base: 'xl', md: '2xl' }}>{efectivoOrders}</StatNumber>
+              <StatHelpText fontSize={{ base: 'xs', md: 'sm' }}>
+                S/ {efectivoAmount.toFixed(2)} en total
               </StatHelpText>
             </Stat>
           </CardBody>

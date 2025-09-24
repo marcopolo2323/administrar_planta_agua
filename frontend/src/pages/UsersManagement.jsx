@@ -274,7 +274,13 @@ const UsersManagement = () => {
         username: formData.username,
         email: formData.email,
         role: formData.role,
-        isActive: formData.isActive
+        isActive: formData.isActive,
+        firstName: formData.firstName || '',
+        lastName: formData.lastName || '',
+        phone: formData.phone || '',
+        address: formData.address || '',
+        district: formData.district || '',
+        reference: formData.reference || ''
       };
 
       // Solo incluir password si se está creando o si se proporcionó una nueva

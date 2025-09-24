@@ -12,7 +12,7 @@ export const useRole = () => {
   };
 
   const isAdmin = () => hasRole('admin');
-  const isSeller = () => hasRole(['admin', 'vendedor']);
+  const isSeller = () => hasRole('vendedor');
   const isClient = () => hasRole('cliente');
   const isDeliveryPerson = () => hasRole('repartidor');
 

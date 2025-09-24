@@ -1,0 +1,86 @@
+/* Estilos personalizados para toasts menos invasivos */
+
+/* Configuración para móviles */
+@media (max-width: 768px) {
+  .chakra-toast {
+    max-width: 90vw !important;
+    font-size: 14px !important;
+    padding: 8px 12px !important;
+    border-radius: 8px !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+    margin: 8px !important;
+    z-index: 9999 !important;
+  }
+  
+  .chakra-toast__title {
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    line-height: 1.2 !important;
+  }
+  
+  .chakra-toast__description {
+    font-size: 12px !important;
+    line-height: 1.3 !important;
+    margin-top: 2px !important;
+  }
+  
+  .chakra-toast__close-button {
+    font-size: 12px !important;
+    padding: 2px !important;
+  }
+}
+
+/* Configuración para desktop */
+@media (min-width: 769px) {
+  .chakra-toast {
+    max-width: 400px !important;
+    font-size: 16px !important;
+    padding: 12px 16px !important;
+    border-radius: 12px !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+    margin: 16px !important;
+    z-index: 9999 !important;
+  }
+  
+  .chakra-toast__title {
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    line-height: 1.2 !important;
+  }
+  
+  .chakra-toast__description {
+    font-size: 14px !important;
+    line-height: 1.4 !important;
+    margin-top: 4px !important;
+  }
+}
+
+/* Animaciones suaves */
+.chakra-toast {
+  animation: slideInRight 0.3s ease-out !important;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Variante sutil para móviles */
+.chakra-toast--subtle {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  backdrop-filter: blur(10px) !important;
+}
+
+/* Reducir la opacidad del overlay en móviles */
+@media (max-width: 768px) {
+  .chakra-toast__overlay {
+    background: rgba(0, 0, 0, 0.1) !important;
+  }
+}

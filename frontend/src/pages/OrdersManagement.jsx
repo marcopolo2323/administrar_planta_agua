@@ -75,6 +75,7 @@ const OrdersManagement = () => {
     orders: guestOrders,
     loading: guestOrdersLoading,
     fetchOrders: fetchGuestOrders,
+    fetchOrdersSilently,
     updateGuestOrder
   } = useGuestOrderStore();
 
@@ -90,6 +91,7 @@ const OrdersManagement = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [selectedDeliveryPerson, setSelectedDeliveryPerson] = useState('');
   const [lastUpdate, setLastUpdate] = useState(new Date());
+  const [isSilentlyUpdating, setIsSilentlyUpdating] = useState(false);
   const [notes, setNotes] = useState('');
   
   // Modales
@@ -103,10 +105,12 @@ const OrdersManagement = () => {
     fetchGuestOrders();
     fetchDeliveryPersons();
     
-    // Actualizar cada 30 segundos para mantener sincronización
-    const interval = setInterval(() => {
-      fetchGuestOrders();
+    // Actualizar cada 30 segundos para mantener sincronización (silenciosamente)
+    const interval = setInterval(async () => {
+      setIsSilentlyUpdating(true);
+      await fetchOrdersSilently();
       setLastUpdate(new Date());
+      setIsSilentlyUpdating(false);
     }, 30000);
     
     return () => clearInterval(interval);
@@ -783,7 +787,7 @@ const OrdersManagement = () => {
               >
                 {deliveryPersons.map((deliveryPerson) => (
                   <option key={deliveryPerson.id} value={deliveryPerson.id}>
-                    {deliveryPerson.name} - {deliveryPerson.phone}
+                    {deliveryPerson.firstName} {deliveryPerson.lastName}
                   </option>
                 ))}
               </Select>
@@ -1040,19 +1044,32 @@ const OrdersManagement = () => {
             <Text color="gray.600">
               Administra y asigna repartidores a los pedidos
             </Text>
-            <Text color="gray.400" fontSize="xs">
-              Última actualización: {lastUpdate.toLocaleTimeString()}
-            </Text>
+            <HStack spacing={2}>
+              <Text color="gray.400" fontSize="xs">
+                Última actualización: {lastUpdate.toLocaleTimeString()}
+              </Text>
+              {isSilentlyUpdating && (
+                <Box
+                  w="8px"
+                  h="8px"
+                  bg="blue.400"
+                  borderRadius="full"
+                  animation="pulse 1s infinite"
+                />
+              )}
+            </HStack>
           </Box>
           <Button
             size="sm"
             colorScheme="blue"
             variant="outline"
-            onClick={() => {
-              fetchGuestOrders();
+            onClick={async () => {
+              setIsSilentlyUpdating(true);
+              await fetchOrdersSilently();
               setLastUpdate(new Date());
+              setIsSilentlyUpdating(false);
             }}
-            isLoading={guestOrdersLoading}
+            isLoading={isSilentlyUpdating}
           >
             Actualizar
           </Button>

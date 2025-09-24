@@ -780,12 +780,15 @@ const GuestOrderNew = () => {
 
   // Funciones para manejar términos y condiciones
   const handleTermsAccept = async (terms) => {
-    setTermsAccepted(true);
-    setShowTermsModal(false);
-    
     try {
+      console.log('🔍 handleTermsAccept iniciado');
+      setTermsAccepted(true);
+      setShowTermsModal(false);
+      
       // Para pedidos normales, crear el pedido
-      await handleConfirmPLINPayment();
+      if (handleConfirmPLINPayment) {
+        await handleConfirmPLINPayment();
+      }
       
       toast({
         title: 'Términos aceptados',
@@ -794,8 +797,10 @@ const GuestOrderNew = () => {
         duration: 2000,
         isClosable: true,
       });
+      
+      console.log('✅ handleTermsAccept completado');
     } catch (error) {
-      console.error('Error al crear pedido después de aceptar términos:', error);
+      console.error('❌ Error al crear pedido después de aceptar términos:', error);
       toast({
         title: 'Error',
         description: 'Hubo un problema al crear el pedido',
@@ -1516,6 +1521,14 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
               </Text>
             </Alert>
           )}
+          {cart.length === 0 && (
+            <Alert status="warning" size="sm" borderRadius="md" mt={2}>
+              <AlertIcon />
+              <Text fontSize="sm">
+                <strong>¡Recuerda!</strong> Debes seleccionar al menos un producto para continuar con tu pedido.
+              </Text>
+            </Alert>
+          )}
         </CardHeader>
         <CardBody>
           <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
@@ -1547,8 +1560,8 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
                               {product.description}
                             </Text>
                             {product.name === 'Paquete de Botellas de Agua' && (
-                              <Badge colorScheme="green" size="sm">
-                                ¡50+ unidades = S/ 9.00 c/u!
+                              <Badge colorScheme="green" size="sm" fontSize="xs" whiteSpace="nowrap">
+                                ¡50+ = S/ 9.00 c/u!
                               </Badge>
                             )}
                           </VStack>
@@ -3046,35 +3059,37 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
           </Box>
 
           {/* Indicador de pasos */}
-          <Box w="100%" overflowX="auto" pb={2}>
+          <Box w="100%" overflowX="auto" pb={2} px={{ base: 2, md: 0 }}>
             <HStack 
-              spacing={{ base: 1, sm: 2, md: 4 }} 
+              spacing={{ base: 0.5, sm: 1, md: 2 }} 
               justify="center" 
               minW="max-content"
-              px={{ base: 2, md: 0 }}
+              w="100%"
             >
               {[1, 2, 3, 4, 5, 6].map((step) => (
-                <VStack key={step} spacing={1} minW={{ base: "60px", sm: "70px" }}>
+                <VStack key={step} spacing={0.5} minW={{ base: "50px", sm: "60px" }} flex={1}>
                   <Box
-                    w={{ base: 8, sm: 10, md: 12 }}
-                    h={{ base: 8, sm: 10, md: 12 }}
+                    w={{ base: 6, sm: 8, md: 10 }}
+                    h={{ base: 6, sm: 8, md: 10 }}
                     borderRadius="full"
                     bg={step <= currentStep ? 'blue.500' : 'gray.200'}
                     color={step <= currentStep ? 'white' : 'gray.500'}
                     display="flex"
                     alignItems="center"
                     justifyContent="center"
-                    fontSize={{ base: "xs", sm: "sm", md: "md" }}
+                    fontSize={{ base: "2xs", sm: "xs", md: "sm" }}
                     fontWeight="bold"
                     flexShrink={0}
                   >
                     {step}
                   </Box>
                   <Text 
-                    fontSize={{ base: "2xs", sm: "xs", md: "sm" }} 
+                    fontSize={{ base: "3xs", sm: "2xs", md: "xs" }} 
                     color={step <= currentStep ? 'blue.600' : 'gray.500'}
                     textAlign="center"
                     whiteSpace="nowrap"
+                    noOfLines={1}
+                    maxW="100%"
                   >
                     {step === 1 ? 'DNI' : 
                      step === 2 ? 'Datos' : 
@@ -3105,10 +3120,25 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
               >
                 ← Anterior
               </Button>
-              {currentStep < 6 && (
+              {currentStep < 6 && currentStep !== 5 && (
                 <Button
                   colorScheme="blue"
+                  isDisabled={currentStep === 3 && cart.length === 0}
                   onClick={() => {
+                    // Validar que se hayan seleccionado productos en el paso 3
+                    if (currentStep === 3) {
+                      if (cart.length === 0) {
+                        toast({
+                          title: '¡Productos requeridos!',
+                          description: 'Por favor, selecciona al menos un producto para continuar con tu pedido.',
+                          status: 'warning',
+                          duration: 4000,
+                          isClosable: true,
+                        });
+                        return;
+                      }
+                    }
+                    
                     // Si está en modo suscripción y es el paso 3, ir directamente a confirmación
                     if (isSubscriptionMode && selectedSubscription && currentStep === 3) {
                       setCurrentStep(5); // Ir directamente a confirmación
@@ -3117,7 +3147,7 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
                     }
                   }}
                 >
-                  Siguiente →
+                  {currentStep === 3 && cart.length === 0 ? 'Selecciona productos →' : 'Siguiente →'}
                 </Button>
               )}
             </HStack>

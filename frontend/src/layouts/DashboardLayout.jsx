@@ -129,7 +129,7 @@ const DashboardLayout = () => {
       </Box>
 
       {/* Navigation Menu */}
-      <VStack spacing={1} flex={1} align="stretch" p={2}>
+      <VStack spacing={1} flex={1} align="stretch" p={isCollapsed ? 1 : 2}>
         {menuItems.map((item) => (
           <Button
             key={item.to}
@@ -138,15 +138,18 @@ const DashboardLayout = () => {
             variant="ghost"
             color="white"
             justifyContent={isCollapsed ? "center" : "flex-start"}
-            leftIcon={<Text>{item.icon}</Text>}
+            leftIcon={isCollapsed ? undefined : <Text>{item.icon}</Text>}
             _hover={{ bg: 'whiteAlpha.200' }}
             _active={{ bg: 'whiteAlpha.300' }}
             size="sm"
             h="40px"
             onClick={closeMobileMenu}
             title={isCollapsed ? item.label : undefined}
+            px={isCollapsed ? 2 : 4}
+            minW={isCollapsed ? "40px" : "auto"}
+            w={isCollapsed ? "40px" : "100%"}
           >
-            {!isCollapsed && item.label}
+            {isCollapsed ? <Text>{item.icon}</Text> : item.label}
           </Button>
         ))}
       </VStack>
@@ -261,50 +264,56 @@ const DashboardLayout = () => {
         flexDirection="column"
         transition="margin-left 0.3s ease"
       >
-        {/* Header */}
-        <Box
-          bg="white"
-          px={{ base: 4, md: 6 }}
-          py={4}
-          boxShadow="sm"
-          borderBottom="1px solid"
-          borderColor="gray.200"
-          position="sticky"
-          top={0}
-          zIndex={999}
-        >
-          <Flex align="center" justify="space-between">
-            <HStack spacing={4}>
-              {isMobile ? (
-                <IconButton
-                  icon={<HamburgerIcon />}
-                  variant="ghost"
-                  onClick={() => setIsMobileMenuOpen(true)}
-                  aria-label="Abrir menú"
-                />
-              ) : (
-                <IconButton
-                  icon={isSidebarCollapsed ? <ChevronRightIcon /> : <ChevronLeftIcon />}
-                  variant="ghost"
-                  onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-                  aria-label={isSidebarCollapsed ? "Expandir sidebar" : "Colapsar sidebar"}
-                  size="sm"
-                />
-              )}
-              <AquaYaraLogo size="sm" variant="horizontal" />
-              <Text fontSize="lg" fontWeight="semibold" color="gray.700">
-                {isDeliveryPerson() ? 'Panel de Repartidor' : 'Panel de Administración'}
-              </Text>
-            </HStack>
-            
-            <HStack spacing={4}>
-              <AdminContact variant="badge" />
-              <Badge colorScheme="green" variant="subtle">
-                En línea
-              </Badge>
-            </HStack>
-          </Flex>
-        </Box>
+        {/* Header - Solo mostrar en móviles o cuando sidebar está expandido */}
+        {isMobile || !isSidebarCollapsed ? (
+          <Box
+            bg="white"
+            px={{ base: 4, md: 6 }}
+            py={4}
+            boxShadow="sm"
+            borderBottom="1px solid"
+            borderColor="gray.200"
+            position="sticky"
+            top={0}
+            zIndex={999}
+          >
+            <Flex align="center" justify="space-between">
+              <HStack spacing={4}>
+                {isMobile ? (
+                  <IconButton
+                    icon={<HamburgerIcon />}
+                    variant="ghost"
+                    onClick={() => setIsMobileMenuOpen(true)}
+                    aria-label="Abrir menú"
+                  />
+                ) : (
+                  <IconButton
+                    icon={isSidebarCollapsed ? <ChevronRightIcon /> : <ChevronLeftIcon />}
+                    variant="ghost"
+                    onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                    aria-label={isSidebarCollapsed ? "Expandir sidebar" : "Colapsar sidebar"}
+                    size="sm"
+                  />
+                )}
+                {!isSidebarCollapsed && (
+                  <>
+                    <AquaYaraLogo size="sm" variant="horizontal" />
+                    <Text fontSize="lg" fontWeight="semibold" color="gray.700">
+                      {isDeliveryPerson() ? 'Panel de Repartidor' : 'Panel de Administración'}
+                    </Text>
+                  </>
+                )}
+              </HStack>
+              
+              <HStack spacing={4}>
+                <AdminContact variant="badge" />
+                <Badge colorScheme="green" variant="subtle">
+                  En línea
+                </Badge>
+              </HStack>
+            </Flex>
+          </Box>
+        ) : null}
 
         {/* Page Content */}
         <Box 

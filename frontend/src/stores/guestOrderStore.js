@@ -63,6 +63,26 @@ const useGuestOrderStore = create((set, get) => ({
     }
   },
 
+  // Nueva función para actualización silenciosa (sin loading)
+  fetchOrdersSilently: async () => {
+    try {
+      const response = await axios.get('/api/guest-orders?limit=1000');
+      console.log('🔄 Actualización silenciosa de pedidos');
+      
+      // El backend devuelve { success: true, data: [...] }
+      const orders = response.data.success ? response.data.data : response.data;
+      
+      set({ 
+        orders: Array.isArray(orders) ? orders : []
+        // No cambiamos loading, mantiene su estado actual
+      });
+      return { success: true, data: orders };
+    } catch (error) {
+      console.error('Error en actualización silenciosa:', error);
+      return { success: false, error: error.response?.data?.message || 'Error al actualizar pedidos' };
+    }
+  },
+
   updateOrderStatus: async (orderId, status) => {
     try {
       await axios.put(`/api/guest-orders/${orderId}/status`, { status });
