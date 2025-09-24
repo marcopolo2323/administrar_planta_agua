@@ -21,11 +21,19 @@ export default defineConfig({
           vendor: ['react', 'react-dom'],
           chakra: ['@chakra-ui/react', '@chakra-ui/icons'],
           router: ['react-router-dom'],
-          utils: ['axios', 'zustand']
+          utils: ['axios', 'zustand'],
+          icons: ['react-icons']
         }
       }
     },
-    chunkSizeWarningLimit: 1000
+    chunkSizeWarningLimit: 1000,
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true,
+        drop_debugger: true
+      }
+    }
   },
   optimizeDeps: {
     esbuildOptions: {

@@ -1,50 +1,33 @@
 import { Outlet } from 'react-router-dom';
-import styled from 'styled-components';
-
-const AuthContainer = styled.div`
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 100vh;
-  background-color: var(--background-color);
-`;
-
-const AuthCard = styled.div`
-  width: 100%;
-  max-width: 450px;
-  padding: 2rem;
-  background-color: white;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-`;
-
-const Logo = styled.div`
-  text-align: center;
-  margin-bottom: 2rem;
-  
-  h1 {
-    color: var(--primary-color);
-    font-size: 1.8rem;
-    margin-bottom: 0.5rem;
-  }
-  
-  p {
-    color: var(--dark-gray);
-    font-size: 1rem;
-  }
-`;
+import { Box, Flex, VStack, Heading, Text } from '@chakra-ui/react';
 
 const AuthLayout = () => {
   return (
-    <AuthContainer>
-      <AuthCard>
-        <Logo>
-          <h1>Sistema de Gestión</h1>
-          <p>Planta de Agua</p>
-        </Logo>
+    <Flex
+      justify="center"
+      align="center"
+      minH="100vh"
+      bg="linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
+    >
+      <Box
+        w="100%"
+        maxW="450px"
+        p={8}
+        bg="white"
+        borderRadius="8px"
+        boxShadow="0 4px 12px rgba(0, 0, 0, 0.1)"
+      >
+        <VStack spacing={4} mb={8} textAlign="center">
+          <Heading color="blue.600" size="lg">
+            Sistema de Gestión
+          </Heading>
+          <Text color="gray.600">
+            Planta de Agua
+          </Text>
+        </VStack>
         <Outlet />
-      </AuthCard>
-    </AuthContainer>
+      </Box>
+    </Flex>
   );
 };
 
