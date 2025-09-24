@@ -56,6 +56,7 @@ const ClientsManagement = () => {
   // Estados
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isSilentlyUpdating, setIsSilentlyUpdating] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [selectedClient, setSelectedClient] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -97,12 +98,29 @@ const ClientsManagement = () => {
     }
   };
 
+  // Cargar clientes silenciosamente (sin loading)
+  const fetchClientsSilently = async () => {
+    try {
+      setIsSilentlyUpdating(true);
+      const response = await axios.get('/api/clients');
+      if (response.data.success) {
+        setClients(response.data.data);
+        setLastUpdate(new Date());
+        console.log('🔄 Actualización silenciosa de clientes');
+      }
+    } catch (error) {
+      console.error('Error en actualización silenciosa de clientes:', error);
+    } finally {
+      setIsSilentlyUpdating(false);
+    }
+  };
+
   useEffect(() => {
     fetchClients();
     fetchDistricts(); // Cargar distritos
     
-    // Auto-refresh cada 30 segundos
-    const interval = setInterval(fetchClients, 30000);
+    // Auto-refresh silencioso cada 30 segundos
+    const interval = setInterval(fetchClientsSilently, 30000);
     return () => clearInterval(interval);
   }, []);
 
@@ -268,8 +286,9 @@ const ClientsManagement = () => {
           <HStack spacing={4}>
             <Button
               leftIcon={<FaSync />}
-              onClick={fetchClients}
+              onClick={fetchClientsSilently}
               variant="outline"
+              isLoading={isSilentlyUpdating}
             >
               Actualizar
             </Button>
@@ -316,9 +335,20 @@ const ClientsManagement = () => {
               <HStack justify="space-between">
                 <VStack align="start" spacing={1}>
                   <Text fontSize="sm" color="gray.600">Última Actualización</Text>
-                  <Text fontSize="sm" fontWeight="bold" color="gray.600">
-                    {lastUpdate.toLocaleTimeString()}
-                  </Text>
+                  <HStack spacing={2}>
+                    <Text fontSize="sm" fontWeight="bold" color="gray.600">
+                      {lastUpdate.toLocaleTimeString()}
+                    </Text>
+                    {isSilentlyUpdating && (
+                      <Box
+                        w="8px"
+                        h="8px"
+                        bg="blue.500"
+                        borderRadius="50%"
+                        animation="pulse 1.5s ease-in-out infinite"
+                      />
+                    )}
+                  </HStack>
                 </VStack>
                 <FaSync size={20} color="#718096" />
               </HStack>

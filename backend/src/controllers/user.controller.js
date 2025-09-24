@@ -151,7 +151,7 @@ exports.getAllUsers = async (req, res) => {
 exports.updateUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const { username, email, phone, address, district, password } = req.body;
+    const { username, email, phone, address, district, password, firstName, lastName, reference } = req.body;
 
     const user = await User.findByPk(id);
     if (!user) {
@@ -168,6 +168,9 @@ exports.updateUser = async (req, res) => {
     if (phone) updateData.phone = phone;
     if (address) updateData.address = address;
     if (district) updateData.district = district;
+    if (firstName !== undefined) updateData.firstName = firstName;
+    if (lastName !== undefined) updateData.lastName = lastName;
+    if (reference !== undefined) updateData.reference = reference;
     
     // Si se proporciona una nueva contraseña, hashearla
     if (password) {
@@ -177,6 +180,9 @@ exports.updateUser = async (req, res) => {
 
     await user.update(updateData);
 
+    // Recargar el usuario para obtener los datos actualizados
+    await user.reload();
+
     res.json({
       success: true,
       message: 'Usuario actualizado exitosamente',
@@ -184,7 +190,14 @@ exports.updateUser = async (req, res) => {
         id: user.id,
         username: user.username,
         email: user.email,
-        role: user.role
+        role: user.role,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        phone: user.phone,
+        address: user.address,
+        district: user.district,
+        reference: user.reference,
+        isActive: user.isActive
       }
     });
   } catch (error) {

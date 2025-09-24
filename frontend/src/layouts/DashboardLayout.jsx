@@ -129,7 +129,7 @@ const DashboardLayout = () => {
       </Box>
 
       {/* Navigation Menu */}
-      <VStack spacing={1} flex={1} align="stretch" p={isCollapsed ? 1 : 2}>
+      <VStack spacing={1} flex={1} align="stretch" p={isCollapsed ? 0 : 2}>
         {menuItems.map((item) => (
           <Button
             key={item.to}
@@ -155,7 +155,7 @@ const DashboardLayout = () => {
       </VStack>
 
       {/* User Section */}
-      <Box p={isCollapsed ? 2 : 4} borderTop="1px solid" borderColor="whiteAlpha.200">
+      <Box p={isCollapsed ? 1 : 4} borderTop="1px solid" borderColor="whiteAlpha.200">
         <Menu>
           <MenuButton
             as={Button}
