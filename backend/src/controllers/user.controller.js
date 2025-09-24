@@ -24,14 +24,11 @@ exports.createUser = async (req, res) => {
       });
     }
 
-    // Hash de la contraseña
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Crear usuario
+    // Crear usuario (el hook beforeCreate se encargará del hashing)
     const user = await User.create({
       username,
       email,
-      password: hashedPassword,
+      password: password,
       role: role || 'cliente',
       firstName: firstName || '',
       lastName: lastName || '',
@@ -172,10 +169,10 @@ exports.updateUser = async (req, res) => {
     if (lastName !== undefined) updateData.lastName = lastName;
     if (reference !== undefined) updateData.reference = reference;
     
-    // Si se proporciona una nueva contraseña, hashearla
+    // Si se proporciona una nueva contraseña, asignarla directamente
+    // El hook beforeUpdate del modelo se encargará del hashing
     if (password) {
-      const saltRounds = 10;
-      updateData.password = await bcrypt.hash(password, saltRounds);
+      updateData.password = password;
     }
 
     await user.update(updateData);

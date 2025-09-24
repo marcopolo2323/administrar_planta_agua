@@ -7,7 +7,7 @@ const AuthLayout = () => {
       justify="center"
       align="center"
       minH="100vh"
-      bg="linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
+      bg="white"
     >
       <Box
         w="100%"
