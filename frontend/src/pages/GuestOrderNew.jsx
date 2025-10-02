@@ -706,15 +706,23 @@ const GuestOrderNew = () => {
   const getDeliveryFee = () => {
     if (!clientData.district) return 0;
     const district = districts.find(d => d.name === clientData.district);
-    return district ? parseFloat(district.deliveryFee) : 0;
+    const fee = district ? parseFloat(district.deliveryFee) : 0;
+    return isNaN(fee) ? 0 : fee;
   };
 
   const getSubtotal = () => {
-    return cart.reduce((sum, item) => sum + item.subtotal, 0);
+    const subtotal = cart.reduce((sum, item) => {
+      const itemSubtotal = parseFloat(item.subtotal) || 0;
+      return sum + itemSubtotal;
+    }, 0);
+    return isNaN(subtotal) ? 0 : subtotal;
   };
 
   const getTotal = () => {
-    return getSubtotal() + getDeliveryFee();
+    const subtotal = getSubtotal();
+    const deliveryFee = getDeliveryFee();
+    const total = subtotal + deliveryFee;
+    return isNaN(total) ? 0 : total;
   };
 
   const handleFinalSubmit = async () => {
@@ -1264,6 +1272,63 @@ const GuestOrderNew = () => {
     }
   };
 
+  // Función para detectar si es dispositivo móvil
+  const isMobileDevice = () => {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+           window.innerWidth <= 768;
+  };
+
+  // Función para manejar deep link de PLIN
+  const handlePlinDeepLink = () => {
+    const amount = paymentMethod === 'suscripcion' && selectedSubscriptionPlan 
+      ? parseFloat(selectedSubscriptionPlan.price || 0).toFixed(2)
+      : parseFloat(getTotal()).toFixed(2);
+    
+    const message = paymentMethod === 'suscripcion' && selectedSubscriptionPlan
+      ? `AquaYara - Suscripción ${selectedSubscriptionPlan.name}`
+      : `AquaYara - Pedido`;
+    
+    // Intentar abrir PLIN directamente
+    const plinUrl = `plin://transfer?phone=961606183&amount=${amount}&message=${encodeURIComponent(message)}`;
+    
+    // Fallback a WhatsApp con instrucciones específicas
+    const whatsappMessage = `🏪 *PAGO PLIN - AquaYara*
+
+💰 Monto: S/ ${amount}
+📱 Número PLIN: 961606183
+👤 Cliente: ${clientData.name}
+📱 Mi teléfono: ${clientData.phone}
+
+${paymentMethod === 'suscripcion' && selectedSubscriptionPlan 
+      ? `🎯 Suscripción: ${selectedSubscriptionPlan.name}\n📦 Bidones: ${selectedSubscriptionPlan.bottles + selectedSubscriptionPlan.bonus}`
+      : `🛒 Pedido con ${cart.length} productos`
+    }
+
+👋 Hola, quiero realizar el pago por PLIN. ¿Me confirmas los datos para la transferencia?`;
+    
+    const whatsappFallback = `https://wa.me/51961606183?text=${encodeURIComponent(whatsappMessage)}`;
+    
+    // Intentar abrir PLIN, si falla ir a WhatsApp
+    try {
+      window.location.href = plinUrl;
+      // Después de 2 segundos, abrir WhatsApp como fallback
+      setTimeout(() => {
+        window.open(whatsappFallback, '_blank');
+      }, 2000);
+    } catch (error) {
+      // Si falla, ir directamente a WhatsApp
+      window.open(whatsappFallback, '_blank');
+    }
+    
+    toast({
+      title: 'Abriendo PLIN',
+      description: 'Si no se abre PLIN automáticamente, usa WhatsApp para coordinar',
+      status: 'info',
+      duration: 4000,
+      isClosable: true,
+    });
+  };
+
   const handleWhatsAppSend = () => {
     let message = `🧾 *COMPROBANTE DE PAGO PLIN*
     
@@ -1276,20 +1341,26 @@ const GuestOrderNew = () => {
 
     // Si es suscripción, mostrar información del plan
     if (paymentMethod === 'suscripcion' && selectedSubscriptionPlan) {
+      const price = parseFloat(selectedSubscriptionPlan.price || 0);
       message += `🎯 *SUSCRIPCIÓN:*
 📦 Plan: ${selectedSubscriptionPlan.name}
-💰 Precio: S/ ${selectedSubscriptionPlan.price}
+💰 Precio: S/ ${price.toFixed(2)}
 🔢 Bidones: ${selectedSubscriptionPlan.bottles} + ${selectedSubscriptionPlan.bonus} extra
 📊 Total bidones: ${selectedSubscriptionPlan.bottles + selectedSubscriptionPlan.bonus}
 
 ✅ *PAGO REALIZADO VÍA PLIN*`;
     } else {
       // Para pedidos normales
+      const cartItems = cart.map(item => {
+        const subtotal = parseFloat(item.subtotal || 0);
+        return `• ${item.name} x${item.quantity} = S/ ${subtotal.toFixed(2)}`;
+      }).join('\n');
+      
       message += `🛒 *PEDIDO:*
-${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFixed(2)}`).join('\n')}
+${cartItems}
 
-💰 *TOTAL: S/ ${getTotal().toFixed(2)}*
-📦 Flete: S/ ${getDeliveryFee().toFixed(2)}
+💰 *TOTAL: S/ ${parseFloat(getTotal()).toFixed(2)}*
+📦 Flete: S/ ${parseFloat(getDeliveryFee()).toFixed(2)}
 
 ✅ *PAGO REALIZADO VÍA PLIN*`;
     }
@@ -1449,7 +1520,7 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
             >
               {Array.isArray(districts) ? districts.map((district) => (
                 <option key={district.id} value={district.name}>
-                  {district.name} - S/ {parseFloat(district.deliveryFee).toFixed(2)}
+                  {district.name} - S/ {parseFloat(district.deliveryFee || 0).toFixed(2)}
                 </option>
               )) : null}
             </Select>
@@ -1574,7 +1645,7 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
 
                     <HStack spacing={4}>
                       <Text fontWeight="bold" color="blue.600" fontSize="lg">
-                        S/ {parseFloat(product.unitPrice).toFixed(2)}
+                        S/ {parseFloat(product.unitPrice || 0).toFixed(2)}
                       </Text>
                       <Text color="gray.500" fontSize="sm">
                         Stock: {product.stock}
@@ -1634,7 +1705,7 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
                       <HStack justify="space-between" w="full">
                         <VStack align="start" spacing={0}>
                           <Text color="gray.600" fontSize="sm">
-                            S/ {parseFloat(item.unitPrice).toFixed(2)} c/u
+                            S/ {parseFloat(item.unitPrice || 0).toFixed(2)} c/u
                           </Text>
                           {item.pricing?.priceLevel === 'especial50' && (
                             <Badge colorScheme="green" size="sm">
@@ -1671,7 +1742,7 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
                       
                         <HStack justify="space-between" w="full">
                           <Text fontWeight="bold" color="blue.600">
-                            Subtotal: S/ {parseFloat(item.subtotal).toFixed(2)}
+                            Subtotal: S/ {parseFloat(item.subtotal || 0).toFixed(2)}
                           </Text>
                         </HStack>
                     </VStack>
@@ -1684,13 +1755,13 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
               <VStack spacing={2} w="full">
                 <HStack justify="space-between" w="full">
                   <Text>Subtotal:</Text>
-                  <Text fontWeight="bold">S/ {parseFloat(getSubtotal()).toFixed(2)}</Text>
+                  <Text fontWeight="bold">S/ {parseFloat(getSubtotal() || 0).toFixed(2)}</Text>
                 </HStack>
                 
                 <HStack justify="space-between" w="full">
                   <Text>Flete:</Text>
                   <Text fontWeight="bold" color="green.600">
-                    S/ {parseFloat(getDeliveryFee()).toFixed(2)}
+                    S/ {parseFloat(getDeliveryFee() || 0).toFixed(2)}
                   </Text>
                 </HStack>
                 
@@ -1699,7 +1770,7 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
                 <HStack justify="space-between" w="full">
                   <Text fontWeight="bold" fontSize="lg">Total:</Text>
                   <Text fontWeight="bold" fontSize="lg" color="blue.600">
-                    S/ {parseFloat(getTotal()).toFixed(2)}
+                    S/ {parseFloat(getTotal() || 0).toFixed(2)}
                   </Text>
                 </HStack>
               </VStack>
@@ -2273,7 +2344,7 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
                       <HStack justify="space-between" w="full">
                         <Text fontSize="lg" fontWeight="bold">Total a pagar:</Text>
                         <Text fontSize="xl" fontWeight="bold" color="purple.600">
-                          S/ {parseFloat(selectedSubscriptionPlan.price).toFixed(2)}
+                          S/ {parseFloat(selectedSubscriptionPlan.price || 0).toFixed(2)}
                         </Text>
                       </HStack>
                     </VStack>
@@ -2484,7 +2555,7 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
                       <HStack justify="space-between" w="full">
                         <Text>Total:</Text>
                         <Text fontWeight="bold" fontSize="lg" color="orange.600">
-                          S/ {parseFloat(getTotal()).toFixed(2)} (A Crédito)
+                          S/ {parseFloat(getTotal() || 0).toFixed(2)} (A Crédito)
                         </Text>
                       </HStack>
                     </VStack>
@@ -2946,10 +3017,44 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
         <ModalCloseButton />
         <ModalBody pb={{ base: 3, md: 4 }} px={{ base: 3, md: 4 }} overflowY="auto">
           <VStack spacing={{ base: 3, md: 4 }} w="100%">
-            <Alert status="info" fontSize={{ base: "xs", md: "sm" }} w="100%">
-              <AlertIcon />
-              <Text>Escanea el código QR con tu app PLIN</Text>
-            </Alert>
+            {/* Opciones de pago según dispositivo */}
+            {isMobileDevice() ? (
+              <>
+                <Alert status="info" fontSize={{ base: "xs", md: "sm" }} w="100%">
+                  <AlertIcon />
+                  <Text>Elige cómo pagar con PLIN desde tu móvil:</Text>
+                </Alert>
+                
+                <VStack spacing={3} w="100%">
+                  <Button
+                    colorScheme="purple"
+                    size="lg"
+                    w="full"
+                    leftIcon={<FaQrcode />}
+                    onClick={handlePlinDeepLink}
+                    fontSize={{ base: "sm", md: "md" }}
+                  >
+                    Abrir App PLIN
+                  </Button>
+                  
+                  <Text textAlign="center" fontSize="sm" color="gray.600">
+                    Transfiere <strong>S/ {paymentMethod === 'suscripcion' && selectedSubscriptionPlan 
+                      ? parseFloat(selectedSubscriptionPlan.price || 0).toFixed(2)
+                      : parseFloat(getTotal()).toFixed(2)
+                    }</strong> al número: <strong>961606183</strong>
+                  </Text>
+                  
+                  <Text textAlign="center" fontSize="xs" color="gray.500">
+                    O usa el QR si tienes otro dispositivo:
+                  </Text>
+                </VStack>
+              </>
+            ) : (
+              <Alert status="info" fontSize={{ base: "xs", md: "sm" }} w="100%">
+                <AlertIcon />
+                <Text>Escanea el código QR con tu app PLIN</Text>
+              </Alert>
+            )}
 
             <Box textAlign="center" w="100%" maxW="250px" mx="auto">
               <Image
@@ -2964,8 +3069,8 @@ ${cart.map(item => `• ${item.name} x${item.quantity} = S/ ${item.subtotal.toFi
             <VStack spacing={2} w="100%">
               <Text fontWeight="bold" fontSize={{ base: "md", md: "lg" }} textAlign="center">
                 Total a pagar: S/ {paymentMethod === 'suscripcion' && selectedSubscriptionPlan 
-                  ? parseFloat(selectedSubscriptionPlan.price).toFixed(2)
-                  : parseFloat(getTotal()).toFixed(2)
+                  ? parseFloat(selectedSubscriptionPlan.price || 0).toFixed(2)
+                  : parseFloat(getTotal() || 0).toFixed(2)
                 }
               </Text>
               <Text fontSize={{ base: "xs", md: "sm" }} color="gray.600" textAlign="center">

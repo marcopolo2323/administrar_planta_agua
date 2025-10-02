@@ -98,8 +98,21 @@ const OrdersManagement = () => {
   const { isOpen: isAssignOpen, onOpen: onAssignOpen, onClose: onAssignClose } = useDisclosure();
   const { isOpen: isDetailOpen, onOpen: onDetailOpen, onClose: onDetailClose } = useDisclosure();
   const { isOpen: isCancelOpen, onOpen: onCancelOpen, onClose: onCancelClose } = useDisclosure();
+  const { isOpen: isEditOpen, onOpen: onEditOpen, onClose: onEditClose } = useDisclosure();
   
   const toast = useToast();
+
+  // Estado del formulario de edición
+  const [editStatus, setEditStatus] = useState('');
+  const [editPaymentMethod, setEditPaymentMethod] = useState('');
+  const [editPaymentType, setEditPaymentType] = useState('');
+  const [editAddress, setEditAddress] = useState('');
+  const [editDistrict, setEditDistrict] = useState('');
+  const [editNotes, setEditNotes] = useState('');
+  const [editProducts, setEditProducts] = useState([]);
+  const [editSubtotal, setEditSubtotal] = useState(0);
+  const [editDeliveryFee, setEditDeliveryFee] = useState(0);
+  const [editTotal, setEditTotal] = useState(0);
 
   useEffect(() => {
     fetchGuestOrders();
@@ -468,6 +481,120 @@ const OrdersManagement = () => {
     onDetailOpen();
   };
 
+  // Abrir modal de edición
+  const openEditModal = (order) => {
+    setSelectedOrder(order);
+    setEditStatus(order.status || 'pending');
+    setEditPaymentMethod(order.paymentMethod || 'contraentrega');
+    setEditPaymentType(order.paymentType || (order.paymentMethod === 'contraentrega' ? 'efectivo' : ''));
+    setEditAddress(order.clientAddress || order.deliveryAddress || '');
+    setEditDistrict(order.clientDistrict || order.deliveryDistrict || '');
+    setEditNotes(order.notes || '');
+    // Inicializar productos a editar desde order.products u order.orderDetails
+    const sourceProducts = Array.isArray(order.products) && order.products.length > 0
+      ? order.products
+      : (Array.isArray(order.orderDetails) ? order.orderDetails : []);
+
+    const normalized = sourceProducts.map((p) => ({
+      id: p.productId || p.product_id || p.id || p.Product?.id || p.product?.id,
+      name: p.product?.name || p.Product?.name || p.name || 'Producto',
+      quantity: Number(p.quantity || 0),
+      price: Number(p.price || p.unitPrice || 0),
+    })).map((p) => ({
+      ...p,
+      subtotal: Number((Number(p.price) * Number(p.quantity)) || 0)
+    }));
+
+    setEditProducts(normalized);
+    const delivery = Number(order.deliveryFee || 0);
+    setEditDeliveryFee(isNaN(delivery) ? 0 : delivery);
+    const subtotal = normalized.reduce((acc, it) => acc + (Number(it.subtotal) || 0), 0);
+    setEditSubtotal(subtotal);
+    setEditTotal(subtotal + (isNaN(delivery) ? 0 : delivery));
+    onEditOpen();
+  };
+
+  // Enviar cambios de edición
+  const handleEditSubmit = async () => {
+    if (!selectedOrder) return;
+
+    try {
+      const updateData = {
+        status: editStatus,
+        paymentMethod: editPaymentMethod,
+        paymentType: editPaymentType || null,
+        deliveryAddress: editAddress,
+        deliveryDistrict: editDistrict,
+        notes: editNotes,
+        // Enviar productos y totales editados
+        products: editProducts.map((p) => ({
+          productId: p.id,
+          name: p.name,
+          quantity: Number(p.quantity || 0),
+          price: Number(p.price || 0),
+          subtotal: Number((Number(p.price || 0) * Number(p.quantity || 0)) || 0)
+        })),
+        subtotal: Number(editSubtotal || 0),
+        deliveryFee: Number(editDeliveryFee || 0),
+        totalAmount: Number(editTotal || 0)
+      };
+
+      await updateGuestOrder(selectedOrder.id, updateData);
+
+      toast({
+        title: 'Pedido actualizado',
+        description: `El pedido #${selectedOrder.id} fue actualizado correctamente`,
+        status: 'success',
+        duration: 3000,
+        isClosable: true,
+      });
+
+      onEditClose();
+      setSelectedOrder(null);
+      fetchGuestOrders();
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'No se pudo actualizar el pedido',
+        status: 'error',
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+  };
+
+  // Recalcular totales cuando cambian productos o flete
+  const recalcTotals = (products, deliveryFeeValue) => {
+    const subtotalValue = products.reduce((acc, it) => acc + (Number(it.subtotal) || 0), 0);
+    const fee = Number(deliveryFeeValue || 0);
+    setEditSubtotal(subtotalValue);
+    setEditTotal(subtotalValue + (isNaN(fee) ? 0 : fee));
+  };
+
+  // Handlers de edición por fila
+  const handleEditProductChange = (index, field, value) => {
+    setEditProducts((prev) => {
+      const next = [...prev];
+      const row = { ...next[index] };
+      if (field === 'quantity') {
+        row.quantity = Math.max(0, Number(value || 0));
+      } else if (field === 'price') {
+        row.price = Math.max(0, Number(value || 0));
+      }
+      row.subtotal = Number((Number(row.price || 0) * Number(row.quantity || 0)) || 0);
+      next[index] = row;
+      // Recalcular totales
+      recalcTotals(next, editDeliveryFee);
+      return next;
+    });
+  };
+
+  const handleEditDeliveryFeeChange = (value) => {
+    const fee = Number(value || 0);
+    setEditDeliveryFee(isNaN(fee) ? 0 : fee);
+    recalcTotals(editProducts, fee);
+  };
+
   // Función para descargar boleta
   const downloadReceipt = async (order) => {
     try {
@@ -706,6 +833,18 @@ const OrdersManagement = () => {
               />
             </Tooltip>
             
+            {/* Editar pedido */}
+            <Tooltip label="Editar pedido">
+              <Button
+                size="sm"
+                variant="outline"
+                colorScheme="purple"
+                onClick={() => openEditModal(order)}
+              >
+                Editar
+              </Button>
+            </Tooltip>
+
             {(!order.deliveryPersonId || order.status === 'pending') && order.status !== 'cancelled' && (
               <Tooltip label="Asignar repartidor">
                 <IconButton
@@ -960,6 +1099,165 @@ const OrdersManagement = () => {
     </Modal>
   );
 
+  // Modal de edición de pedido
+  const renderEditModal = () => (
+    <Modal isOpen={isEditOpen} onClose={onEditClose} size={{ base: 'full', md: 'lg' }} isCentered>
+      <ModalOverlay />
+      <ModalContent>
+        <ModalHeader>Editar Pedido</ModalHeader>
+        <ModalCloseButton />
+        <ModalBody>
+          {selectedOrder && (
+            <VStack spacing={4} align="stretch">
+              <Alert status="info">
+                <AlertIcon />
+                <VStack align="start" spacing={1} w="full">
+                  <Text fontWeight="bold">Pedido: {selectedOrder.orderNumber}</Text>
+                  <Text fontSize="sm">Cliente: {selectedOrder.clientName || selectedOrder.customerName}</Text>
+                  <Text fontSize="sm">Total: S/ {parseFloat(selectedOrder.total || selectedOrder.totalAmount || 0).toFixed(2)}</Text>
+                </VStack>
+              </Alert>
+
+              <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
+                <FormControl>
+                  <FormLabel>Estado</FormLabel>
+                  <Select value={editStatus} onChange={(e) => setEditStatus(e.target.value)}>
+                    <option value="pending">Pendiente</option>
+                    <option value="confirmed">Asignado</option>
+                    <option value="preparing">Preparando</option>
+                    <option value="ready">Listo</option>
+                    <option value="delivered">Entregado</option>
+                    <option value="cancelled">Cancelado</option>
+                  </Select>
+                </FormControl>
+
+                <FormControl>
+                  <FormLabel>Método de Pago</FormLabel>
+                  <Select value={editPaymentMethod} onChange={(e) => setEditPaymentMethod(e.target.value)}>
+                    <option value="contraentrega">Contraentrega</option>
+                    <option value="vale">A Crédito (Vale)</option>
+                    <option value="suscripcion">Suscripción</option>
+                  </Select>
+                </FormControl>
+
+                {editPaymentMethod === 'contraentrega' && (
+                  <FormControl>
+                    <FormLabel>Tipo de Pago</FormLabel>
+                    <Select value={editPaymentType} onChange={(e) => setEditPaymentType(e.target.value)}>
+                      <option value="efectivo">Efectivo</option>
+                      <option value="plin">PLIN</option>
+                      <option value="yape">Yape</option>
+                    </Select>
+                  </FormControl>
+                )}
+
+                <FormControl>
+                  <FormLabel>Dirección de entrega</FormLabel>
+                  <Input value={editAddress} onChange={(e) => setEditAddress(e.target.value)} placeholder="Dirección" />
+                </FormControl>
+
+                <FormControl>
+                  <FormLabel>Distrito</FormLabel>
+                  <Input value={editDistrict} onChange={(e) => setEditDistrict(e.target.value)} placeholder="Distrito" />
+                </FormControl>
+              </SimpleGrid>
+
+              {/* Productos */}
+              <Card variant="outline">
+                <CardHeader>
+                  <Heading size="sm">Productos</Heading>
+                </CardHeader>
+                <CardBody>
+                  {editProducts.length === 0 ? (
+                    <Text fontSize="sm" color="gray.500">Sin productos</Text>
+                  ) : (
+                    <VStack spacing={2} align="stretch">
+                      <HStack color="gray.500" fontSize="xs" fontWeight="semibold">
+                        <Text flex={2}>Producto</Text>
+                        <Text w="80px" textAlign="right">Cantidad</Text>
+                        <Text w="100px" textAlign="right">Precio</Text>
+                        <Text w="100px" textAlign="right">Subtotal</Text>
+                      </HStack>
+                      <Divider />
+                      {editProducts.map((p, idx) => (
+                        <HStack key={`${p.id || p.name}-${idx}`} align="center">
+                          <Text flex={2} noOfLines={1}>{p.name}</Text>
+                          <Input
+                            type="number"
+                            w="80px"
+                            textAlign="right"
+                            value={p.quantity}
+                            onChange={(e) => handleEditProductChange(idx, 'quantity', e.target.value)}
+                            min={0}
+                          />
+                          <Input
+                            type="number"
+                            w="100px"
+                            textAlign="right"
+                            step="0.01"
+                            value={p.price}
+                            onChange={(e) => handleEditProductChange(idx, 'price', e.target.value)}
+                            min={0}
+                          />
+                          <Text w="100px" textAlign="right" fontWeight="semibold">
+                            S/ {Number(p.subtotal || 0).toFixed(2)}
+                          </Text>
+                        </HStack>
+                      ))}
+                    </VStack>
+                  )}
+                </CardBody>
+              </Card>
+
+              {/* Totales */}
+              <Card variant="outline">
+                <CardHeader>
+                  <Heading size="sm">Totales</Heading>
+                </CardHeader>
+                <CardBody>
+                  <VStack spacing={2} align="stretch">
+                    <HStack justify="space-between">
+                      <Text>Subtotal</Text>
+                      <Text fontWeight="bold">S/ {Number(editSubtotal || 0).toFixed(2)}</Text>
+                    </HStack>
+                    <HStack justify="space-between">
+                      <Text>Flete</Text>
+                      <HStack>
+                        <Input
+                          type="number"
+                          w="120px"
+                          textAlign="right"
+                          step="0.01"
+                          value={editDeliveryFee}
+                          onChange={(e) => handleEditDeliveryFeeChange(e.target.value)}
+                          min={0}
+                        />
+                      </HStack>
+                    </HStack>
+                    <Divider />
+                    <HStack justify="space-between">
+                      <Text fontWeight="bold">Total</Text>
+                      <Text fontWeight="bold" color="green.600">S/ {Number(editTotal || 0).toFixed(2)}</Text>
+                    </HStack>
+                  </VStack>
+                </CardBody>
+              </Card>
+
+              <FormControl>
+                <FormLabel>Notas</FormLabel>
+                <Textarea value={editNotes} onChange={(e) => setEditNotes(e.target.value)} rows={3} placeholder="Notas adicionales..." />
+              </FormControl>
+            </VStack>
+          )}
+        </ModalBody>
+        <ModalFooter>
+          <Button variant="outline" mr={3} onClick={onEditClose}>Cancelar</Button>
+          <Button colorScheme="purple" onClick={handleEditSubmit}>Guardar Cambios</Button>
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
+  );
+
   // Modal de confirmación de anulación
   const renderCancelModal = () => (
     <Modal isOpen={isCancelOpen} onClose={onCancelClose} size="md" isCentered>
@@ -1171,6 +1469,7 @@ const OrdersManagement = () => {
       {renderAssignModal()}
       {renderDetailModal()}
       {renderCancelModal()}
+      {renderEditModal()}
     </Box>
   );
 };

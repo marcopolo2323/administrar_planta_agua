@@ -500,29 +500,96 @@ exports.getOrderStats = async (req, res) => {
   }
 };
 
-// Actualizar pedido
+// Actualizar pedido (incluye actualización de productos si se envían)
 exports.updateGuestOrder = async (req, res) => {
+  const t = await sequelize.transaction();
   try {
     const { id } = req.params;
-    const updateData = req.body;
+    const {
+      products, // [{ productId, quantity, price, subtotal }]
+      subtotal,
+      deliveryFee,
+      totalAmount,
+      ...rest
+    } = req.body;
 
-    const order = await GuestOrder.findByPk(id);
+    const order = await GuestOrder.findByPk(id, { transaction: t });
     if (!order) {
+      await t.rollback();
       return res.status(404).json({
         success: false,
         message: 'Pedido no encontrado'
       });
     }
 
-    await order.update(updateData);
+    // 1) Actualizar cabecera del pedido
+    const headerUpdate = {
+      ...rest,
+    };
+    if (typeof subtotal !== 'undefined') headerUpdate.subtotal = parseFloat(subtotal) || 0;
+    if (typeof deliveryFee !== 'undefined') headerUpdate.deliveryFee = parseFloat(deliveryFee) || 0;
+    if (typeof totalAmount !== 'undefined') headerUpdate.totalAmount = parseFloat(totalAmount) || 0;
 
-    res.json({
+    await order.update(headerUpdate, { transaction: t });
+
+    // 2) Si vienen productos, reemplazar las filas del pedido
+    if (Array.isArray(products)) {
+      // Borrar líneas anteriores
+      await GuestOrderProduct.destroy({ where: { guestOrderId: id }, transaction: t });
+
+      // Crear nuevas líneas
+      const rows = products.map((item) => ({
+        guestOrderId: parseInt(id, 10),
+        productId: item.productId,
+        quantity: parseInt(item.quantity, 10) || 0,
+        price: parseFloat(item.price) || 0,
+        subtotal: parseFloat(item.subtotal) || ((parseFloat(item.price) || 0) * (parseInt(item.quantity, 10) || 0))
+      }));
+
+      if (rows.length > 0) {
+        await GuestOrderProduct.bulkCreate(rows, { transaction: t });
+      }
+    }
+
+    await t.commit();
+
+    // 3) Volver a leer el pedido con productos y transformarlo al formato esperado
+    const updated = await GuestOrder.findByPk(id, {
+      include: [
+        {
+          model: GuestOrderProduct,
+          as: 'orderProducts',
+          include: [
+            {
+              model: Product,
+              as: 'product',
+              attributes: ['id', 'name', 'unitPrice']
+            }
+          ]
+        }
+      ]
+    });
+
+    const transformed = {
+      ...updated.toJSON(),
+      products: updated.orderProducts?.map(op => ({
+        id: op.id,
+        quantity: op.quantity,
+        price: op.price,
+        subtotal: op.subtotal,
+        product: op.product
+      })) || []
+    };
+    delete transformed.orderProducts;
+
+    return res.json({
       success: true,
       message: 'Pedido actualizado',
-      data: order
+      data: transformed
     });
 
   } catch (error) {
+    await t.rollback();
     console.error('Error al actualizar pedido:', error);
     res.status(500).json({
       success: false,

@@ -292,9 +292,9 @@ const Dashboard = () => {
           <CardBody p={{ base: 3, md: 4 }}>
             <Stat>
               <StatLabel color="green.600" fontSize={{ base: 'xs', md: 'sm' }}>💰 Ingresos Hoy</StatLabel>
-              <StatNumber color="green.500" fontSize={{ base: 'xl', md: '2xl' }}>S/ {todayRevenue.toFixed(2)}</StatNumber>
+              <StatNumber color="green.500" fontSize={{ base: 'xl', md: '2xl' }}>S/ {Number(todayRevenue || 0).toFixed(2)}</StatNumber>
               <StatHelpText fontSize={{ base: 'xs', md: 'sm' }}>
-                Total: S/ {totalRevenue.toFixed(2)}
+                Total: S/ {Number(totalRevenue || 0).toFixed(2)}
               </StatHelpText>
             </Stat>
           </CardBody>
@@ -396,7 +396,7 @@ const Dashboard = () => {
               <StatLabel color="blue.600" fontSize={{ base: 'sm', md: 'md' }}>📱 PLIN</StatLabel>
               <StatNumber color="blue.500" fontSize={{ base: 'xl', md: '2xl' }}>{plinOrders}</StatNumber>
               <StatHelpText fontSize={{ base: 'xs', md: 'sm' }}>
-                S/ {plinAmount.toFixed(2)} en total
+                S/ {Number(plinAmount || 0).toFixed(2)} en total
               </StatHelpText>
             </Stat>
           </CardBody>
@@ -408,7 +408,7 @@ const Dashboard = () => {
               <StatLabel color="green.600" fontSize={{ base: 'sm', md: 'md' }}>💵 Efectivo</StatLabel>
               <StatNumber color="green.500" fontSize={{ base: 'xl', md: '2xl' }}>{efectivoOrders}</StatNumber>
               <StatHelpText fontSize={{ base: 'xs', md: 'sm' }}>
-                S/ {efectivoAmount.toFixed(2)} en total
+                S/ {Number(efectivoAmount || 0).toFixed(2)} en total
               </StatHelpText>
             </Stat>
           </CardBody>
@@ -456,7 +456,7 @@ const Dashboard = () => {
                       flexShrink={0}
                     >
                       <action.icon 
-                        size={{ base: 14, md: 16 }} 
+                        size={16} 
                         color={`${action.color}.600`}
                       />
                     </Box>
